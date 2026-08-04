@@ -1,0 +1,159 @@
+# Frontend Sprint
+
+Персональный трекер подготовки к frontend-собеседованиям. Один React-интерфейс
+работает как локальный сайт на компьютере и как Android-приложение. Оба клиента
+синхронизируют прогресс через защищённый NestJS API и одну MongoDB.
+
+## Что внутри
+
+- план на 10 основных и 2 буферные недели;
+- 120 минут в день: 50 минут теории, 50 минут практики, 20 минут повторения;
+- 60 вопросов для самопроверки;
+- трекер 60–80 алгоритмических задач;
+- общий прогресс для компьютера и Android;
+- вход по личному паролю и JWT;
+- MongoDB доступна только API, но не клиентским приложениям.
+
+## Архитектура
+
+```text
+Локальный web-клиент ─┐
+                      ├── HTTPS API (NestJS) ── MongoDB Atlas
+Локальный Android APK ┘
+```
+
+Frontend не нужно размещать в интернете. Чтобы телефон работал при выключенном
+компьютере, API и MongoDB должны быть доступны постоянно.
+
+## Локальный запуск
+
+Требуются Node.js 22.13+ или 24+, npm и Docker. Рекомендуемая версия записана в
+`.nvmrc`.
+
+1. Создать локальный конфиг:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Заменить `APP_PASSWORD` и `JWT_SECRET` в `.env`.
+3. Запустить MongoDB:
+
+   ```bash
+   docker compose up -d mongo
+   ```
+
+4. Установить зависимости и запустить API с клиентом:
+
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+5. Открыть `http://localhost:5173`. Адрес API по умолчанию —
+   `http://localhost:3001/api`.
+
+## Общая MongoDB
+
+Для работы устройств независимо друг от друга:
+
+1. Создать MongoDB Atlas cluster и отдельного database user.
+2. Разрешить подключение к Atlas только с IP облачного API-сервера.
+3. Разместить только API, используя `Dockerfile.api` или обычный Node.js runtime.
+4. Передать API переменные `MONGODB_URI`, `APP_PASSWORD`, `JWT_SECRET`, `PORT` и
+   `CLIENT_ORIGINS`.
+5. В клиенте указать HTTPS-адрес вида `https://your-api.example.com/api`.
+
+Не добавляйте MongoDB connection string в Vite-переменные или Android-проект.
+
+## GitHub и Northflank
+
+Рекомендуемый поток выпуска API:
+
+```text
+feature branch → pull request → GitHub Actions → merge в main → Northflank
+```
+
+Workflow `.github/workflows/ci.yml` запускает typecheck, lint, тесты и сборку для
+pull request и каждого обновления `main`. В GitHub рекомендуется защитить ветку
+`main` и разрешать merge только после успешной проверки `Validate`.
+
+Для первого деплоя:
+
+1. Создать приватный GitHub-репозиторий и не добавлять в него `.env`.
+2. Подключить этот репозиторий через Northflank GitHub App.
+3. Создать `Combined Service`, выбрать ветку `main` и сборку через Dockerfile.
+4. Указать build context `/` и Dockerfile path `/Dockerfile.api`.
+5. Открыть публичный HTTP-порт `3001`.
+6. Добавить runtime secret group:
+
+   ```text
+   NODE_ENV=production
+   PORT=3001
+   MONGODB_URI=<MongoDB Atlas URI с именем базы frontend_prep>
+   APP_PASSWORD=<личный пароль, не менее 12 символов>
+   JWT_SECRET=<случайная строка, не менее 32 символов>
+   ```
+
+   `CLIENT_ORIGINS` нужен только для дополнительных web-origin. Локальный Vite
+   и Capacitor уже разрешены API.
+
+7. Настроить проверки контейнера на порту `3001`:
+   - startup и readiness: `GET /api/health`;
+   - liveness: `GET /api/health/live`.
+8. После деплоя указать в web-клиенте и Android адрес
+   `https://<northflank-domain>/api`.
+
+Для монорепозитория можно включить allow list путей сборки:
+
+```text
+apps/api/**
+apps/client/package.json
+package.json
+package-lock.json
+tsconfig.base.json
+Dockerfile.api
+.dockerignore
+```
+
+Для production-доступа к Atlas используйте выделенный Northflank egress IP и
+добавьте в Atlas только этот адрес `/32`. Доступ `0.0.0.0/0` допустим лишь для
+короткой первичной проверки. По возможности выбирайте один облачный регион для
+Northflank и Atlas.
+
+## Android
+
+Требуются Android Studio, Android SDK и JDK 21+.
+
+```bash
+npm run android:sync
+npm run android:open
+```
+
+Первая команда собирает React-клиент и копирует bundle внутрь Android-проекта.
+Вторая открывает проект в Android Studio, где можно установить debug-версию на
+телефон или собрать подписанный APK. Публичный сайт для работы APK не нужен.
+
+Debug APK собирается командой:
+
+```bash
+cd apps/client/android
+./gradlew assembleDebug
+```
+
+Результат: `apps/client/android/app/build/outputs/apk/debug/app-debug.apk`.
+
+## Проверки
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+## Основные каталоги
+
+- `apps/client` — React, Mantine, Vite и Capacitor Android;
+- `apps/api` — NestJS, авторизация и MongoDB-модели;
+- `apps/api/src/learning/curriculum.ts` — учебная программа и банк вопросов.

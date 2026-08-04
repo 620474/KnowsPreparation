@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Frontend Sprint</string>
+    <string name="title_activity_main">Frontend Sprint</string>
+    <string name="package_name">ru.maksim.frontendprep</string>
+    <string name="custom_url_scheme">ru.maksim.frontendprep</string>
+</resources>

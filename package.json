@@ -1,0 +1,36 @@
+{
+  "name": "frontend-prep-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,client -c blue,green \"npm run dev -w @prep/api\" \"npm run dev -w @prep/client\"",
+    "dev:api": "npm run dev -w @prep/api",
+    "dev:client": "npm run dev -w @prep/client",
+    "build": "npm run build -w @prep/api && npm run build -w @prep/client",
+    "typecheck": "npm run typecheck -w @prep/api && npm run typecheck -w @prep/client",
+    "lint": "eslint .",
+    "test": "npm run test -w @prep/api && npm run test -w @prep/client",
+    "android:sync": "npm run build -w @prep/client && npm run cap:sync -w @prep/client",
+    "android:open": "npm run cap:open -w @prep/client"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@rolldown/pluginutils": "^1.0.1",
+    "concurrently": "^9.2.1",
+    "detect-libc": "^2.0.3",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "nanoid": "^3.3.16",
+    "source-map-js": "^1.2.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.0"
+  }
+}
