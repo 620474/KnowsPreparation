@@ -933,7 +933,7 @@ p {
 
 .resource-filter-bar {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) repeat(3, minmax(150px, 190px));
+  grid-template-columns: minmax(260px, 1fr) repeat(4, minmax(140px, 180px));
   gap: 10px;
 }
 
@@ -1029,6 +1029,13 @@ p {
 .resource-why p {
   margin: 8px 0 0;
   font-size: inherit;
+}
+
+.resource-why ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
 }
 
 .resource-topics,

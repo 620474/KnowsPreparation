@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
@@ -25,6 +26,7 @@ export class LearningController {
   constructor(private readonly learningService: LearningService) {}
 
   @Get("bootstrap")
+  @Header("Cache-Control", "private, no-store")
   bootstrap() {
     return this.learningService.getBootstrap();
   }

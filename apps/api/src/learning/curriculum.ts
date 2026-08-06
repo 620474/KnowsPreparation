@@ -1,6 +1,6 @@
 import { getResourceIdsForBlock } from "./resources";
 
-export type StudyBlockKind = "theory" | "practice" | "review";
+export type StudyBlockKind = "theory" | "practice" | "ai" | "review";
 
 export interface StudyBlock {
   id: string;
@@ -304,6 +304,149 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
   },
 ];
 
+export const AI_SPRINT_DAYS = [
+  {
+    title: "AGENTS.md и инструкции проекта",
+    description: "Создать короткий AGENTS.md: команды, ограничения, критерии готовности и правила проверки.",
+    resourceIds: ["ai-assisted-02"],
+  },
+  {
+    title: "Explore → plan → code",
+    description: "Провести одну небольшую задачу через исследование, спецификацию, реализацию и проверку.",
+    resourceIds: ["ai-assisted-01"],
+  },
+  {
+    title: "AI как проверяемый напарник",
+    description: "Составить личный чек-лист проверки diff, API, тестов и утверждений модели.",
+    resourceIds: ["ai-assisted-03"],
+  },
+  {
+    title: "Tokens и context window",
+    description: "Рассчитать бюджет контекста для двадцатиминутного интервью и определить правила trimming.",
+    resourceIds: ["ai-engineering-01"],
+  },
+  {
+    title: "System prompt и данные пользователя",
+    description: "Разделить постоянные инструкции, rubric, примеры и недоверенный пользовательский ввод.",
+    resourceIds: ["ai-engineering-02"],
+  },
+  {
+    title: "Workflow или автономный агент",
+    description: "Выбрать минимальную архитектуру для одной функции тренажёра и обосновать уровень автономности.",
+    resourceIds: ["ai-assisted-09"],
+  },
+  {
+    title: "Инструкции для разных AI-инструментов",
+    description: "Сравнить AGENTS.md и vendor-specific инструкции, не дублируя общий контекст.",
+    resourceIds: ["ai-assisted-12"],
+  },
+  {
+    title: "Structured Outputs",
+    description: "Описать EvaluationResult через JSON Schema или Zod и добавить негативные примеры.",
+    resourceIds: ["ai-engineering-03"],
+  },
+  {
+    title: "Function calling и tools",
+    description: "Спроектировать read-only tool, allowlist аргументов и серверную авторизацию.",
+    resourceIds: ["ai-engineering-04"],
+  },
+  {
+    title: "Типизированный AI provider",
+    description: "Набросать интерфейс провайдера генерации, usage, finish reason и переключения модели.",
+    resourceIds: ["ai-engineering-12"],
+  },
+  {
+    title: "Production checklist",
+    description: "Зафиксировать timeout, retries, quotas, logs, fallback и хранение секретов на backend.",
+    resourceIds: ["ai-engineering-05"],
+  },
+  {
+    title: "Rate limits и bounded concurrency",
+    description: "Спроектировать semaphore, backoff с jitter и ограничение запросов на пользователя.",
+    resourceIds: ["ai-engineering-06"],
+  },
+  {
+    title: "Классификация ошибок API",
+    description: "Разделить validation, auth, rate-limit, provider и network errors по retryability.",
+    resourceIds: ["ai-engineering-21"],
+  },
+  {
+    title: "Стоимость AI-функции",
+    description: "Посчитать примерный бюджет одной сессии и определить лимиты tokens, retries и regeneration.",
+    resourceIds: ["ai-engineering-22"],
+  },
+  {
+    title: "Provider streaming",
+    description: "Преобразовать события провайдера во внутренний типизированный протокол приложения.",
+    resourceIds: ["ai-engineering-07"],
+  },
+  {
+    title: "SSE-протокол",
+    description: "Описать события start, delta, done и error, включая идентификатор запуска.",
+    resourceIds: ["ai-engineering-08"],
+  },
+  {
+    title: "ReadableStream и TextDecoder",
+    description: "Разобрать обработку chunks, UTF-8 границ и incremental parser для POST-streaming.",
+    resourceIds: ["ai-engineering-09"],
+  },
+  {
+    title: "End-to-end cancellation",
+    description: "Провести AbortSignal от React через backend до provider stream и состояния cancelled.",
+    resourceIds: ["mdn-abortcontroller"],
+  },
+  {
+    title: "Streaming в NestJS",
+    description: "Сравнить @Sse(), ручной response.write() и streaming POST для тренажёра.",
+    resourceIds: ["ai-engineering-11"],
+  },
+  {
+    title: "Состояния AI-интерфейса",
+    description: "Спроектировать idle, submitting, streaming, stopped, failed и completed с Retry и Regenerate.",
+    resourceIds: ["ai-engineering-13"],
+  },
+  {
+    title: "Доступность streaming UI",
+    description: "Добавить план aria-live сообщений для старта, остановки, ошибки и завершения.",
+    resourceIds: ["ai-engineering-20"],
+  },
+  {
+    title: "RAG и MongoDB Vector Search",
+    description: "Спроектировать document → chunk → embedding → index → retrieval с metadata filters.",
+    resourceIds: ["ai-engineering-15"],
+  },
+  {
+    title: "Минимальный vector search",
+    description: "Описать индекс, top-k, numCandidates, score и формат возвращаемых источников.",
+    resourceIds: ["ai-engineering-19"],
+  },
+  {
+    title: "Prompt injection и tool abuse",
+    description: "Составить threat model: недоверенный контекст, allowlist tools, least privilege и audit log.",
+    resourceIds: ["ai-engineering-16"],
+  },
+  {
+    title: "Golden dataset и evals",
+    description: "Подготовить набор обычных, граничных и ошибочных ответов с проверяемыми критериями.",
+    resourceIds: ["ai-engineering-17"],
+  },
+  {
+    title: "Error analysis",
+    description: "Разметить ошибки тренажёра и превратить их в taxonomy, dataset и regression checks.",
+    resourceIds: ["ai-engineering-18"],
+  },
+  {
+    title: "AI в российском бигтехе",
+    description: "Подготовить объяснение, зачем компаниям внутренние ассистенты и как измерять их качество.",
+    resourceIds: ["ai-assisted-35"],
+  },
+  {
+    title: "Spec-driven итог и презентация",
+    description: "Подготовить десятиминутный рассказ: задача, архитектура, риски, evals и личный вклад.",
+    resourceIds: ["ai-assisted-29", "ai-assisted-30"],
+  },
+] as const;
+
 const dayNames = [
   "Фундамент",
   "Углубление",
@@ -324,6 +467,9 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
     days: dayNames.map((dayName, dayIndex) => {
       const dayNumber = dayIndex + 1;
       const dayId = `w${String(weekNumber).padStart(2, "0")}-d${String(dayNumber).padStart(2, "0")}`;
+      const aiSprintDay = AI_SPRINT_DAYS[weekIndex * 7 + dayIndex];
+      const mainBlockMinutes = aiSprintDay ? 40 : 50;
+      const reviewMinutes = aiSprintDay ? 10 : 20;
       return {
         id: dayId,
         dayNumber,
@@ -334,24 +480,36 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
             id: `${dayId}-theory`,
             kind: "theory" as const,
             title: definition.theory[dayIndex] ?? "Повтор теории",
-            description: "50 минут: изучить механику и подготовить объяснение на 3–5 минут.",
-            minutes: 50,
+            description: `${mainBlockMinutes} минут: изучить механику и подготовить объяснение на 3–5 минут.`,
+            minutes: mainBlockMinutes,
             resourceIds: getResourceIdsForBlock(weekIndex, dayIndex, "theory"),
           },
           {
             id: `${dayId}-practice`,
             kind: "practice" as const,
             title: definition.practice[dayIndex] ?? "Практическая задача",
-            description: "50 минут: решить самостоятельно, затем разобрать альтернативы и Big-O.",
-            minutes: 50,
+            description: `${mainBlockMinutes} минут: решить самостоятельно, затем разобрать альтернативы и Big-O.`,
+            minutes: mainBlockMinutes,
             resourceIds: getResourceIdsForBlock(weekIndex, dayIndex, "practice"),
           },
+          ...(aiSprintDay
+            ? [
+                {
+                  id: `${dayId}-ai`,
+                  kind: "ai" as const,
+                  title: aiSprintDay.title,
+                  description: `30 минут: ${aiSprintDay.description}`,
+                  minutes: 30,
+                  resourceIds: [...aiSprintDay.resourceIds],
+                },
+              ]
+            : []),
           {
             id: `${dayId}-review`,
             kind: "review" as const,
             title: "Короткое повторение и журнал",
-            description: `20 минут: зафиксировать выводы и проверить результат недели «${definition.title}».`,
-            minutes: 20,
+            description: `${reviewMinutes} минут: зафиксировать выводы и проверить результат недели «${definition.title}».`,
+            minutes: reviewMinutes,
             resourceIds: [],
           },
         ],
@@ -466,6 +624,56 @@ const questionGroups: Array<[string, string[]]> = [
       "Как ты разрешил конфликт в code review?",
       "Как принимал решение о выборе state manager?",
       "Расскажи об улучшении производительности с метрикой до и после.",
+    ],
+  ],
+  [
+    "AI Engineering",
+    [
+      "Что такое token и context window и почему большой контекст не гарантирует лучший ответ?",
+      "Чем отличаются system, developer и user instructions?",
+      "Что делает temperature и почему значение 0 не гарантирует воспроизводимость?",
+      "Почему LLM галлюцинируют и какими слоями это ограничивать?",
+      "Когда нужен structured output, а когда tool calling?",
+      "Зачем валидировать результат после успешной проверки JSON Schema?",
+      "Где хранить API key в React, Capacitor и NestJS-приложении?",
+      "Как реализовать общий timeout, cancellation и безопасный retry?",
+      "Как обрабатывать rate limits без retry storm?",
+      "Как контролировать стоимость AI-функции на пользователя и сессию?",
+      "Когда выбрать SSE, а когда WebSocket?",
+      "Когда использовать EventSource, а когда fetch с ReadableStream?",
+      "Как провести end-to-end cancellation через frontend, backend и provider?",
+      "Как безопасно показывать partial Markdown output?",
+      "Как восстановиться после разрыва stream и не запустить вторую генерацию?",
+      "Из каких частей состоит хороший system prompt?",
+      "Когда few-shot examples улучшают результат, а когда мешают?",
+      "Чем prompt injection отличается от jailbreak?",
+      "Как защищать tools от ошибочных и вредоносных вызовов?",
+      "Что такое embeddings и vector search?",
+      "Как выбирать стратегию chunking для RAG?",
+      "Что дают hybrid search и reranking?",
+      "Когда RAG не нужен?",
+      "Как проектировать проверяемые citations?",
+      "Что такое golden dataset для AI-функции?",
+      "Какие ограничения есть у LLM-as-a-judge?",
+      "Как тестировать регрессии недетерминированной системы?",
+      "Какие поля логировать для AI run без утечки PII?",
+      "Какие состояния и действия обязательны в AI UX?",
+      "Как спроектировать AI-тренажёр на React, NestJS и MongoDB?",
+    ],
+  ],
+  [
+    "AI-assisted Development",
+    [
+      "Как ты используешь AI в ежедневной разработке и где оставляешь human review?",
+      "Приведи пример неверного результата AI и объясни, как ты его обнаружил.",
+      "Как ограничивать scope задачи для coding agent?",
+      "Как давать модели контекст, не загружая весь репозиторий?",
+      "Чем AGENTS.md отличается от CLAUDE.md и vendor-specific rules?",
+      "Чем детерминированный workflow отличается от автономного агента?",
+      "Как измерять пользу AI без метрики «строк кода»?",
+      "Как встроить AI code review, не заменяя ответственность инженера?",
+      "Какие ограничения AI-инструментов особенно важны для российского бигтеха?",
+      "Какие российские AI-ассистенты для разработки ты знаешь и как их сравнивать?",
     ],
   ],
 ];

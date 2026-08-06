@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { CURRICULUM, QUESTION_BANK } from "./curriculum";
-import { RESOURCE_CATALOG_VERIFIED_AT } from "./research-resources";
-import { RESOURCE_IDS, RESOURCE_PLANS, RESOURCES } from "./resources";
+import { AI_SPRINT_DAYS, CURRICULUM, QUESTION_BANK } from "./curriculum";
+import {
+  AI_RESOURCE_CATALOG_VERIFIED_AT,
+  RESOURCE_CATALOG_VERIFIED_AT,
+  RESOURCE_IDS,
+  RESOURCE_PLANS,
+  RESOURCES,
+} from "./resources";
 
 describe("curriculum", () => {
   it("contains ten core weeks and two buffer weeks", () => {
@@ -20,8 +25,8 @@ describe("curriculum", () => {
   });
 
   it("contains the complete interview question bank", () => {
-    expect(QUESTION_BANK).toHaveLength(60);
-    expect(new Set(QUESTION_BANK.map((question) => question.id)).size).toBe(60);
+    expect(QUESTION_BANK).toHaveLength(100);
+    expect(new Set(QUESTION_BANK.map((question) => question.id)).size).toBe(100);
   });
 
   it("contains a valid curated resource catalog", () => {
@@ -44,7 +49,7 @@ describe("curriculum", () => {
       (resource) => resource.verifiedAt === RESOURCE_CATALOG_VERIFIED_AT,
     );
 
-    expect(researchedResources).toHaveLength(53);
+    expect(researchedResources).toHaveLength(51);
     for (const resource of researchedResources) {
       expect(resource.level).toBeTruthy();
       expect(resource.status).toBeTruthy();
@@ -53,6 +58,33 @@ describe("curriculum", () => {
       expect(resource.learningGoal).toBeTruthy();
       expect(resource.whySelected).toBeTruthy();
       expect(resource.tags?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("includes the merged AI research catalog", () => {
+    const aiResources = RESOURCES.filter(
+      (resource) => resource.verifiedAt === AI_RESOURCE_CATALOG_VERIFIED_AT,
+    );
+
+    expect(aiResources).toHaveLength(85);
+    expect(aiResources.every((resource) => resource.topics.includes("AI"))).toBe(true);
+    expect(aiResources.filter((resource) => resource.priority === "must")).toHaveLength(35);
+    for (const resource of aiResources) {
+      expect(resource.priority).toBeTruthy();
+      expect(resource.practicalTask).toBeTruthy();
+      expect(resource.tags?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("adds one AI block to every day of the first four weeks", () => {
+    expect(AI_SPRINT_DAYS).toHaveLength(28);
+    const days = CURRICULUM.flatMap((week) => week.days);
+
+    for (const day of days.slice(0, 28)) {
+      expect(day.blocks.filter((block) => block.kind === "ai")).toHaveLength(1);
+    }
+    for (const day of days.slice(28)) {
+      expect(day.blocks.some((block) => block.kind === "ai")).toBe(false);
     }
   });
 

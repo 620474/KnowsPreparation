@@ -1,11 +1,13 @@
 export type QuestionStatus = "new" | "learning" | "review" | "mastered";
 export type Difficulty = "easy" | "medium" | "hard";
-export type StudyBlockKind = "theory" | "practice" | "review";
+export type StudyBlockKind = "theory" | "practice" | "ai" | "review";
 export type ResourceLanguage = "ru" | "en";
 export type ResourceKind = "main" | "deep-dive" | "practice" | "reference" | "case-study";
 export type ResourceLevel = "basic" | "beginner" | "intermediate" | "advanced";
 export type ResourceStatus = "current" | "evergreen" | "historical";
+export type ResourcePriority = "must" | "should" | "optional";
 export type ResourceTopic =
+  | "AI"
   | "JavaScript"
   | "React"
   | "TypeScript"
@@ -38,6 +40,9 @@ export interface LearningResource {
   learningGoal?: string;
   whySelected?: string;
   verifiedAt?: string;
+  priority?: ResourcePriority;
+  practicalTask?: string;
+  interviewQuestions?: string[];
 }
 
 export interface StudyBlock {

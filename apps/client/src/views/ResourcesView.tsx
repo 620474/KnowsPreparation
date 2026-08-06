@@ -6,6 +6,7 @@ import type {
   BootstrapData,
   ResourceKind,
   ResourceLevel,
+  ResourcePriority,
   ResourceStatus,
   ResourceTopic,
 } from "../types";
@@ -57,6 +58,24 @@ const statusColors: Record<ResourceStatus, string> = {
   historical: "gray",
 };
 
+const priorityLabels: Record<ResourcePriority, string> = {
+  must: "Must",
+  should: "Should",
+  optional: "Optional",
+};
+
+const priorityColors: Record<ResourcePriority, string> = {
+  must: "red",
+  should: "yellow",
+  optional: "gray",
+};
+
+const priorityOrder: Record<ResourcePriority, number> = {
+  must: 0,
+  should: 1,
+  optional: 2,
+};
+
 const formatVerifiedAt = (value: string) =>
   new Date(`${value}T00:00:00`).toLocaleDateString("ru-RU");
 
@@ -65,6 +84,7 @@ export function ResourcesView({ data }: ResourcesViewProps) {
   const [topic, setTopic] = useState("all");
   const [language, setLanguage] = useState("all");
   const [kind, setKind] = useState("all");
+  const [priority, setPriority] = useState("all");
 
   const topics = useMemo(
     () => [...new Set(data.resources.flatMap((item) => item.topics))].sort(),
@@ -98,6 +118,7 @@ export function ResourcesView({ data }: ResourcesViewProps) {
       .filter((item) => topic === "all" || item.topics.includes(topic as ResourceTopic))
       .filter((item) => language === "all" || item.language === language)
       .filter((item) => kind === "all" || item.kind === kind)
+      .filter((item) => priority === "all" || item.priority === priority)
       .filter((item) => {
         if (!normalizedQuery) return true;
         return [
@@ -106,6 +127,8 @@ export function ResourcesView({ data }: ResourcesViewProps) {
           item.description,
           item.learningGoal ?? "",
           item.whySelected ?? "",
+          item.practicalTask ?? "",
+          ...(item.interviewQuestions ?? []),
           ...(item.tags ?? []),
           ...item.topics,
         ]
@@ -114,10 +137,13 @@ export function ResourcesView({ data }: ResourcesViewProps) {
           .includes(normalizedQuery);
       })
       .sort((left, right) => {
+        const leftPriority = left.priority ? priorityOrder[left.priority] : 3;
+        const rightPriority = right.priority ? priorityOrder[right.priority] : 3;
+        const priorityDifference = leftPriority - rightPriority;
         const kindDifference = kindOrder[left.kind] - kindOrder[right.kind];
-        return kindDifference || left.title.localeCompare(right.title, "ru");
+        return priorityDifference || kindDifference || left.title.localeCompare(right.title, "ru");
       });
-  }, [data.resources, kind, language, query, topic]);
+  }, [data.resources, kind, language, priority, query, topic]);
 
   return (
     <div className="page-stack">
@@ -163,6 +189,16 @@ export function ResourcesView({ data }: ResourcesViewProps) {
           allowDeselect={false}
         />
         <Select
+          aria-label="Фильтр по приоритету"
+          data={[
+            { value: "all", label: "Любой приоритет" },
+            ...Object.entries(priorityLabels).map(([value, label]) => ({ value, label })),
+          ]}
+          value={priority}
+          onChange={(value) => setPriority(value ?? "all")}
+          allowDeselect={false}
+        />
+        <Select
           aria-label="Фильтр по языку"
           data={[
             { value: "all", label: "Все языки" },
@@ -195,6 +231,11 @@ export function ResourcesView({ data }: ResourcesViewProps) {
                     <Badge color={kindColors[item.kind]} variant="light">
                       {kindLabels[item.kind]}
                     </Badge>
+                    {item.priority ? (
+                      <Badge color={priorityColors[item.priority]} variant="filled">
+                        {priorityLabels[item.priority]}
+                      </Badge>
+                    ) : null}
                     {item.status ? (
                       <Badge color={statusColors[item.status]} variant="outline">
                         {statusLabels[item.status]}
@@ -215,6 +256,22 @@ export function ResourcesView({ data }: ResourcesViewProps) {
                   <details className="resource-why">
                     <summary>Почему материал в плане</summary>
                     <p>{item.whySelected}</p>
+                  </details>
+                ) : null}
+                {item.practicalTask ? (
+                  <div className="resource-goal">
+                    <strong>Практика</strong>
+                    <span>{item.practicalTask}</span>
+                  </div>
+                ) : null}
+                {item.interviewQuestions?.length ? (
+                  <details className="resource-why">
+                    <summary>Вопросы для собеседования ({item.interviewQuestions.length})</summary>
+                    <ul>
+                      {item.interviewQuestions.map((question) => (
+                        <li key={question}>{question}</li>
+                      ))}
+                    </ul>
                   </details>
                 ) : null}
                 <div className="resource-topics">

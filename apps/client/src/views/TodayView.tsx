@@ -14,6 +14,7 @@ interface TodayViewProps {
 const kindLabels = {
   theory: "Теория",
   practice: "Практика",
+  ai: "AI",
   review: "Повторение",
 };
 

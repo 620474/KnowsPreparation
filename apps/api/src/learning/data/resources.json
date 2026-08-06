@@ -1,0 +1,5067 @@
+[
+  {
+    "id": "learn-js",
+    "title": "Современный учебник JavaScript",
+    "url": "https://learn.javascript.ru/",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "reference",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 45,
+    "description": "Русскоязычная база по языку и браузерным API с задачами после каждой главы."
+  },
+  {
+    "id": "mdn-js-guide",
+    "title": "JavaScript Guide",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 45,
+    "description": "Справочник для проверки терминов, поведения языка и редких краевых случаев."
+  },
+  {
+    "id": "js-execution-model",
+    "title": "JavaScript execution model",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "JavaScript",
+      "Browser"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Стек выполнения, jobs, агенты и связь JavaScript со средой выполнения."
+  },
+  {
+    "id": "js-types",
+    "title": "Преобразование типов",
+    "url": "https://learn.javascript.ru/type-conversions",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Явные и неявные преобразования строк, чисел и логических значений."
+  },
+  {
+    "id": "js-comparisons",
+    "title": "Операторы сравнения",
+    "url": "https://learn.javascript.ru/comparison",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "deep-dive",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 18,
+    "description": "Правила сравнений, строгого равенства и неожиданные преобразования операндов."
+  },
+  {
+    "id": "js-var",
+    "title": "Устаревшее ключевое слово var",
+    "url": "https://learn.javascript.ru/var",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 18,
+    "description": "Функциональная область видимости, hoisting и отличие var от let и const."
+  },
+  {
+    "id": "js-closure",
+    "title": "Замыкание",
+    "url": "https://learn.javascript.ru/closure",
+    "provider": "learn.javascript.ru (Илья Кантор)",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Блочная область видимости, лексическое окружение, [[Environment]], makeCounter, влияние на GC.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Объяснять замыкание через лексическое окружение и решать задачи с var/let в циклах.",
+    "whySelected": "Русскоязычный первоисточник, обновлён 07.11.2024; актуальный URL /closure (не устаревший /closures).",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "JavaScript",
+      "Замыкания"
+    ]
+  },
+  {
+    "id": "js-event-loop",
+    "title": "Событийный цикл: микрозадачи и макрозадачи",
+    "url": "https://learn.javascript.ru/event-loop",
+    "provider": "learn.javascript.ru (Илья Кантор)",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript",
+      "Browser"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Очередь макрозадач, микрозадачи из промисов и queueMicrotask, правило выполнения всех микрозадач до рендеринга, разбиение тяжёлых задач через setTimeout.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Предсказывать порядок вывода синхронного кода, промисов и таймеров без запуска.",
+    "whySelected": "Русскоязычный первоисточник, обновлён 27.06.2024, с задачами и разбором.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "JavaScript",
+      "Event loop"
+    ]
+  },
+  {
+    "id": "js-event-loop-deep",
+    "title": "Tasks, microtasks, queues and schedules",
+    "url": "https://jakearchibald.com/2015/tasks-microtasks-queues-and-schedules/",
+    "provider": "Jake Archibald",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "JavaScript",
+      "Browser"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Классический разбор порядка задач и микрозадач инженером Chrome с пошаговой визуализацией.",
+    "publishedYear": 2015,
+    "level": "advanced",
+    "status": "evergreen",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Разбирать нетривиальные комбинации setTimeout и Promise.",
+    "whySelected": "Первоисточник от инженера браузера, evergreen.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "JavaScript",
+      "Event loop"
+    ]
+  },
+  {
+    "id": "js-async-habr",
+    "title": "Полное понимание асинхронности в браузере",
+    "url": "https://habr.com/ru/companies/yandex/articles/718084/",
+    "provider": "Яндекс на Habr",
+    "language": "ru",
+    "kind": "deep-dive",
+    "topics": [
+      "JavaScript",
+      "Browser",
+      "Performance"
+    ],
+    "estimatedMinutes": 24,
+    "description": "Цельная русскоязычная картина event loop, рендера, Promise и async/await.",
+    "publishedYear": 2023
+  },
+  {
+    "id": "js-memory",
+    "title": "Сборка мусора",
+    "url": "https://learn.javascript.ru/garbage-collection",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript",
+      "Performance"
+    ],
+    "estimatedMinutes": 18,
+    "description": "Достижимость объектов, mark-and-sweep и типовые причины удержания памяти."
+  },
+  {
+    "id": "js-memory-mdn",
+    "title": "Memory management",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Memory_management",
+    "provider": "MDN Web Docs",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "JavaScript",
+      "Performance"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Жизненный цикл памяти, mark-and-sweep, удержание ссылок.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Объяснять GC и причины утечек через замыкания.",
+    "whySelected": "Официальная документация платформы.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "JavaScript",
+      "GC"
+    ]
+  },
+  {
+    "id": "js-this",
+    "title": "Методы объекта и this",
+    "url": "https://learn.javascript.ru/object-methods",
+    "provider": "learn.javascript.ru (Илья Кантор)",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Свободный this в JavaScript — вычисляется в момент вызова; стрелочные функции.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Определять значение this для любого способа вызова.",
+    "whySelected": "Основной раздел учебника про this.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "JavaScript",
+      "this"
+    ]
+  },
+  {
+    "id": "js-call-apply",
+    "title": "Декораторы и переадресация вызова",
+    "url": "https://learn.javascript.ru/call-apply-decorators",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 28,
+    "description": "call, apply, forwarding и практические обёртки над функциями."
+  },
+  {
+    "id": "js-bind",
+    "title": "Привязка контекста к функции",
+    "url": "https://learn.javascript.ru/bind",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 18,
+    "description": "Поведение bind, частичное применение и потеря this в callback."
+  },
+  {
+    "id": "js-prototype",
+    "title": "Прототипное наследование",
+    "url": "https://learn.javascript.ru/prototype-inheritance",
+    "provider": "learn.javascript.ru (Илья Кантор)",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 25,
+    "description": "[[Prototype]], __proto__, чтение по цепочке, запись без прототипа, this и прототипы.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Проходить цепочку прототипов и объяснять, почему this не зависит от прототипа.",
+    "whySelected": "Русскоязычный первоисточник, обновлён 07.07.2024.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "JavaScript",
+      "Прототипы"
+    ]
+  },
+  {
+    "id": "js-class",
+    "title": "Класс: базовый синтаксис",
+    "url": "https://learn.javascript.ru/class",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 22,
+    "description": "Классы, методы, поля и их связь с прототипной моделью JavaScript."
+  },
+  {
+    "id": "js-currying",
+    "title": "Каррирование и частичное применение",
+    "url": "https://learn.javascript.ru/currying-partials",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Преобразование функций, частичное применение и композиция вычислений."
+  },
+  {
+    "id": "ydkjs",
+    "title": "You Don't Know JS Yet",
+    "url": "https://github.com/getify/You-Dont-Know-JS",
+    "provider": "Kyle Simpson",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 45,
+    "description": "Бесплатная серия книг для глубокого понимания scope, объектов и модели языка."
+  },
+  {
+    "id": "js-promises",
+    "title": "Промисы",
+    "url": "https://learn.javascript.ru/promise-basics",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Состояния Promise, resolve/reject и базовая обработка результата."
+  },
+  {
+    "id": "js-promise-api",
+    "title": "Promise API",
+    "url": "https://learn.javascript.ru/promise-api",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 24,
+    "description": "Promise.all, allSettled, race и any с особенностями обработки ошибок."
+  },
+  {
+    "id": "js-async-await",
+    "title": "Async/await",
+    "url": "https://learn.javascript.ru/async-await",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 22,
+    "description": "Последовательное чтение асинхронного кода и обработка ошибок через try/catch."
+  },
+  {
+    "id": "js-fetch-abort",
+    "title": "Fetch: прерывание запроса",
+    "url": "https://learn.javascript.ru/fetch-abort",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript",
+      "Browser"
+    ],
+    "estimatedMinutes": 18,
+    "description": "AbortController, signal и корректная отмена сетевых и пользовательских задач."
+  },
+  {
+    "id": "js-generators",
+    "title": "Генераторы",
+    "url": "https://learn.javascript.ru/generator",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Приостанавливаемые функции, yield и двусторонний обмен значениями."
+  },
+  {
+    "id": "js-iterables",
+    "title": "Перебираемые объекты",
+    "url": "https://learn.javascript.ru/iterable",
+    "provider": "Learn JavaScript",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "JavaScript"
+    ],
+    "estimatedMinutes": 18,
+    "description": "Протокол iterable/iterator и создание собственных перебираемых структур."
+  },
+  {
+    "id": "structured-clone",
+    "title": "structuredClone",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Window/structuredClone",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "JavaScript",
+      "Browser"
+    ],
+    "estimatedMinutes": 12,
+    "description": "Современное глубокое клонирование и поддержка циклических ссылок."
+  },
+  {
+    "id": "developer-debounce",
+    "title": "Debouncing in React and JavaScript",
+    "url": "https://www.developerway.com/posts/debouncing-in-react",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "JavaScript",
+      "React"
+    ],
+    "estimatedMinutes": 24,
+    "description": "Практический разбор debounce, замыканий и стабильности функций."
+  },
+  {
+    "id": "yandex-algorithms",
+    "title": "Справочник по алгоритмам",
+    "url": "https://education.yandex.ru/handbook/algorithms",
+    "provider": "Яндекс Образование",
+    "language": "ru",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 45,
+    "description": "Русскоязычная теория, визуализации и задачи по структурам и алгоритмам."
+  },
+  {
+    "id": "hello-algo",
+    "title": "Hello Algo",
+    "url": "https://www.hello-algo.com/ru/",
+    "provider": "Hello Algo",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 35,
+    "description": "Структуры данных и алгоритмы с анимациями и запускаемым кодом на JS/TS."
+  },
+  {
+    "id": "leetcode-plan",
+    "title": "LeetCode Study Plans",
+    "url": "https://leetcode.com/studyplan/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms",
+      "Interview"
+    ],
+    "estimatedMinutes": 45,
+    "description": "Готовые последовательности задач для интервальной практики."
+  },
+  {
+    "id": "leetcode-two-sum",
+    "title": "Two Sum",
+    "url": "https://leetcode.com/problems/two-sum/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Найти два индекса с суммой target.",
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "learningGoal": "Решить за O(n) с хеш-таблицей.",
+    "whySelected": "Каноническая задача на frequency/hash map.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Алгоритмы",
+      "Hash map"
+    ]
+  },
+  {
+    "id": "leetcode-group-anagrams",
+    "title": "Group Anagrams",
+    "url": "https://leetcode.com/problems/group-anagrams/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Сгруппировать анаграммы по ключу частот символов.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "learningGoal": "Строить ключ группировки за O(n·k).",
+    "whySelected": "Классика на хеш-группировку.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Алгоритмы",
+      "Hash map"
+    ]
+  },
+  {
+    "id": "leetcode-longest-substring",
+    "title": "Longest Substring Without Repeating Characters",
+    "url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 35,
+    "description": "Классическая задача на sliding window и индекс последнего появления."
+  },
+  {
+    "id": "leetcode-min-window",
+    "title": "Minimum Window Substring",
+    "url": "https://leetcode.com/problems/minimum-window-substring/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 40,
+    "description": "Минимальное окно, содержащее все символы t.",
+    "level": "advanced",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "learningGoal": "Реализовать sliding window с частотной картой.",
+    "whySelected": "Эталон сложной sliding window (доп. задача).",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Алгоритмы",
+      "Sliding window"
+    ]
+  },
+  {
+    "id": "leetcode-valid-parentheses",
+    "title": "Valid Parentheses",
+    "url": "https://leetcode.com/problems/valid-parentheses/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Проверка корректности скобок стеком.",
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "learningGoal": "Использовать стек для сопоставления пар.",
+    "whySelected": "Классика на стек.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Алгоритмы",
+      "Стек"
+    ]
+  },
+  {
+    "id": "leetcode-queue-stacks",
+    "title": "Implement Queue using Stacks",
+    "url": "https://leetcode.com/problems/implement-queue-using-stacks/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Амортизированная очередь на двух стеках."
+  },
+  {
+    "id": "leetcode-first-last",
+    "title": "Find First and Last Position",
+    "url": "https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 35,
+    "description": "Два бинарных поиска по левой и правой границе."
+  },
+  {
+    "id": "leetcode-climbing-stairs",
+    "title": "Climbing Stairs",
+    "url": "https://leetcode.com/problems/climbing-stairs/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Число способов подняться по лестнице — базовое DP.",
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "learningGoal": "Понять переход состояния в DP.",
+    "whySelected": "Вводная задача в динамику.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Алгоритмы",
+      "Dynamic programming"
+    ]
+  },
+  {
+    "id": "leetcode-max-subarray",
+    "title": "Maximum Subarray",
+    "url": "https://leetcode.com/problems/maximum-subarray/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Algorithms"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Максимальная сумма подмассива (алгоритм Кадане).",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "learningGoal": "Реализовать Кадане за O(n).",
+    "whySelected": "Классическая DP-задача.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Алгоритмы",
+      "Dynamic programming"
+    ]
+  },
+  {
+    "id": "react-render-commit",
+    "title": "Render and Commit",
+    "url": "https://react.dev/learn/render-and-commit",
+    "provider": "react.dev",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Триггер, фаза render, фаза commit; как обновление состояния ставит рендер в очередь.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Различать фазы render и commit.",
+    "whySelected": "Источник истины по React.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "React",
+      "Internals"
+    ]
+  },
+  {
+    "id": "react-preserving-state",
+    "title": "Preserving and Resetting State",
+    "url": "https://react.dev/learn/preserving-and-resetting-state",
+    "provider": "react.dev",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Как позиция в дереве и key определяют сохранение/сброс состояния.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Управлять состоянием через key и позицию в дереве.",
+    "whySelected": "Официальный разбор reconciliation и ключей.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "React",
+      "Reconciliation",
+      "Keys"
+    ]
+  },
+  {
+    "id": "react-fiber",
+    "title": "React Fiber Architecture",
+    "url": "https://github.com/acdlite/react-fiber-architecture",
+    "provider": "Andrew Clark",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 40,
+    "description": "Концептуальное устройство Fiber, единицы работы и приоритеты планировщика."
+  },
+  {
+    "id": "developer-reconciliation",
+    "title": "Reconciliation in React",
+    "url": "https://www.developerway.com/posts/reconciliation-in-react",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Практическая модель сравнения деревьев и сохранения состояния."
+  },
+  {
+    "id": "developer-key",
+    "title": "React key attribute",
+    "url": "https://www.developerway.com/posts/react-key-attribute",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 22,
+    "description": "Почему index и случайные ключи ломают идентичность и производительность."
+  },
+  {
+    "id": "developer-rerenders",
+    "title": "React re-renders guide",
+    "url": "https://www.developerway.com/posts/react-re-renders-guide",
+    "provider": "developerway.com (Nadia Makarevich)",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Систематический разбор причин ререндеров и паттернов их предотвращения.",
+    "level": "advanced",
+    "publishedYear": 2022,
+    "status": "evergreen",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Диагностировать и устранять лишние ререндеры.",
+    "whySelected": "Лучший практический deep-dive по ререндерам.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "React",
+      "Performance"
+    ]
+  },
+  {
+    "id": "react-queue-state",
+    "title": "Queueing a Series of State Updates",
+    "url": "https://react.dev/learn/queueing-a-series-of-state-updates",
+    "provider": "react.dev",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Батчинг обновлений, updater-функции, обработка состояния после событий.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Объяснять batching и корректно использовать updater.",
+    "whySelected": "Официальный разбор батчинга.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "React",
+      "Batching"
+    ]
+  },
+  {
+    "id": "react-transition",
+    "title": "useTransition",
+    "url": "https://react.dev/reference/react/useTransition",
+    "provider": "React",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 24,
+    "description": "Неблокирующие обновления, Actions и приоритизация пользовательского интерфейса."
+  },
+  {
+    "id": "react-compiler",
+    "title": "React Compiler",
+    "url": "https://react.dev/learn/react-compiler",
+    "provider": "React",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Актуальная официальная документация по автоматической мемоизации."
+  },
+  {
+    "id": "react-rules-hooks",
+    "title": "Rules of Hooks",
+    "url": "https://react.dev/reference/rules/rules-of-hooks",
+    "provider": "React",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 15,
+    "description": "Почему хуки вызываются только на верхнем уровне React-компонента или хука."
+  },
+  {
+    "id": "react-effect-lifecycle",
+    "title": "Lifecycle of Reactive Effects",
+    "url": "https://react.dev/learn/lifecycle-of-reactive-effects",
+    "provider": "React",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Синхронизация внешней системы и независимый жизненный цикл эффекта."
+  },
+  {
+    "id": "react-remove-deps",
+    "title": "Removing Effect Dependencies",
+    "url": "https://react.dev/learn/removing-effect-dependencies",
+    "provider": "React",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Как честно описывать зависимости и устранять причины лишних перезапусков."
+  },
+  {
+    "id": "react-no-effect",
+    "title": "You Might Not Need an Effect",
+    "url": "https://react.dev/learn/you-might-not-need-an-effect",
+    "provider": "React",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Когда вычисление или действие нужно перенести из эффекта в render или handler."
+  },
+  {
+    "id": "developer-stale",
+    "title": "Fantastic closures and stale state",
+    "url": "https://www.developerway.com/posts/fantastic-closures",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "JavaScript"
+    ],
+    "estimatedMinutes": 28,
+    "description": "Связь замыканий, состояния рендера и stale closure в React."
+  },
+  {
+    "id": "developer-memo",
+    "title": "How to useMemo and useCallback",
+    "url": "https://www.developerway.com/posts/how-to-use-memo-use-callback",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 28,
+    "description": "Когда мемоизация полезна, бесполезна или делает код медленнее."
+  },
+  {
+    "id": "developer-context",
+    "title": "Performant React Context",
+    "url": "https://www.developerway.com/posts/how-to-write-performant-react-apps-with-context",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Performance",
+      "Architecture"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Декомпозиция Context и снижение области повторных рендеров."
+  },
+  {
+    "id": "tanstack-query",
+    "title": "TanStack Query overview",
+    "url": "https://tanstack.com/query/latest/docs/framework/react/overview",
+    "provider": "TanStack",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Server state, кэш запросов, инвалидация и синхронизация данных."
+  },
+  {
+    "id": "redux-style",
+    "title": "Redux Style Guide",
+    "url": "https://redux.js.org/style-guide/",
+    "provider": "Redux",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Официальные рекомендации по предсказуемому клиентскому состоянию."
+  },
+  {
+    "id": "zustand",
+    "title": "Zustand",
+    "url": "https://github.com/pmndrs/zustand",
+    "provider": "pmndrs",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 18,
+    "description": "Минималистичное клиентское состояние и сравнение с Redux и Context."
+  },
+  {
+    "id": "developer-custom-hooks",
+    "title": "Why custom hooks can hurt performance",
+    "url": "https://www.developerway.com/posts/why-custom-react-hooks-could-destroy-your-app-performance",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Границы абстракции custom hooks и скрытые повторные рендеры."
+  },
+  {
+    "id": "react-devtools",
+    "title": "React Developer Tools",
+    "url": "https://react.dev/learn/react-developer-tools",
+    "provider": "React",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 15,
+    "description": "Components и Profiler для поиска причин обновлений."
+  },
+  {
+    "id": "yandex-react-performance",
+    "title": "Код на React и TypeScript, который работает быстро",
+    "url": "https://habr.com/ru/companies/yandex/articles/536682/",
+    "provider": "Яндекс на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "React",
+      "TypeScript",
+      "Performance"
+    ],
+    "estimatedMinutes": 16,
+    "description": "Промышленный взгляд на стоимость абстракций, рендера и типизации.",
+    "publishedYear": 2021
+  },
+  {
+    "id": "avito-components",
+    "title": "Пишем хорошие переиспользуемые компоненты",
+    "url": "https://habr.com/ru/companies/avito/articles/739330/",
+    "provider": "AvitoTech на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 12,
+    "description": "Практические признаки удобного API компонента и опасных связей.",
+    "publishedYear": 2023
+  },
+  {
+    "id": "developer-composition",
+    "title": "Component composition",
+    "url": "https://www.developerway.com/posts/components-composition-how-to-get-it-right",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 28,
+    "description": "Композиция компонентов как инструмент API, производительности и расширяемости."
+  },
+  {
+    "id": "developer-component-prop",
+    "title": "React component as prop",
+    "url": "https://www.developerway.com/posts/react-component-as-prop-the-right-way",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 24,
+    "description": "Component, element и render function как разные способы композиции."
+  },
+  {
+    "id": "developer-fetch",
+    "title": "How to fetch data in React",
+    "url": "https://www.developerway.com/posts/how-to-fetch-data-in-react",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Состояния запроса, гонки, отмена и границы ручного data fetching."
+  },
+  {
+    "id": "ts-generics",
+    "title": "Generics",
+    "url": "https://www.typescriptlang.org/docs/handbook/2/generics.html",
+    "provider": "typescriptlang.org",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "TypeScript"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Дженерики в функциях, интерфейсах, классах и ограничения.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Писать переиспользуемые типобезопасные абстракции.",
+    "whySelected": "Официальный Handbook.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "TypeScript",
+      "Generics"
+    ]
+  },
+  {
+    "id": "ts-conditional",
+    "title": "Conditional Types",
+    "url": "https://www.typescriptlang.org/docs/handbook/2/conditional-types.html",
+    "provider": "typescriptlang.org",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "TypeScript"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Условные типы, дистрибутивность над union, ключевое слово infer.",
+    "level": "advanced",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Извлекать типы через infer и строить условные типы.",
+    "whySelected": "Официальный Handbook.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "TypeScript",
+      "Conditional types",
+      "infer"
+    ]
+  },
+  {
+    "id": "ts-mapped",
+    "title": "Mapped Types",
+    "url": "https://www.typescriptlang.org/docs/handbook/2/mapped-types.html",
+    "provider": "typescriptlang.org",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "TypeScript"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Отображаемые типы, модификаторы, ремаппинг ключей.",
+    "level": "advanced",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Строить утилиты вроде DeepReadonly.",
+    "whySelected": "Официальный Handbook.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "TypeScript",
+      "Mapped types"
+    ]
+  },
+  {
+    "id": "ts-narrowing",
+    "title": "Narrowing",
+    "url": "https://www.typescriptlang.org/docs/handbook/2/narrowing.html",
+    "provider": "TypeScript",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "TypeScript"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Type guards, discriminated unions, unknown и never."
+  },
+  {
+    "id": "ts-functions",
+    "title": "More on Functions",
+    "url": "https://www.typescriptlang.org/docs/handbook/2/functions.html",
+    "provider": "TypeScript",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "TypeScript"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Сигнатуры, перегрузки, unknown, never и вариантность параметров."
+  },
+  {
+    "id": "type-challenges",
+    "title": "Type Challenges",
+    "url": "https://github.com/type-challenges/type-challenges",
+    "provider": "Type Challenges",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "TypeScript"
+    ],
+    "estimatedMinutes": 40,
+    "description": "Большой набор задач на вывод и преобразование типов."
+  },
+  {
+    "id": "yandex-generics",
+    "title": "Продвинутые дженерики в TypeScript",
+    "url": "https://habr.com/ru/companies/yandex/articles/555520/",
+    "provider": "Яндекс на Habr",
+    "language": "ru",
+    "kind": "deep-dive",
+    "topics": [
+      "TypeScript"
+    ],
+    "estimatedMinutes": 14,
+    "description": "Русскоязычный доклад о вложенных generics, infer и сложных контрактах.",
+    "publishedYear": 2021
+  },
+  {
+    "id": "yandex-typing",
+    "title": "Сага о типизации и тайпчекинге для JavaScript",
+    "url": "https://habr.com/ru/companies/yandex/articles/541338/",
+    "provider": "Яндекс на Habr",
+    "language": "ru",
+    "kind": "deep-dive",
+    "topics": [
+      "JavaScript",
+      "TypeScript"
+    ],
+    "estimatedMinutes": 18,
+    "description": "Что TypeScript гарантирует, где заканчивается статическая проверка и зачем runtime-валидация.",
+    "publishedYear": 2021
+  },
+  {
+    "id": "mdn-browser-work",
+    "title": "How browsers work",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/Performance/Guides/How_browsers_work",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Performance"
+    ],
+    "estimatedMinutes": 35,
+    "description": "Навигация, parsing, render tree, layout, paint и compositing."
+  },
+  {
+    "id": "mdn-crp",
+    "title": "Critical Rendering Path",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/Performance/Guides/Critical_rendering_path",
+    "provider": "MDN Web Docs",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Performance"
+    ],
+    "estimatedMinutes": 20,
+    "description": "DOM, CSSOM, render tree, layout, paint, composite.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Описывать критический путь рендеринга.",
+    "whySelected": "Официальная документация платформы.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Performance",
+      "Browser"
+    ]
+  },
+  {
+    "id": "web-vitals",
+    "title": "Web Vitals",
+    "url": "https://web.dev/articles/vitals",
+    "provider": "web.dev (Google)",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Performance",
+      "Browser"
+    ],
+    "estimatedMinutes": 20,
+    "description": "LCP, INP, CLS и их пороги «good».",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Называть метрики и целевые значения.",
+    "whySelected": "Первоисточник по Core Web Vitals.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Performance",
+      "Core Web Vitals"
+    ]
+  },
+  {
+    "id": "chrome-performance",
+    "title": "Performance panel reference",
+    "url": "https://developer.chrome.com/docs/devtools/performance/reference",
+    "provider": "Chrome for Developers",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Browser",
+      "Performance"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Запись trace, main thread, network, layout shifts и поиск длинных задач."
+  },
+  {
+    "id": "developer-initial-load",
+    "title": "Initial load performance",
+    "url": "https://www.developerway.com/posts/initial-load-performance",
+    "provider": "DeveloperWay",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Bundle, waterfalls, lazy loading и реальные ограничения первой загрузки React-приложения."
+  },
+  {
+    "id": "vk-speed",
+    "title": "Как мы в четыре раза ускорили мобильную версию ВКонтакте",
+    "url": "https://habr.com/ru/companies/vk/articles/811925/",
+    "provider": "VK на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "Performance",
+      "React",
+      "Browser"
+    ],
+    "estimatedMinutes": 12,
+    "description": "Свежий кейс измерения Web Vitals, удаления лишнего кода и оптимизации SPA.",
+    "publishedYear": 2024
+  },
+  {
+    "id": "vk-performance",
+    "title": "Производительность фронтенда: важные метрики",
+    "url": "https://habr.com/ru/companies/vk/articles/454920/",
+    "provider": "VK (Habr)",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "Performance",
+      "Browser",
+      "Interview"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Опыт VK (Почта Mail.ru): метрики реального пользователя, PerfKeeper.",
+    "publishedYear": 2019,
+    "level": "intermediate",
+    "status": "historical",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Мыслить продуктовыми метриками производительности.",
+    "whySelected": "Оригинальный инженерный кейс VK (historical, но evergreen идеи).",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Performance"
+    ]
+  },
+  {
+    "id": "mdn-cache",
+    "title": "HTTP caching",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching",
+    "provider": "MDN Web Docs",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "Browser",
+      "Performance"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Cache-Control, ETag, стратегии кэширования.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Проектировать стратегию кэширования ресурсов.",
+    "whySelected": "Официальная документация HTTP.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Browser",
+      "HTTP"
+    ]
+  },
+  {
+    "id": "web-resource-loading",
+    "title": "Optimize resource loading",
+    "url": "https://web.dev/learn/performance/optimize-resource-loading",
+    "provider": "web.dev",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Performance"
+    ],
+    "estimatedMinutes": 22,
+    "description": "Приоритеты, preload, lazy loading и устранение сетевых блокировок."
+  },
+  {
+    "id": "web-virtualize",
+    "title": "Virtualize large lists",
+    "url": "https://web.dev/articles/virtualize-long-lists-react-window",
+    "provider": "web.dev",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React",
+      "Performance"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Windowing, recycling DOM nodes и ограничения fixed/variable lists."
+  },
+  {
+    "id": "mdn-http2",
+    "title": "HTTP/2",
+    "url": "https://developer.mozilla.org/en-US/docs/Glossary/HTTP_2",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "Browser"
+    ],
+    "estimatedMinutes": 12,
+    "description": "Мультиплексирование, streams и отличие от HTTP/1.1."
+  },
+  {
+    "id": "mdn-http3",
+    "title": "HTTP/3",
+    "url": "https://developer.mozilla.org/en-US/docs/Glossary/HTTP_3",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "Browser"
+    ],
+    "estimatedMinutes": 12,
+    "description": "QUIC, устранение TCP head-of-line blocking и быстрый handshake."
+  },
+  {
+    "id": "mdn-tls",
+    "title": "Transport Layer Security",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "Browser",
+      "Security"
+    ],
+    "estimatedMinutes": 22,
+    "description": "Цели TLS, сертификаты и безопасные настройки транспорта."
+  },
+  {
+    "id": "mdn-cors",
+    "title": "Cross-Origin Resource Sharing",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS",
+    "provider": "MDN Web Docs",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Security"
+    ],
+    "estimatedMinutes": 25,
+    "description": "CORS, preflight, credentials, заголовки.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Объяснять preflight и работу с cookies при кросс-доменных запросах.",
+    "whySelected": "Официальная документация.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Browser",
+      "CORS"
+    ]
+  },
+  {
+    "id": "mdn-cookies",
+    "title": "Using HTTP cookies",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Security"
+    ],
+    "estimatedMinutes": 28,
+    "description": "Secure, HttpOnly, SameSite, область cookie и управление сессией."
+  },
+  {
+    "id": "web-css",
+    "title": "Learn CSS",
+    "url": "https://web.dev/learn/css",
+    "provider": "web.dev",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "CSS"
+    ],
+    "estimatedMinutes": 40,
+    "description": "Cascade, specificity, layout, Flexbox, Grid и responsive design."
+  },
+  {
+    "id": "wai-tutorials",
+    "title": "Web Accessibility Tutorials",
+    "url": "https://www.w3.org/WAI/tutorials/",
+    "provider": "W3C WAI",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Accessibility"
+    ],
+    "estimatedMinutes": 35,
+    "description": "Семантика, формы, таблицы, изображения и клавиатурная доступность."
+  },
+  {
+    "id": "wai-aria",
+    "title": "WAI-ARIA overview",
+    "url": "https://www.w3.org/WAI/standards-guidelines/aria/",
+    "provider": "W3C WAI",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "Accessibility"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Когда нужна ARIA и почему нативная семантика предпочтительнее."
+  },
+  {
+    "id": "mdn-websocket",
+    "title": "WebSocket API",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/WebSocket",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Architecture"
+    ],
+    "estimatedMinutes": 24,
+    "description": "Двунаправленное соединение, события, backpressure и закрытие канала."
+  },
+  {
+    "id": "mdn-sse",
+    "title": "Server-sent events",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Architecture"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Однонаправленный поток событий поверх HTTP и автоматический reconnect."
+  },
+  {
+    "id": "mdn-service-worker",
+    "title": "Service Worker API",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Browser",
+      "Architecture"
+    ],
+    "estimatedMinutes": 35,
+    "description": "Перехват запросов, offline cache, lifecycle и ограничения worker-контекста."
+  },
+  {
+    "id": "tanstack-optimistic",
+    "title": "Optimistic updates",
+    "url": "https://tanstack.com/query/latest/docs/framework/react/guides/optimistic-updates",
+    "provider": "TanStack",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Оптимистичное состояние, rollback и согласование с server state."
+  },
+  {
+    "id": "patterns-dev",
+    "title": "Patterns.dev",
+    "url": "https://www.patterns.dev/",
+    "provider": "patterns.dev",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "Architecture",
+      "JavaScript",
+      "React"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Паттерны компонентов и рендеринга для современных приложений.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Выбирать паттерны компонентов осознанно.",
+    "whySelected": "Качественный бесплатный ресурс по паттернам.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Архитектура",
+      "Паттерны"
+    ]
+  },
+  {
+    "id": "yandex-solid",
+    "title": "Пишем переиспользуемые компоненты, соблюдая SOLID",
+    "url": "https://habr.com/ru/companies/yandex/articles/560194/",
+    "provider": "Яндекс на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "Architecture",
+      "React",
+      "TypeScript"
+    ],
+    "estimatedMinutes": 21,
+    "description": "SOLID на конкретных React + TypeScript компонентах и контрактах.",
+    "publishedYear": 2021
+  },
+  {
+    "id": "fsd-overview",
+    "title": "Feature-Sliced Design overview",
+    "url": "https://feature-sliced.design/docs/get-started/overview",
+    "provider": "feature-sliced.design",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Architecture"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Слои, слайсы, сегменты; правила зависимостей.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Обосновывать разбиение по слоям и границы модулей.",
+    "whySelected": "Официальная документация методологии (есть ru-версия).",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Архитектура",
+      "FSD"
+    ]
+  },
+  {
+    "id": "fsd-layers",
+    "title": "Feature-Sliced Design layers",
+    "url": "https://fsd.how/docs/reference/layers/",
+    "provider": "Feature-Sliced Design",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Architecture"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Ответственность слоёв и правило направленности зависимостей."
+  },
+  {
+    "id": "nx-monorepo",
+    "title": "Nx monorepo concepts",
+    "url": "https://nx.dev/docs/getting-started/intro",
+    "provider": "Nx",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Architecture"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Граф проекта, affected-команды, кэширование и границы пакетов монорепы."
+  },
+  {
+    "id": "martin-microfrontends",
+    "title": "Micro Frontends",
+    "url": "https://martinfowler.com/articles/micro-frontends.html",
+    "provider": "Martin Fowler",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "Architecture"
+    ],
+    "estimatedMinutes": 35,
+    "description": "Мотивация, интеграция, независимые релизы и организационная цена подхода.",
+    "publishedYear": 2019
+  },
+  {
+    "id": "avito-microfrontends",
+    "title": "Микрофронтенды в SSR: опыт Авито",
+    "url": "https://habr.com/ru/companies/avito/articles/778582/",
+    "provider": "AvitoTech на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "Architecture",
+      "React"
+    ],
+    "estimatedMinutes": 12,
+    "description": "Промышленный кейс миграции микрофронтендов и поддержки SSR.",
+    "publishedYear": 2023
+  },
+  {
+    "id": "yandex-frontend-architecture",
+    "title": "Верхнеуровневая архитектура фронтенда",
+    "url": "https://habr.com/ru/companies/yandex/articles/425611/",
+    "provider": "Яндекс на Habr",
+    "language": "ru",
+    "kind": "deep-dive",
+    "topics": [
+      "Architecture"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Лекция о компонентной архитектуре, MV*, Flux и потоке данных.",
+    "publishedYear": 2018
+  },
+  {
+    "id": "avito-system-design",
+    "title": "Готовимся к System Design Interview",
+    "url": "https://habr.com/ru/companies/avito/articles/753248/",
+    "provider": "AvitoTech на Habr",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "Architecture",
+      "Interview"
+    ],
+    "estimatedMinutes": 12,
+    "description": "Пошаговая структура frontend system design секции и ожидаемые trade-offs.",
+    "publishedYear": 2023
+  },
+  {
+    "id": "yandex-prep",
+    "title": "Подготовка frontend-разработчика",
+    "url": "https://yandex.ru/jobs/services/hr-tech/frontend",
+    "provider": "Яндекс",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "Interview"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Официальные ожидания Яндекса и рекомендованные материалы по фронтенду."
+  },
+  {
+    "id": "yandex-interview",
+    "title": "Frontend-интервью в Яндексе",
+    "url": "https://yandex.ru/yaintern/frontend/interview",
+    "provider": "Яндекс",
+    "language": "ru",
+    "kind": "main",
+    "topics": [
+      "Interview"
+    ],
+    "estimatedMinutes": 15,
+    "description": "Этапы интервью, формат задач и критерии успешного решения."
+  },
+  {
+    "id": "yandex-lectures",
+    "title": "22 лекции по разработке интерфейсов",
+    "url": "https://education.yandex.ru/journal/22-videolektsii-po-razrabotke-interfejsov",
+    "provider": "Яндекс Образование",
+    "language": "ru",
+    "kind": "reference",
+    "topics": [
+      "JavaScript",
+      "Browser",
+      "Architecture",
+      "Interview"
+    ],
+    "estimatedMinutes": 45,
+    "description": "Большой русскоязычный набор лекций ШРИ для закрытия точечных пробелов."
+  },
+  {
+    "id": "frontend-handbook",
+    "title": "Front End Interview Handbook",
+    "url": "https://github.com/yangshun/front-end-interview-handbook",
+    "provider": "Front End Interview Handbook",
+    "language": "en",
+    "kind": "reference",
+    "topics": [
+      "Interview",
+      "JavaScript",
+      "React",
+      "Browser"
+    ],
+    "estimatedMinutes": 45,
+    "description": "Актуальный каталог вопросов, форматов интервью и чек-листов подготовки."
+  },
+  {
+    "id": "avito-strong-frontend",
+    "title": "Как стать по-настоящему классным фронтендером",
+    "url": "https://habr.com/ru/companies/avito/articles/774696/",
+    "provider": "AvitoTech на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "Interview",
+      "Architecture"
+    ],
+    "estimatedMinutes": 14,
+    "description": "Ожидания по платформе, алгоритмам, проектированию и развитию инженерного кругозора.",
+    "publishedYear": 2023
+  },
+  {
+    "id": "yandex-algo-interview",
+    "title": "Как проходят алгоритмические секции в Яндексе",
+    "url": "https://habr.com/ru/companies/yandex/articles/449890/",
+    "provider": "Яндекс на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "Algorithms",
+      "Interview"
+    ],
+    "estimatedMinutes": 12,
+    "description": "Официальный рассказ о ходе секции, коммуникации и оценке решения.",
+    "publishedYear": 2019
+  },
+  {
+    "id": "avito-algo-tips",
+    "title": "На что обращать внимание на алгоритмических секциях",
+    "url": "https://habr.com/ru/companies/avito/articles/662922/",
+    "provider": "AvitoTech на Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "topics": [
+      "Algorithms",
+      "Interview"
+    ],
+    "estimatedMinutes": 8,
+    "description": "Тайминг, проговаривание решения, тестирование и типичные ошибки кандидатов.",
+    "publishedYear": 2022
+  },
+  {
+    "id": "testing-library",
+    "title": "React Testing Library",
+    "url": "https://testing-library.com/docs/react-testing-library/intro/",
+    "provider": "Testing Library",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Testing",
+      "React"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Тестирование поведения компонента через доступные пользователю DOM-элементы."
+  },
+  {
+    "id": "vitest",
+    "title": "Vitest Guide",
+    "url": "https://vitest.dev/guide/index.html",
+    "provider": "Vitest",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Testing",
+      "JavaScript",
+      "TypeScript"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Test runner, assertions, mocks и интеграция с Vite."
+  },
+  {
+    "id": "playwright",
+    "title": "Playwright",
+    "url": "https://playwright.dev/docs/intro",
+    "provider": "Playwright",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Testing",
+      "Browser"
+    ],
+    "estimatedMinutes": 25,
+    "description": "E2E-тесты, browser contexts, локаторы, trace и мобильная эмуляция."
+  },
+  {
+    "id": "owasp-xss",
+    "title": "Cross Site Scripting Prevention",
+    "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+    "provider": "OWASP",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "Security",
+      "Browser",
+      "AI"
+    ],
+    "estimatedMinutes": 45,
+    "description": "AI output является недоверенным контентом; нужны безопасные sinks, encoding и sanitization.",
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "AI output является недоверенным контентом; нужны безопасные sinks, encoding и sanitization.",
+    "whySelected": "AI output является недоверенным контентом; нужны безопасные sinks, encoding и sanitization.",
+    "verifiedAt": "2026-08-06",
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ],
+    "priority": "should",
+    "practicalTask": "Проверить Markdown renderer payload-ами в links, HTML, code blocks и SVG.",
+    "interviewQuestions": []
+  },
+  {
+    "id": "owasp-csrf",
+    "title": "Cross-Site Request Forgery Prevention",
+    "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+    "provider": "OWASP Cheat Sheet Series",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Security",
+      "Browser"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Synchronizer token, SameSite, Fetch Metadata; XSS обходит любую защиту от CSRF.",
+    "level": "advanced",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Проектировать анти-CSRF защиту.",
+    "whySelected": "Первоисточник по CSRF.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Безопасность",
+      "CSRF"
+    ]
+  },
+  {
+    "id": "owasp-csp",
+    "title": "Content Security Policy",
+    "url": "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html",
+    "provider": "OWASP Cheat Sheet Series",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Security",
+      "Browser"
+    ],
+    "estimatedMinutes": 25,
+    "description": "Strict CSP с nonce/hash; CSP как второй слой защиты.",
+    "level": "advanced",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Составлять строгую CSP.",
+    "whySelected": "Первоисточник по CSP.",
+    "verifiedAt": "2026-08-04",
+    "tags": [
+      "Безопасность",
+      "CSP"
+    ]
+  },
+  {
+    "id": "mdn-microtask-guide",
+    "title": "Using microtasks in JavaScript with queueMicrotask()",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide",
+    "provider": "MDN Web Docs",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Как event loop многократно обрабатывает очередь микрозадач за одну итерацию и риск бесконечного залипания.",
+    "learningGoal": "Объяснять, когда именно выполняются микрозадачи относительно задач и рендера.",
+    "whySelected": "Официальная документация браузерной платформы.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "JavaScript",
+      "Browser"
+    ],
+    "tags": [
+      "JavaScript",
+      "Event loop"
+    ]
+  },
+  {
+    "id": "learnjs-async",
+    "title": "Промисы, async/await",
+    "url": "https://learn.javascript.ru/async",
+    "provider": "learn.javascript.ru (Илья Кантор)",
+    "language": "ru",
+    "kind": "main",
+    "estimatedMinutes": 40,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Промисы, цепочки, обработка ошибок, async/await, Promise.all/allSettled.",
+    "learningGoal": "Строить асинхронные пайплайны и корректно обрабатывать ошибки.",
+    "whySelected": "Единый русскоязычный первоисточник по асинхронности.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "JavaScript"
+    ],
+    "tags": [
+      "JavaScript",
+      "Асинхронность"
+    ]
+  },
+  {
+    "id": "mdn-abortcontroller",
+    "title": "AbortController",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/AbortController",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 20,
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Базовый API отмены fetch и stream consumption. Научиться проводить один `AbortSignal` через все программные слои.",
+    "learningGoal": "проводить один `AbortSignal` через все программные слои",
+    "whySelected": "Базовый API отмены fetch и stream consumption. Научиться проводить один `AbortSignal` через все программные слои.",
+    "verifiedAt": "2026-08-06",
+    "topics": [
+      "JavaScript",
+      "Browser",
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ],
+    "priority": "must",
+    "practicalTask": "Кнопка Stop должна отменять fetch, backend request и provider SDK call; проверить, что run получает статус `cancelled`.",
+    "interviewQuestions": []
+  },
+  {
+    "id": "hello-algo-binary-search",
+    "title": "Двоичный поиск — Hello Algo (ru)",
+    "url": "https://www.hello-algo.com/ru/chapter_searching/binary_search/",
+    "provider": "Hello Algo",
+    "language": "ru",
+    "kind": "main",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Бинарный поиск на закрытом интервале, сложность O(log n), визуализации.",
+    "learningGoal": "Реализовать бинарный поиск и его вариации на границы.",
+    "whySelected": "Бесплатный русскоязычный учебник алгоритмов с анимациями.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Algorithms"
+    ],
+    "tags": [
+      "Алгоритмы",
+      "Бинарный поиск"
+    ]
+  },
+  {
+    "id": "leetcode-two-sum-ii",
+    "title": "Two Sum II — Input Array Is Sorted",
+    "url": "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/",
+    "provider": "LeetCode",
+    "language": "en",
+    "kind": "practice",
+    "estimatedMinutes": 20,
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "description": "Два указателя на отсортированном массиве.",
+    "learningGoal": "Освоить паттерн двух указателей.",
+    "whySelected": "Базовая задача на two pointers.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Algorithms"
+    ],
+    "tags": [
+      "Алгоритмы",
+      "Two pointers"
+    ]
+  },
+  {
+    "id": "reactdev-react-compiler-1",
+    "title": "React Compiler v1.0",
+    "url": "https://react.dev/blog/2025/10/07/react-compiler-1",
+    "provider": "react.dev",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 25,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Стабильный релиз компилятора (07.10.2025): автоматическая мемоизация; useMemo/useCallback остаются escape hatch. Кейс Meta Quest Store: до +12% к загрузке и навигации, отдельные взаимодействия быстрее в >2.5 раза.",
+    "learningGoal": "Объяснять, что компилятор автоматизирует и почему он opt-in.",
+    "whySelected": "Официальный анонс актуального статуса компилятора.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "React"
+    ],
+    "tags": [
+      "React",
+      "React Compiler"
+    ]
+  },
+  {
+    "id": "type-challenges-warmup",
+    "title": "Type Challenges: Hello World (warm-up 00013)",
+    "url": "https://github.com/type-challenges/type-challenges/blob/main/questions/00013-warm-hello-world/README.md",
+    "provider": "type-challenges",
+    "language": "en",
+    "kind": "practice",
+    "estimatedMinutes": 10,
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Разминочная задача на систему типов.",
+    "learningGoal": "Понять формат type-level assertions.",
+    "whySelected": "Точка входа в type-challenges.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "TypeScript"
+    ],
+    "tags": [
+      "TypeScript"
+    ]
+  },
+  {
+    "id": "type-challenges-pick",
+    "title": "Type Challenges: Pick (easy 00004)",
+    "url": "https://github.com/type-challenges/type-challenges/blob/main/questions/00004-easy-pick/README.md",
+    "provider": "type-challenges",
+    "language": "en",
+    "kind": "practice",
+    "estimatedMinutes": 15,
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Реализовать встроенный Pick через mapped type.",
+    "learningGoal": "Освоить keyof и mapped types.",
+    "whySelected": "Классическая easy-задача.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "TypeScript"
+    ],
+    "tags": [
+      "TypeScript",
+      "Mapped types"
+    ]
+  },
+  {
+    "id": "type-challenges-readonly",
+    "title": "Type Challenges: Readonly (easy 00007)",
+    "url": "https://github.com/type-challenges/type-challenges/blob/main/questions/00007-easy-readonly/README.md",
+    "provider": "type-challenges",
+    "language": "en",
+    "kind": "practice",
+    "estimatedMinutes": 15,
+    "level": "basic",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Реализовать Readonly; далее — DeepReadonly.",
+    "learningGoal": "Модификаторы readonly в mapped types.",
+    "whySelected": "База для DeepReadonly.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "TypeScript"
+    ],
+    "tags": [
+      "TypeScript",
+      "Mapped types"
+    ]
+  },
+  {
+    "id": "webdev-cwv-thresholds",
+    "title": "How the Core Web Vitals metrics thresholds were defined",
+    "url": "https://web.dev/articles/defining-core-web-vitals-thresholds",
+    "provider": "web.dev (Google)",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 20,
+    "level": "advanced",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Почему пороги именно такие: 75-й перцентиль, CrUX, 28-дневное окно; good/poor границы.",
+    "learningGoal": "Обосновывать пороги и перцентили метрик.",
+    "whySelected": "Первоисточник методологии порогов.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Browser",
+      "Performance"
+    ],
+    "tags": [
+      "Performance",
+      "Core Web Vitals"
+    ]
+  },
+  {
+    "id": "nx-dev-monorepo",
+    "title": "Nx: Monorepo concepts",
+    "url": "https://nx.dev/concepts/decisions/why-monorepos",
+    "provider": "nx.dev",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Аргументы за монорепу и её trade-offs.",
+    "learningGoal": "Сравнивать mono/polyrepo по критериям.",
+    "whySelected": "Первоисточник по монорепам во фронтенде.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Architecture"
+    ],
+    "tags": [
+      "Архитектура",
+      "Монорепо"
+    ]
+  },
+  {
+    "id": "ozon-microfrontend",
+    "title": "Микрофронтенд для самых маленьких",
+    "url": "https://habr.com/ru/companies/ozontech/articles/782508/",
+    "provider": "Ozon Tech (Habr)",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "publishedYear": 2023,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "От iframe к Module Federation: когда микрофронты нужны, а когда нет.",
+    "learningGoal": "Объяснять trade-offs микрофронтендов.",
+    "whySelected": "Оригинальная инженерная статья инженера Ozon.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Architecture",
+      "Interview"
+    ],
+    "tags": [
+      "Архитектура",
+      "Микрофронтенды"
+    ]
+  },
+  {
+    "id": "vk-fsd",
+    "title": "Как мы приготовили Feature-Sliced Design в VK",
+    "url": "https://habr.com/ru/companies/vk/articles/831148/",
+    "provider": "VK (Habr)",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Кейс внедрения FSD во frontend-проекты VK.",
+    "learningGoal": "Видеть, как FSD применяется в большой команде.",
+    "whySelected": "Оригинальный кейс инженера VK.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Architecture",
+      "Interview"
+    ],
+    "tags": [
+      "Архитектура",
+      "FSD"
+    ]
+  },
+  {
+    "id": "sber-perf-devtools",
+    "title": "Тестируем производительность фронтенда через вкладку Performance в DevTools",
+    "url": "https://habr.com/ru/companies/sberbank/articles/937334/",
+    "provider": "Сбер / СберТех (Habr)",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Профилирование в Performance-панели; бюджет кадра ~16 мс, покадровый анализ.",
+    "learningGoal": "Читать flame chart и находить long tasks.",
+    "whySelected": "Оригинальная статья инженера Сбера.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Browser",
+      "Performance",
+      "Interview"
+    ],
+    "tags": [
+      "Performance",
+      "DevTools"
+    ]
+  },
+  {
+    "id": "testing-library-guiding",
+    "title": "Testing Library: Guiding Principles",
+    "url": "https://testing-library.com/docs/guiding-principles/",
+    "provider": "testing-library.com",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Принцип: тесты должны напоминать реальное использование ПО.",
+    "learningGoal": "Тестировать поведение, а не детали реализации.",
+    "whySelected": "Официальная документация RTL.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Testing"
+    ],
+    "tags": [
+      "Тестирование",
+      "RTL"
+    ]
+  },
+  {
+    "id": "vitest-browser-mode",
+    "title": "Vitest: Browser Mode",
+    "url": "https://vitest.dev/guide/browser/",
+    "provider": "vitest.dev",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Запуск компонентных тестов в реальном браузере через Playwright-провайдер.",
+    "learningGoal": "Настроить компонентное тестирование в браузере.",
+    "whySelected": "Официальная документация Vitest.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Browser",
+      "Testing"
+    ],
+    "tags": [
+      "Тестирование",
+      "Vitest"
+    ]
+  },
+  {
+    "id": "playwright-writing-tests",
+    "title": "Playwright: Writing tests",
+    "url": "https://playwright.dev/docs/writing-tests",
+    "provider": "playwright.dev",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Локаторы, ассерты, автоожидания в e2e.",
+    "learningGoal": "Писать устойчивые e2e-тесты по ролям.",
+    "whySelected": "Официальная документация Playwright.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Testing"
+    ],
+    "tags": [
+      "Тестирование",
+      "Playwright"
+    ]
+  },
+  {
+    "id": "yandex-frontend-interview",
+    "title": "Как мы нанимаем фронтенд-разработчиков",
+    "url": "https://yandex.ru/jobs/pages/frontend-interview",
+    "provider": "Яндекс (официально)",
+    "language": "ru",
+    "kind": "reference",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Секции Платформа, Проверка навыков, Архитектура, Финалы; правила и советы.",
+    "learningGoal": "Понимать формат интервью Яндекса и готовиться под него.",
+    "whySelected": "Официальная страница найма.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Interview"
+    ],
+    "tags": [
+      "Собеседования",
+      "Яндекс"
+    ]
+  },
+  {
+    "id": "sber-frontend-interview",
+    "title": "Как подготовиться к техническому интервью Frontend-разработчику",
+    "url": "https://developers.sber.ru/kak-v-sbere/interview/frontend-developer",
+    "provider": "Сбер (developers.sber.ru)",
+    "language": "ru",
+    "kind": "reference",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "5 этапов: HR, скрининг (live-coding база JS + нативные API), кодинг (алгоритмы), HR-ценности, финал.",
+    "learningGoal": "Понимать формат найма Сбера.",
+    "whySelected": "Официальный портал Сбера.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Interview"
+    ],
+    "tags": [
+      "Собеседования",
+      "Сбер"
+    ]
+  },
+  {
+    "id": "tbank-interview",
+    "title": "Как проходят интервью в Т-Банке",
+    "url": "https://education.tbank.ru/study/conspectus/interview/",
+    "provider": "Т-Банк Образование",
+    "language": "ru",
+    "kind": "reference",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Секции по 1–2 часа, live-coding, камера, без подсказок.",
+    "learningGoal": "Понимать формат интервью Т-Банка.",
+    "whySelected": "Официальный образовательный портал банка.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Interview"
+    ],
+    "tags": [
+      "Собеседования",
+      "Т-Банк"
+    ]
+  },
+  {
+    "id": "avito-playbook-hiring",
+    "title": "Avito Playbook: наём и офис",
+    "url": "https://github.com/avito-tech/playbook/blob/master/recruitment-and-office.md",
+    "provider": "Avito Tech (GitHub)",
+    "language": "ru",
+    "kind": "reference",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Техсобес 2–3 часа, секция Программирование (код, алгоритмы, сложность), live-coding.",
+    "learningGoal": "Понимать формат найма Авито.",
+    "whySelected": "Официальный playbook компании.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Interview"
+    ],
+    "tags": [
+      "Собеседования",
+      "Авито"
+    ]
+  },
+  {
+    "id": "feh-system-design",
+    "title": "Front End System Design Interview Overview",
+    "url": "https://www.frontendinterviewhandbook.com/front-end-system-design",
+    "provider": "Front End Interview Handbook",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 25,
+    "level": "advanced",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Форматы вопросов, отличия от backend system design, критерии оценки.",
+    "learningGoal": "Структурировать frontend system design.",
+    "whySelected": "Один из немногих бесплатных первоисточников по FE system design.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Architecture",
+      "Interview"
+    ],
+    "tags": [
+      "System Design",
+      "Собеседования"
+    ]
+  },
+  {
+    "id": "greatfrontend-radio",
+    "title": "Front End System Design Playbook (RADIO)",
+    "url": "https://www.greatfrontend.com/front-end-system-design-playbook",
+    "provider": "GreatFrontEnd",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 30,
+    "level": "advanced",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": true,
+    "registrationRequired": false,
+    "description": "Фреймворк RADIO для frontend system design (часть контента бесплатна, часть premium).",
+    "learningGoal": "Вести system design по RADIO за 45 минут.",
+    "whySelected": "Один из пионеров темы FE system design.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Architecture"
+    ],
+    "tags": [
+      "System Design"
+    ]
+  },
+  {
+    "id": "wb-head-frontend-interview",
+    "title": "Интервью с Head of Frontend Wildberries (системное мышление)",
+    "url": "https://habr.com/ru/companies/rwb/posts/994480/",
+    "provider": "Wildberries & Russ (Habr)",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Александр Сырцов о системном мышлении и вынесении бизнес-логики на клиент ради скорости отрисовки.",
+    "learningGoal": "Понимать продуктовые ожидания WB к frontend-инженеру.",
+    "whySelected": "Прямая речь руководителя frontend WB.",
+    "verifiedAt": "2026-08-04",
+    "topics": [
+      "Architecture",
+      "Interview"
+    ],
+    "tags": [
+      "Архитектура",
+      "Собеседования"
+    ]
+  },
+  {
+    "id": "ai-engineering-01",
+    "title": "LLM fundamentals — Context windows",
+    "url": "https://docs.anthropic.com/en/docs/build-with-claude/context-windows",
+    "provider": "Anthropic",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 30,
+    "level": "basic",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Хорошее официальное объяснение контекстного окна и накопления истории. Научиться рассчитывать бюджет запроса, отличать model context limit от фактически полезного контекста и планировать сокращение истории.",
+    "learningGoal": "рассчитывать бюджет запроса, отличать model context limit от фактически полезного контекста и планировать сокращение истории",
+    "whySelected": "Хорошее официальное объяснение контекстного окна и накопления истории. Научиться рассчитывать бюджет запроса, отличать model context limit от фактически полезного контекста и планировать сокращение истории.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Рассчитать бюджет 20-минутного интервью и алгоритм summarization/truncation.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "LLM",
+      "Tokens",
+      "Context"
+    ]
+  },
+  {
+    "id": "ai-engineering-02",
+    "title": "Prompt engineering — Prompt engineering",
+    "url": "https://developers.openai.com/api/docs/guides/prompt-engineering",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 50,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Первичный источник по инструкциям, контексту, примерам и управлению форматом. Научиться отделять постоянные инструкции от данных пользователя и версионировать prompt templates.",
+    "learningGoal": "отделять постоянные инструкции от данных пользователя и версионировать prompt templates",
+    "whySelected": "Первичный источник по инструкциям, контексту, примерам и управлению форматом. Научиться отделять постоянные инструкции от данных пользователя и версионировать prompt templates.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Написать system prompt интервьюера, rubric и два few-shot примера; прогнать десять ответов.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "Prompting",
+      "SystemPrompt",
+      "FewShot"
+    ]
+  },
+  {
+    "id": "ai-engineering-03",
+    "title": "Structured output — Structured Outputs",
+    "url": "https://developers.openai.com/api/docs/guides/structured-outputs",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 45,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Официальный механизм соответствия ответа JSON Schema. Научиться получать типизированную оценку и понимать границу между структурной и смысловой корректностью.",
+    "learningGoal": "получать типизированную оценку и понимать границу между структурной и смысловой корректностью",
+    "whySelected": "Официальный механизм соответствия ответа JSON Schema. Научиться получать типизированную оценку и понимать границу между структурной и смысловой корректностью.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Описать `EvaluationResult`: score, strengths, gaps, followUps, improvedAnswer; добавить Zod refinements и негативные тесты.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript"
+    ],
+    "tags": [
+      "AI",
+      "TypeScript",
+      "JSONSchema",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "id": "ai-engineering-04",
+    "title": "Tool calling — Function calling",
+    "url": "https://developers.openai.com/api/docs/guides/function-calling",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 50,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Описывает полный lifecycle вызова инструмента. Научиться отличать генерацию JSON от намерения выполнить серверное действие.",
+    "learningGoal": "отличать генерацию JSON от намерения выполнить серверное действие",
+    "whySelected": "Описывает полный lifecycle вызова инструмента. Научиться отличать генерацию JSON от намерения выполнить серверное действие.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Реализовать read-only tool `getInterviewTopicRubric`, валидировать аргументы и запрещать неизвестные tools.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript"
+    ],
+    "tags": [
+      "AI",
+      "Tools",
+      "FunctionCalling",
+      "TypeScript"
+    ]
+  },
+  {
+    "id": "ai-engineering-05",
+    "title": "API integration — Production best practices",
+    "url": "https://developers.openai.com/api/docs/guides/production-best-practices",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 45,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Сводный production-checklist: секреты, latency, масштабирование и эксплуатация. Научиться проектировать отдельный LLM Gateway и не размазывать вызовы SDK по контроллерам.",
+    "learningGoal": "проектировать отдельный LLM Gateway и не размазывать вызовы SDK по контроллерам",
+    "whySelected": "Сводный production-checklist: секреты, latency, масштабирование и эксплуатация. Научиться проектировать отдельный LLM Gateway и не размазывать вызовы SDK по контроллерам.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Составить checklist для NestJS: config, provider adapter, timeout, retry, quotas, logging, fallback.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript",
+      "Performance"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-06",
+    "title": "Reliability — Rate limits",
+    "url": "https://developers.openai.com/api/docs/guides/rate-limits",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 35,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Первичный источник по ограничениям запросов/токенов и реакции на 429. Научиться использовать bounded concurrency и retry с backoff и jitter.",
+    "learningGoal": "использовать bounded concurrency и retry с backoff и jitter",
+    "whySelected": "Первичный источник по ограничениям запросов/токенов и реакции на 429. Научиться использовать bounded concurrency и retry с backoff и jitter.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Реализовать semaphore и повтор только retryable запросов; проверить «шторм» из десяти генераций.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Performance"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-07",
+    "title": "Streaming — Streaming API responses",
+    "url": "https://developers.openai.com/api/docs/guides/streaming-responses",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 40,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Описывает provider events, дельты и завершение потока. Научиться преобразовывать их во внутренний протокол приложения и не связывать React с конкретным SDK.",
+    "learningGoal": "преобразовывать их во внутренний протокол приложения и не связывать React с конкретным SDK",
+    "whySelected": "Описывает provider events, дельты и завершение потока. Научиться преобразовывать их во внутренний протокол приложения и не связывать React с конкретным SDK.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Создать adapter `ProviderEvent → InterviewStreamEvent`.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript",
+      "React",
+      "Browser"
+    ],
+    "tags": [
+      "AI",
+      "Streaming",
+      "SSE",
+      "Node.js"
+    ]
+  },
+  {
+    "id": "ai-engineering-08",
+    "title": "Streaming — Using server-sent events",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 40,
+    "level": "basic",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Каноническая документация по `text/event-stream`, полям `event`, `data`, `id`, `retry`, reconnect и закрытию. Научиться выбирать SSE для однонаправленного server-to-client потока.",
+    "learningGoal": "выбирать SSE для однонаправленного server-to-client потока",
+    "whySelected": "Каноническая документация по `text/event-stream`, полям `event`, `data`, `id`, `retry`, reconnect и закрытию. Научиться выбирать SSE для однонаправленного server-to-client потока.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Написать endpoint и клиент для событий `start`, `delta`, `done`, `error`.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Browser"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-09",
+    "title": "Streaming — Using readable streams",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 50,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Необходим для POST-streaming через `fetch`, декодирования chunks и обработки backpressure. Научиться учитывать, что сетевые chunks не совпадают с границами SSE-событий или UTF-8 символов.",
+    "learningGoal": "учитывать, что сетевые chunks не совпадают с границами SSE-событий или UTF-8 символов",
+    "whySelected": "Необходим для POST-streaming через `fetch`, декодирования chunks и обработки backpressure. Научиться учитывать, что сетевые chunks не совпадают с границами SSE-событий или UTF-8 символов.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Реализовать incremental SSE parser поверх `response.body` и `TextDecoder`.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Browser"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-11",
+    "title": "Streaming — Server-Sent Events",
+    "url": "https://docs.nestjs.com/techniques/server-sent-events",
+    "provider": "NestJS",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 30,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Официальный NestJS-паттерн `@Sse()` и Observable. Важно понимать как стандартный вариант, так и ограничения для POST body и собственного протокола.",
+    "learningGoal": "Официальный NestJS-паттерн `@Sse()` и Observable. Важно понимать как стандартный вариант, так и ограничения для POST body и собственного протокола.",
+    "whySelected": "Официальный NestJS-паттерн `@Sse()` и Observable. Важно понимать как стандартный вариант, так и ограничения для POST body и собственного протокола.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Сравнить `@Sse()` с ручным `response.write()` и streaming POST.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Browser",
+      "Performance"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-12",
+    "title": "TypeScript integration — Generating Text",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-core/generating-text",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 45,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Provider-agnostic TypeScript API для text generation, streaming, usage и finish reason. Научиться оценивать пользу abstraction layer и стоимость зависимости от него.",
+    "learningGoal": "оценивать пользу abstraction layer и стоимость зависимости от него",
+    "whySelected": "Provider-agnostic TypeScript API для text generation, streaming, usage и finish reason. Научиться оценивать пользу abstraction layer и стоимость зависимости от него.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Реализовать `InterviewModelProvider` и переключение модели конфигурацией.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-13",
+    "title": "AI UX — Chatbot",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-ui/chatbot",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 45,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Хороший React-паттерн для message state, Stop, Regenerate и transport. Научиться не смешивать UI messages, domain entities и provider messages.",
+    "learningGoal": "не смешивать UI messages, domain entities и provider messages",
+    "whySelected": "Хороший React-паттерн для message state, Stop, Regenerate и transport. Научиться не смешивать UI messages, domain entities и provider messages.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Экран Mantine с состояниями idle, submitting, streaming, stopped, failed, completed.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "React"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-14",
+    "title": "Streaming — Stream Protocols",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 35,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Показывает streaming как типизированный протокол, включающий текст, metadata, sources и завершение.",
+    "learningGoal": "Показывает streaming как типизированный протокол, включающий текст, metadata, sources и завершение.",
+    "whySelected": "Показывает streaming как типизированный протокол, включающий текст, metadata, sources и завершение.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Описать discriminated union `InterviewStreamEvent` и contract tests.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-15",
+    "title": "RAG — MongoDB Vector Search overview",
+    "url": "https://www.mongodb.com/docs/vector-search/",
+    "provider": "MongoDB",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 45,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Официальное объяснение semantic search, ANN/ENN, filters, hybrid search и RAG. Научиться проектировать pipeline document → chunk → embedding → index → retrieval.",
+    "learningGoal": "проектировать pipeline document → chunk → embedding → index → retrieval",
+    "whySelected": "Официальное объяснение semantic search, ANN/ENN, filters, hybrid search и RAG. Научиться проектировать pipeline document → chunk → embedding → index → retrieval.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Спроектировать `knowledgeChunks` и metadata filters по теме, технологии и версии.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Architecture",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-16",
+    "title": "AI security — LLM Prompt Injection Prevention Cheat Sheet",
+    "url": "https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html",
+    "provider": "OWASP",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 60,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Наиболее полный прикладной материал по direct/indirect injection, data exfiltration, RAG poisoning и tool abuse. Главный вывод: недоверенный текст нельзя превращать в привилегированные инструкции.",
+    "learningGoal": "Наиболее полный прикладной материал по direct/indirect injection, data exfiltration, RAG poisoning и tool abuse. Главный вывод: недоверенный текст нельзя превращать в привилегированные инструкции.",
+    "whySelected": "Наиболее полный прикладной материал по direct/indirect injection, data exfiltration, RAG poisoning и tool abuse. Главный вывод: недоверенный текст нельзя превращать в привилегированные инструкции.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Threat model и пять controls: allowlist tools, validation, least privilege, quotas, audit log.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Architecture",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-17",
+    "title": "Evals — Evaluation best practices",
+    "url": "https://developers.openai.com/api/docs/guides/evaluation-best-practices",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 50,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Официальная схема построения datasets, критериев и graders. Научиться превращать «хороший ответ» в проверяемые свойства.",
+    "learningGoal": "превращать «хороший ответ» в проверяемые свойства",
+    "whySelected": "Официальная схема построения datasets, критериев и graders. Научиться превращать «хороший ответ» в проверяемые свойства.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Собрать 25 golden cases по React/TypeScript с обязательными фактами и недопустимыми утверждениями.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-18",
+    "title": "Evals — Your AI Product Needs Evals",
+    "url": "https://hamel.dev/blog/posts/evals/",
+    "provider": "Hamel Husain",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 45,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Сильный практический цикл `error analysis → taxonomy → dataset → evaluator → improvement`. Научиться начинать с реальных product failures, а не с общей метрики.",
+    "learningGoal": "начинать с реальных product failures, а не с общей метрики",
+    "whySelected": "Сильный практический цикл `error analysis → taxonomy → dataset → evaluator → improvement`. Научиться начинать с реальных product failures, а не с общей метрики.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Разметить 20 результатов тренажёра и создать taxonomy из 5–8 классов ошибок.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-19",
+    "title": "RAG — Run semantic search against data",
+    "url": "https://www.mongodb.com/docs/vector-search/tutorials/quick-start/",
+    "provider": "MongoDB",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 60,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Пошаговый путь от индекса до `$vectorSearch`. Научиться объяснять `numCandidates`, `limit`, score и metadata filters.",
+    "learningGoal": "объяснять `numCandidates`, `limit`, score и metadata filters",
+    "whySelected": "Пошаговый путь от индекса до `$vectorSearch`. Научиться объяснять `numCandidates`, `limit`, score и metadata filters.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Загрузить 30–50 chunks и вернуть top-k источников с score, URL и fragment ID.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-20",
+    "title": "AI UX — Understanding Status Messages",
+    "url": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html",
+    "provider": "W3C WAI",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 30,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Streaming-интерфейс постоянно меняет статус. Материал объясняет, как сообщать изменения assistive technologies без нежелательного переноса фокуса.",
+    "learningGoal": "Streaming-интерфейс постоянно меняет статус. Материал объясняет, как сообщать изменения assistive technologies без нежелательного переноса фокуса.",
+    "whySelected": "Streaming-интерфейс постоянно меняет статус. Материал объясняет, как сообщать изменения assistive technologies без нежелательного переноса фокуса.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Добавить `aria-live` для начала, остановки, ошибки и завершения; проверить клавиатурой и screen reader.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Accessibility"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-21",
+    "title": "API error codes",
+    "url": "https://developers.openai.com/api/docs/guides/error-codes",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Разделять auth, validation, rate-limit, server и network errors; определить retryability.",
+    "learningGoal": "Разделять auth, validation, rate-limit, server и network errors; определить retryability.",
+    "whySelected": "Разделять auth, validation, rate-limit, server и network errors; определить retryability.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Тип `LlmError { retryable, providerCode, safeMessage, correlationId }`.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-22",
+    "title": "Cost optimization",
+    "url": "https://developers.openai.com/api/docs/guides/cost-optimization",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 35,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Рассчитывать unit economics, выбирать модель, ограничивать output и использовать caching там, где это оправдано.",
+    "learningGoal": "Рассчитывать unit economics, выбирать модель, ограничивать output и использовать caching там, где это оправдано.",
+    "whySelected": "Рассчитывать unit economics, выбирать модель, ограничивать output и использовать caching там, где это оправдано.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "До запроса вычислять projected budget; добавить user/day quota.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Performance"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-23",
+    "title": "Safety best practices",
+    "url": "https://developers.openai.com/api/docs/guides/safety-best-practices",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 35,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Рассматривать safety как набор независимых слоёв, а не один фильтрующий prompt.",
+    "learningGoal": "Рассматривать safety как набор независимых слоёв, а не один фильтрующий prompt.",
+    "whySelected": "Рассматривать safety как набор независимых слоёв, а не один фильтрующий prompt.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Описать policy ввода, отказа, moderation и human escalation.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-24",
+    "title": "Your data",
+    "url": "https://developers.openai.com/api/docs/guides/your-data",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 35,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Спроектировать data flow, retention и минимизацию PII при отправке данных внешнему провайдеру.",
+    "learningGoal": "Спроектировать data flow, retention и минимизацию PII при отправке данных внешнему провайдеру.",
+    "whySelected": "Спроектировать data flow, retention и минимизацию PII при отправке данных внешнему провайдеру.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Data inventory для profiles, answers, prompts, logs и embeddings.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-25",
+    "title": "Embeddings",
+    "url": "https://developers.openai.com/api/docs/guides/embeddings",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 40,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Понять similarity, размерность, batching и применение embeddings.",
+    "learningGoal": "Понять similarity, размерность, batching и применение embeddings.",
+    "whySelected": "Понять similarity, размерность, batching и применение embeddings.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сравнить keyword и vector retrieval на десяти запросах.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-26",
+    "title": "Official JavaScript/TypeScript library",
+    "url": "https://github.com/openai/openai-node",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 60,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Работать по реальным типам SDK, а не устаревшим snippets; изучить streaming, retries и request IDs.",
+    "learningGoal": "Работать по реальным типам SDK, а не устаревшим snippets; изучить streaming, retries и request IDs.",
+    "whySelected": "Работать по реальным типам SDK, а не устаревшим snippets; изучить streaming, retries и request IDs.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "NestJS provider wrapper с abort, timeout и request-ID logging.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-27",
+    "title": "OpenAI Cookbook",
+    "url": "https://github.com/openai/openai-cookbook",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 90,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Reference с практическими recipes; читать выборочно под конкретную задачу.",
+    "learningGoal": "Reference с практическими recipes; читать выборочно под конкретную задачу.",
+    "whySelected": "Reference с практическими recipes; читать выборочно под конкретную задачу.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Адаптировать один актуальный пример под NestJS и покрыть тестами.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-28",
+    "title": "Prompt engineering overview",
+    "url": "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
+    "provider": "Anthropic",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 35,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Важный тезис: сначала определить success criteria и evals, только затем оптимизировать prompt.",
+    "learningGoal": "Важный тезис: сначала определить success criteria и evals, только затем оптимизировать prompt.",
+    "whySelected": "Важный тезис: сначала определить success criteria и evals, только затем оптимизировать prompt.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Для трёх ошибок решить, нужен prompt, retrieval, schema, модель или UX fix.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-29",
+    "title": "Tool use with Claude",
+    "url": "https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview",
+    "provider": "Anthropic",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 50,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Второй официальный взгляд на tool schemas и lifecycle; снижает provider lock-in мышления.",
+    "learningGoal": "Второй официальный взгляд на tool schemas и lifecycle; снижает provider lock-in мышления.",
+    "whySelected": "Второй официальный взгляд на tool schemas и lifecycle; снижает provider lock-in мышления.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Унифицировать OpenAI/Anthropic tool calls через TypeScript adapter.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-30",
+    "title": "Streaming Messages",
+    "url": "https://docs.anthropic.com/en/api/messages-streaming",
+    "provider": "Anthropic",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 35,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Показывает альтернативный event protocol и необходимость forward-compatible обработки событий.",
+    "learningGoal": "Показывает альтернативный event protocol и необходимость forward-compatible обработки событий.",
+    "whySelected": "Показывает альтернативный event protocol и необходимость forward-compatible обработки событий.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Добавить второй provider adapter без изменения React-клиента.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-31",
+    "title": "Prompt design strategies",
+    "url": "https://ai.google.dev/gemini-api/docs/prompting-strategies",
+    "provider": "Google",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 45,
+    "level": "basic",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Хороший provider-neutral материал по ясности, ограничениям, примерам и итеративному улучшению.",
+    "learningGoal": "Хороший provider-neutral материал по ясности, ограничениям, примерам и итеративному улучшению.",
+    "whySelected": "Хороший provider-neutral материал по ясности, ограничениям, примерам и итеративному улучшению.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Провести три версии prompt и сравнить их на одном eval-наборе.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-32",
+    "title": "Text generation",
+    "url": "https://ai.google.dev/gemini-api/docs/text-generation",
+    "provider": "Google",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 45,
+    "level": "basic",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Актуальные JavaScript-примеры system instructions, temperature, multi-turn и streaming.",
+    "learningGoal": "Актуальные JavaScript-примеры system instructions, temperature, multi-turn и streaming.",
+    "whySelected": "Актуальные JavaScript-примеры system instructions, temperature, multi-turn и streaming.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Реализовать Gemini за тем же `InterviewModelProvider`.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-33",
+    "title": "Embeddings",
+    "url": "https://ai.google.dev/gemini-api/docs/embeddings",
+    "provider": "Google",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 40,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Показывает text и multimodal embeddings; подчёркивает необходимость версионирования embedding model.",
+    "learningGoal": "Показывает text и multimodal embeddings; подчёркивает необходимость версионирования embedding model.",
+    "whySelected": "Показывает text и multimodal embeddings; подчёркивает необходимость версионирования embedding model.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Добавить `embeddingModel`, `embeddingVersion`, `embeddedAt` и план reindex migration.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-34",
+    "title": "Tools and Tool Calling",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 50,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "TypeScript-first tools, Zod schemas и multi-step execution.",
+    "learningGoal": "TypeScript-first tools, Zod schemas и multi-step execution.",
+    "whySelected": "TypeScript-first tools, Zod schemas и multi-step execution.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Tool `retrieveInterviewSources` с `topK ≤ 5` и allowlisted filters.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-35",
+    "title": "Generating Structured Data",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 40,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Синхронизирует runtime schema и TypeScript type.",
+    "learningGoal": "Синхронизирует runtime schema и TypeScript type.",
+    "whySelected": "Синхронизирует runtime schema и TypeScript type.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Добавить semantic refinements: score 0–100, непустые evidence и уникальные gaps.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-36",
+    "title": "Error Handling",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-ui/error-handling",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 30,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Показывает безопасное разделение UI error и внутренней диагностики.",
+    "learningGoal": "Показывает безопасное разделение UI error и внутренней диагностики.",
+    "whySelected": "Показывает безопасное разделение UI error и внутренней диагностики.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Error envelope с безопасным сообщением, retry action и correlation ID.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "React"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-37",
+    "title": "Chatbot Resume Streams",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-resume-streams",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 45,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Особенно полезен для Capacitor, мобильной сети и восстановления UI.",
+    "learningGoal": "Особенно полезен для Capacitor, мобильной сети и восстановления UI.",
+    "whySelected": "Особенно полезен для Capacitor, мобильной сети и восстановления UI.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сохранять `runId`/`lastEventId`, оборвать соединение и восстановить без дубликатов.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "React",
+      "Interview"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-38",
+    "title": "Telemetry",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-core/telemetry",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 35,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Конкретная точка входа в AI tracing и связывание model calls с application traces.",
+    "learningGoal": "Конкретная точка входа в AI tracing и связывание model calls с application traces.",
+    "whySelected": "Конкретная точка входа в AI tracing и связывание model calls с application traces.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Записать TTFT, duration, usage, model, prompt version, finish reason и tool calls без raw PII.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-39",
+    "title": "Testing",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-core/testing",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 35,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Позволяет тестировать orchestration и stream protocol без реальных вызовов и расходов.",
+    "learningGoal": "Позволяет тестировать orchestration и stream protocol без реальных вызовов и расходов.",
+    "whySelected": "Позволяет тестировать orchestration и stream protocol без реальных вызовов и расходов.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Unit tests parser, tool loop, timeout, cancellation и error mapping.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-40",
+    "title": "Chatbot Message Persistence",
+    "url": "https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence",
+    "provider": "Vercel AI SDK",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 40,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Объясняет границу UI state и серверной канонической истории.",
+    "learningGoal": "Объясняет границу UI state и серверной канонической истории.",
+    "whySelected": "Объясняет границу UI state и серверной канонической истории.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Хранить sessions, turns и runs раздельно; восстановить незавершённую сессию.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "React"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-41",
+    "title": "Hybrid Search",
+    "url": "https://www.mongodb.com/docs/atlas/atlas-vector-search/hybrid-search/vector-search-with-full-text-search/",
+    "provider": "MongoDB",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 50,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Vector-only retrieval хуже работает с точными identifiers; hybrid search объединяет semantic и lexical сигналы.",
+    "learningGoal": "Vector-only retrieval хуже работает с точными identifiers; hybrid search объединяет semantic и lexical сигналы.",
+    "whySelected": "Vector-only retrieval хуже работает с точными identifiers; hybrid search объединяет semantic и lexical сигналы.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сравнить vector, full-text и hybrid выдачу на 20 названиях React API.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-43",
+    "title": "Cross-site scripting",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XSS",
+    "provider": "MDN",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 35,
+    "level": "basic",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Связывает XSS с DOM injection sinks и браузерным исполнением.",
+    "learningGoal": "Связывает XSS с DOM injection sinks и браузерным исполнением.",
+    "whySelected": "Связывает XSS с DOM injection sinks и браузерным исполнением.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Аудит `dangerouslySetInnerHTML`, Markdown plugins, URLs и clipboard actions.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-44",
+    "title": "The lethal trifecta for AI agents",
+    "url": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
+    "provider": "Simon Willison",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 20,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Сильная threat-model формула: private data + untrusted content + external communication.",
+    "learningGoal": "Сильная threat-model формула: private data + untrusted content + external communication.",
+    "whySelected": "Сильная threat-model формула: private data + untrusted content + external communication.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Для каждого tool-сценария архитектурно убрать хотя бы одну сторону этой комбинации.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-45",
+    "title": "Emerging Patterns in Building GenAI Products",
+    "url": "https://martinfowler.com/articles/gen-ai-patterns/",
+    "provider": "Martin Fowler",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 70,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Production-паттерны GenAI-продуктов; evals рассматриваются как центральная часть системы.",
+    "learningGoal": "Production-паттерны GenAI-продуктов; evals рассматриваются как центральная часть системы.",
+    "whySelected": "Production-паттерны GenAI-продуктов; evals рассматриваются как центральная часть системы.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сопоставить описанные patterns с тренажёром и исключить преждевременное усложнение.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "React",
+      "Testing",
+      "Performance"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-46",
+    "title": "Patterns for Building LLM-based Systems & Products",
+    "url": "https://eugeneyan.com/writing/llm-patterns/",
+    "provider": "Eugene Yan",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 70,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Материал старше современных API, но остаётся полезным для стабильных архитектурных patterns: retrieval, caching, guardrails, evals и UX. Не использовать его snippets как актуальную документацию SDK.",
+    "learningGoal": "Материал старше современных API, но остаётся полезным для стабильных архитектурных patterns: retrieval, caching, guardrails, evals и UX. Не использовать его snippets как актуальную документацию SDK.",
+    "whySelected": "Материал старше современных API, но остаётся полезным для стабильных архитектурных patterns: retrieval, caching, guardrails, evals и UX. Не использовать его snippets как актуальную документацию SDK.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Architecture decision record по quality/latency/cost/risk.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "TypeScript",
+      "React",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-47",
+    "title": "LLM Evals: Everything You Need to Know",
+    "url": "https://hamel.dev/blog/posts/evals-faq/",
+    "provider": "Hamel Husain, Shreya Shankar",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 90,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Актуальная reference-библиотека по datasets, graders, human review и eval failure modes.",
+    "learningGoal": "Актуальная reference-библиотека по datasets, graders, human review и eval failure modes.",
+    "whySelected": "Актуальная reference-библиотека по datasets, graders, human review и eval failure modes.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Eval design doc: unit, sampling, rubric, adjudication, threshold, cadence.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-48",
+    "title": "Evaluating the Effectiveness of LLM-Evaluators",
+    "url": "https://eugeneyan.com/writing/llm-evaluators/",
+    "provider": "Eugene Yan",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 60,
+    "level": "advanced",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Глубокий разбор agreement, biases и ограничений LLM-as-a-judge.",
+    "learningGoal": "Глубокий разбор agreement, biases и ограничений LLM-as-a-judge.",
+    "whySelected": "Глубокий разбор agreement, biases и ограничений LLM-as-a-judge.",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Сравнить judge и human labels на 30 ответах, отдельно разобрать disagreements.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-49",
+    "title": "Moderation",
+    "url": "https://developers.openai.com/api/docs/guides/moderation",
+    "provider": "OpenAI",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Moderation может быть одним из safety layers, но не заменяет prompt-injection и tool-security controls.",
+    "learningGoal": "Moderation может быть одним из safety layers, но не заменяет prompt-injection и tool-security controls.",
+    "whySelected": "Moderation может быть одним из safety layers, но не заменяет prompt-injection и tool-security controls.",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Добавить feature flag и UX безопасного отказа; измерить false positives.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-engineering-50",
+    "title": "Rate limits",
+    "url": "https://docs.anthropic.com/en/api/rate-limits",
+    "provider": "Anthropic",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Помогает отделить универсальную rate-limit архитектуру от provider-specific headers и лимитов.",
+    "learningGoal": "Помогает отделить универсальную rate-limit архитектуру от provider-specific headers и лимитов.",
+    "whySelected": "Помогает отделить универсальную rate-limit архитектуру от provider-specific headers и лимитов.",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Нормализовать заголовки провайдеров в `RateLimitSnapshot`.",
+    "interviewQuestions": [],
+    "topics": [
+      "AI",
+      "Performance"
+    ],
+    "tags": [
+      "AI",
+      "AI Engineering"
+    ]
+  },
+  {
+    "id": "ai-assisted-01",
+    "title": "Claude Code: Best practices for agentic coding",
+    "url": "https://www.anthropic.com/engineering/claude-code-best-practices",
+    "provider": "Anthropic Engineering",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 40,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Каноничный первоисточник по CLAUDE.md, plan-режиму, permissions и subagents от вендора",
+    "learningGoal": "Контекст-инжиниринг и workflow explore->plan->code",
+    "whySelected": "Каноничный первоисточник по CLAUDE.md, plan-режиму, permissions и subagents от вендора",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Написать CLAUDE.md/AGENTS.md для своего репо и отработать plan-режим",
+    "interviewQuestions": [
+      "Как вы даёте контекст агенту?",
+      "Что такое plan mode и зачем он?"
+    ],
+    "topics": [
+      "AI",
+      "React",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "Claude Code",
+      "AGENTS.md",
+      "Frontend"
+    ]
+  },
+  {
+    "id": "ai-assisted-02",
+    "title": "AGENTS.md — открытый стандарт инструкций для агентов",
+    "url": "https://agents.md/",
+    "provider": "Agentic AI Foundation / agents.md",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 20,
+    "level": "basic",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Единый кросс-инструментальный стандарт, 60k+ проектов, поддержка 20+ инструментов",
+    "learningGoal": "Как писать project instructions для агентов",
+    "whySelected": "Единый кросс-инструментальный стандарт, 60k+ проектов, поддержка 20+ инструментов",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Написать вручную AGENTS.md (<200 строк) без авто-генерации",
+    "interviewQuestions": [
+      "AGENTS.md vs CLAUDE.md vs .cursorrules?",
+      "Почему нельзя авто-генерировать AGENTS.md?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "AGENTS.md",
+      "Standard"
+    ]
+  },
+  {
+    "id": "ai-assisted-03",
+    "title": "Here's how I use LLMs to help me write code",
+    "url": "https://simonwillison.net/2025/Mar/11/using-llms-for-code/",
+    "provider": "Simon Willison's Blog",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 35,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Лучшая ментальная модель ('over-confident pair programmer') и практики проверки",
+    "learningGoal": "Проверяемость результата, управление контекстом, борьба с галлюцинациями",
+    "whySelected": "Лучшая ментальная модель ('over-confident pair programmer') и практики проверки",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Сформулировать личный чеклист проверки AI-вывода",
+    "interviewQuestions": [
+      "Как вы проверяете сгенерированный код?",
+      "Как относитесь к выводу LLM?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "Verification",
+      "Best Practices"
+    ]
+  },
+  {
+    "id": "ai-assisted-04",
+    "title": "Measuring the Impact of Early-2025 AI on Experienced OS Developer Productivity",
+    "url": "https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/",
+    "provider": "METR",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 30,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "RCT: +19% ко времени при -20% субъективной оценке — центральный senior-нарратив",
+    "learningGoal": "Понимание разрыва восприятие/реальность продуктивности AI",
+    "whySelected": "RCT: +19% ко времени при -20% субъективной оценке — центральный senior-нарратив",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Подготовить тезис о 24%/20%/19% для собеседования",
+    "interviewQuestions": [
+      "Что говорит METR о продуктивности?",
+      "Почему AI может замедлять?"
+    ],
+    "topics": [
+      "AI",
+      "Interview"
+    ],
+    "tags": [
+      "AI",
+      "Research",
+      "Productivity",
+      "METR"
+    ]
+  },
+  {
+    "id": "ai-assisted-05",
+    "title": "Changing our Developer Productivity Experiment Design",
+    "url": "https://metr.org/blog/2026-02-24-uplift-update/",
+    "provider": "METR",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 15,
+    "level": "advanced",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Показывает, что цифры пересматриваются из-за selection effects — зрелость в трактовке данных",
+    "learningGoal": "Критическое отношение к research-данным",
+    "whySelected": "Показывает, что цифры пересматриваются из-за selection effects — зрелость в трактовке данных",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Сформулировать, почему -19% не универсальная оценка",
+    "interviewQuestions": [
+      "Можно ли доверять цифре METR как универсальной?"
+    ],
+    "topics": [
+      "AI",
+      "Interview"
+    ],
+    "tags": [
+      "AI",
+      "Research",
+      "METR"
+    ]
+  },
+  {
+    "id": "ai-assisted-06",
+    "title": "Announcing the 2025 DORA Report: State of AI-Assisted Software Development",
+    "url": "https://cloud.google.com/blog/products/ai-machine-learning/announcing-the-2025-dora-report",
+    "provider": "Google Cloud / DORA",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 40,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "AI как усилитель, 90% adoption, негативная связь со стабильностью — база для 'внедрение без падения стандартов'",
+    "learningGoal": "Throughput vs stability, роль инженерных практик",
+    "whySelected": "AI как усилитель, 90% adoption, негативная связь со стабильностью — база для 'внедрение без падения стандартов'",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Сформулировать, как внедрять AI без роста нестабильности",
+    "interviewQuestions": [
+      "Как AI влияет на стабильность поставки?",
+      "Как внедрять AI без падения стандартов?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "DORA",
+      "Metrics",
+      "Delivery"
+    ]
+  },
+  {
+    "id": "ai-assisted-07",
+    "title": "Stack Overflow 2025 Developer Survey (AI results)",
+    "url": "https://stackoverflow.co/company/press/archive/stack-overflow-2025-developer-survey/",
+    "provider": "Stack Overflow",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 15,
+    "level": "basic",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "84% используют, 46% не доверяют, 66% боль 'почти правильно' — контекст доверия",
+    "learningGoal": "Понимание trust gap и типичных болей AI-кода",
+    "whySelected": "84% используют, 46% не доверяют, 66% боль 'почти правильно' — контекст доверия",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Запомнить ключевые цифры для собеседования",
+    "interviewQuestions": [
+      "Почему разработчики не доверяют AI?",
+      "Что такое 'almost right' проблема?"
+    ],
+    "topics": [
+      "AI",
+      "Interview"
+    ],
+    "tags": [
+      "AI",
+      "Survey",
+      "Trust"
+    ]
+  },
+  {
+    "id": "ai-assisted-08",
+    "title": "AI Copilot Code Quality: 2025 Data Suggests 4x Growth in Code Clones",
+    "url": "https://www.gitclear.com/ai_assistant_code_quality_2025_research",
+    "provider": "GitClear",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 30,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "211 млн строк: рост copy/paste и churn, падение рефакторинга — где AI ухудшает качество",
+    "learningGoal": "Как AI влияет на поддерживаемость; измерение churn",
+    "whySelected": "211 млн строк: рост copy/paste и churn, падение рефакторинга — где AI ухудшает качество",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Замерить churn на своём пет-проекте",
+    "interviewQuestions": [
+      "Как AI влияет на качество кода?",
+      "Что такое churn и почему он важен?"
+    ],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "Code Quality",
+      "GitClear"
+    ]
+  },
+  {
+    "id": "ai-assisted-09",
+    "title": "Building Effective AI Agents",
+    "url": "https://www.anthropic.com/engineering/building-effective-agents",
+    "provider": "Anthropic Engineering",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 35,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Каноничное различие workflow vs agent, augmented LLM, 'начинай с простого'",
+    "learningGoal": "Проектирование агентных систем, когда агент не нужен",
+    "whySelected": "Каноничное различие workflow vs agent, augmented LLM, 'начинай с простого'",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Провести грань workflow/agent для одного сценария",
+    "interviewQuestions": [
+      "Чем workflow отличается от агента?",
+      "Когда агент избыточен?"
+    ],
+    "topics": [
+      "AI",
+      "React",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "Agents",
+      "Architecture"
+    ]
+  },
+  {
+    "id": "ai-assisted-10",
+    "title": "Introducing the Model Context Protocol",
+    "url": "https://www.anthropic.com/news/model-context-protocol",
+    "provider": "Anthropic",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Первоисточник MCP — 'USB-C для AI-интеграций', база для продуктовой интеграции LLM",
+    "learningGoal": "Понимание MCP: серверы/клиенты, prompts/resources/tools",
+    "whySelected": "Первоисточник MCP — 'USB-C для AI-интеграций', база для продуктовой интеграции LLM",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Поднять простой MCP-сервер над своими данными",
+    "interviewQuestions": [
+      "Что такое MCP и зачем он?",
+      "Какие примитивы у MCP?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "MCP",
+      "Integration"
+    ]
+  },
+  {
+    "id": "ai-assisted-11",
+    "title": "The lethal trifecta / prompt injection (тег-подборка)",
+    "url": "https://simonwillison.net/tags/prompt-injection/",
+    "provider": "Simon Willison's Blog",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 30,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Первоисточник концепции lethal trifecta и трекер реальных атак (Cortex, Clinejection)",
+    "learningGoal": "Безопасность агентов, защита от prompt injection",
+    "whySelected": "Первоисточник концепции lethal trifecta и трекер реальных атак (Cortex, Clinejection)",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Аудит своего CI: изолировать секреты от агента",
+    "interviewQuestions": [
+      "Что такое lethal trifecta?",
+      "Как защититься от prompt injection?"
+    ],
+    "topics": [
+      "AI",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "Security",
+      "Prompt Injection"
+    ]
+  },
+  {
+    "id": "ai-assisted-12",
+    "title": "Adding repository custom instructions for GitHub Copilot",
+    "url": "https://docs.github.com/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot",
+    "provider": "GitHub Docs",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 15,
+    "level": "basic",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Официальная докдока по copilot-instructions.md, path-specific и поддержке AGENTS.md",
+    "learningGoal": "Настройка инструкций Copilot на уровне репо",
+    "whySelected": "Официальная докдока по copilot-instructions.md, path-specific и поддержке AGENTS.md",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Создать .github/copilot-instructions.md",
+    "interviewQuestions": [
+      "Как настроить контекст Copilot для репозитория?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "Copilot",
+      "GitHub"
+    ]
+  },
+  {
+    "id": "ai-assisted-13",
+    "title": "Cursor Rules: .mdc, frontmatter, globs, alwaysApply",
+    "url": "https://skillsplayground.com/guides/cursor-rules/",
+    "provider": "Skills Playground (community)",
+    "language": "en",
+    "kind": "main",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Практика модульных правил Cursor (.mdc) вместо устаревшего .cursorrules",
+    "learningGoal": "Разбиение правил по глобам и активациям",
+    "whySelected": "Практика модульных правил Cursor (.mdc) вместо устаревшего .cursorrules",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Перевести .cursorrules в модульные .mdc с globs",
+    "interviewQuestions": [
+      "Как организовать правила Cursor для большого проекта?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "Cursor",
+      "Rules"
+    ]
+  },
+  {
+    "id": "ai-assisted-14",
+    "title": "GigaCode — AI-ассистент разработчика",
+    "url": "https://gitverse.ru/features/gigacode/",
+    "provider": "Сбер / СберТех (GitVerse)",
+    "language": "ru",
+    "kind": "reference",
+    "estimatedMinutes": 20,
+    "level": "basic",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Ключевой отечественный инструмент бигтеха: агентный режим, CLI, код не идёт на дообучение, on-prem",
+    "learningGoal": "Работа с отечественным ассистентом и комплаенс",
+    "whySelected": "Ключевой отечественный инструмент бигтеха: агентный режим, CLI, код не идёт на дообучение, on-prem",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Развернуть GigaCode и сравнить с зарубежным аналогом",
+    "interviewQuestions": [
+      "Какие отечественные AI-инструменты знаете?",
+      "Как GigaCode решает вопрос конфиденциальности?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "GigaCode",
+      "Russia",
+      "Compliance"
+    ]
+  },
+  {
+    "id": "ai-assisted-15",
+    "title": "SourceCraft Code Assistant — ИИ-помощник для разработчика",
+    "url": "https://sourcecraft.dev/portal/code-assistant/",
+    "provider": "Яндекс (Yandex Cloud)",
+    "language": "ru",
+    "kind": "reference",
+    "estimatedMinutes": 20,
+    "level": "basic",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Отечественный ассистент Яндекса: агентный режим, CLI, MCP, AGENTS.md, BYOM, без VPN",
+    "learningGoal": "Работа с отечественным ассистентом, MCP/AGENTS.md в РФ-контексте",
+    "whySelected": "Отечественный ассистент Яндекса: агентный режим, CLI, MCP, AGENTS.md, BYOM, без VPN",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Развернуть SourceCraft Code Assistant в VS Code/JetBrains",
+    "interviewQuestions": [
+      "Чем SourceCraft отличается от зарубежных инструментов?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "SourceCraft",
+      "Yandex",
+      "Russia"
+    ]
+  },
+  {
+    "id": "ai-assisted-16",
+    "title": "Context Engineering for Coding Agents",
+    "url": "https://martinfowler.com/articles/exploring-gen-ai/context-engineering-coding-agents.html",
+    "provider": "martinfowler.com / Thoughtworks",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 30,
+    "level": "advanced",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Систематизирует инструкции vs guidance, context interfaces, кто решает грузить контекст",
+    "learningGoal": "Продвинутый контекст-инжиниринг",
+    "whySelected": "Систематизирует инструкции vs guidance, context interfaces, кто решает грузить контекст",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Классифицировать свои инструкции на instructions/guidance",
+    "interviewQuestions": [
+      "Что такое context engineering?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "Context",
+      "Thoughtworks"
+    ]
+  },
+  {
+    "id": "ai-assisted-17",
+    "title": "Martin Fowler on Preparing for AI's Nondeterministic Computing",
+    "url": "https://thenewstack.io/martin-fowler-on-preparing-for-ais-nondeterministic-computing/",
+    "provider": "The New Stack",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 20,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "'Тонкие слои', 'dodgy collaborator', LLM+legacy через RAG — сильные senior-тезисы",
+    "learningGoal": "Работа с legacy, ревью тонкими слоями",
+    "whySelected": "'Тонкие слои', 'dodgy collaborator', LLM+legacy через RAG — сильные senior-тезисы",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Разбить крупное изменение на тонкие ревьюируемые слои",
+    "interviewQuestions": [
+      "Как работать с legacy через AI?",
+      "Почему нельзя доверять всему выводу?"
+    ],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "Legacy",
+      "Review",
+      "Fowler"
+    ]
+  },
+  {
+    "id": "ai-assisted-18",
+    "title": "Best practices for Claude Code (docs)",
+    "url": "https://code.claude.com/docs/en/best-practices",
+    "provider": "Claude Code Docs / Anthropic",
+    "language": "en",
+    "kind": "reference",
+    "estimatedMinutes": 30,
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Актуальная докдока: plan mode, plugins, subagents, parallel sessions",
+    "learningGoal": "Продвинутые возможности Claude Code",
+    "whySelected": "Актуальная докдока: plan mode, plugins, subagents, parallel sessions",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Отработать plan mode и subagents на реальной задаче",
+    "interviewQuestions": [
+      "Как масштабировать работу с агентом на несколько сессий?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "Claude Code",
+      "Docs"
+    ]
+  },
+  {
+    "id": "ai-assisted-19",
+    "title": "AGENTS.md Spec: sections + vs CLAUDE.md vs .cursorrules",
+    "url": "https://www.morphllm.com/agents-md-guide",
+    "provider": "Morph (community)",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Секции, монорепо-паттерны, факт про вред авто-генерации (-2% success, +23% cost)",
+    "learningGoal": "Структура AGENTS.md, отличия от vendor-форматов",
+    "whySelected": "Секции, монорепо-паттерны, факт про вред авто-генерации (-2% success, +23% cost)",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Составить чеклист секций AGENTS.md",
+    "interviewQuestions": [
+      "Какие секции должны быть в AGENTS.md?"
+    ],
+    "topics": [
+      "AI",
+      "React",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "AGENTS.md",
+      "Guide"
+    ]
+  },
+  {
+    "id": "ai-assisted-20",
+    "title": "My Participation in the METR AI Productivity Study",
+    "url": "https://domenic.me/metr-ai-productivity/",
+    "provider": "Domenic Denicola (личный блог)",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 25,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Взгляд участника METR изнутри (проект jsdom) — качественный контекст к цифрам",
+    "learningGoal": "Понимание, почему AI замедлял в конкретных задачах",
+    "whySelected": "Взгляд участника METR изнутри (проект jsdom) — качественный контекст к цифрам",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Выделить типы задач, где AI помог и где мешал",
+    "interviewQuestions": [
+      "На каких задачах AI реально помогает, а на каких мешает?"
+    ],
+    "topics": [
+      "AI",
+      "Interview"
+    ],
+    "tags": [
+      "AI",
+      "METR",
+      "Case Study"
+    ]
+  },
+  {
+    "id": "ai-assisted-21",
+    "title": "Building Software with AI Agents: A Practical Guide Using OpenAI Codex",
+    "url": "https://medium.com/@philippe.haldermans/building-software-with-ai-agents-a-practical-guide-using-openai-codex-15a875c7bb40",
+    "provider": "Medium",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 40,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Практический workflow с чеклистами и stop conditions на примере RAG-сервиса",
+    "learningGoal": "Структурирование работы с любым coding-агентом",
+    "whySelected": "Практический workflow с чеклистами и stop conditions на примере RAG-сервиса",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Применить чеклист и stop conditions к своей задаче",
+    "interviewQuestions": [
+      "Что такое stop conditions для агента?"
+    ],
+    "topics": [
+      "AI",
+      "React",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "Codex",
+      "Workflow"
+    ]
+  },
+  {
+    "id": "ai-assisted-22",
+    "title": "openai/codex (GitHub repository)",
+    "url": "https://github.com/openai/codex",
+    "provider": "OpenAI (GitHub)",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Официальный CLI-агент OpenAI, чтение AGENTS.md, /init",
+    "learningGoal": "Понимание локального CLI-агента и его конфигурации",
+    "whySelected": "Официальный CLI-агент OpenAI, чтение AGENTS.md, /init",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Запустить Codex CLI и сгенерировать AGENTS.md через /init, затем отредактировать",
+    "interviewQuestions": [
+      "Чем отличается локальный CLI-агент от облачного?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "Codex",
+      "CLI"
+    ]
+  },
+  {
+    "id": "ai-assisted-23",
+    "title": "Model Context Protocol (спецификация и SDK)",
+    "url": "https://github.com/modelcontextprotocol",
+    "provider": "Linux Foundation / MCP",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 30,
+    "level": "advanced",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Первоисточник спецификации и SDK (TS/Python/Go/C#) — для продуктовой интеграции",
+    "learningGoal": "Реализация MCP-сервера/клиента",
+    "whySelected": "Первоисточник спецификации и SDK (TS/Python/Go/C#) — для продуктовой интеграции",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Реализовать MCP-сервер на TypeScript SDK",
+    "interviewQuestions": [
+      "Какие SDK у MCP?",
+      "Как устроен MCP-сервер?"
+    ],
+    "topics": [
+      "AI",
+      "TypeScript",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "MCP",
+      "SDK"
+    ]
+  },
+  {
+    "id": "ai-assisted-24",
+    "title": "New prompt injection papers: Agents Rule of Two and The Attacker Moves Second",
+    "url": "https://simonw.substack.com/p/new-prompt-injection-papers-agents",
+    "provider": "Simon Willison's Newsletter",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 20,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Meta Rule of Two, обход 12 защит при >90% success — состояние защит от injection",
+    "learningGoal": "Понимание ограничений защит от prompt injection",
+    "whySelected": "Meta Rule of Two, обход 12 защит при >90% success — состояние защит от injection",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сформулировать Rule of Two для своего агента",
+    "interviewQuestions": [
+      "Почему model-level защиты от injection ненадёжны?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "Security",
+      "Prompt Injection"
+    ]
+  },
+  {
+    "id": "ai-assisted-25",
+    "title": "GitInject: Real-World Prompt Injection Attacks in AI-Powered CI/CD Pipelines",
+    "url": "https://arxiv.org/html/2606.09935v1",
+    "provider": "arXiv (preprint)",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 30,
+    "level": "advanced",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Конкретные атаки на агентов в GitHub Actions и митигации (fine-grained PAT/OIDC)",
+    "learningGoal": "Защита CI-агента: минимальные права, короткоживущие токены",
+    "whySelected": "Конкретные атаки на агентов в GitHub Actions и митигации (fine-grained PAT/OIDC)",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Настроить fine-grained токен для CI-агента",
+    "interviewQuestions": [
+      "Как обезопасить AI-агента в GitHub Actions?"
+    ],
+    "topics": [
+      "AI",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "Security",
+      "CI/CD",
+      "arXiv"
+    ]
+  },
+  {
+    "id": "ai-assisted-26",
+    "title": "Configuration Smells in AGENTS.md Files",
+    "url": "https://arxiv.org/pdf/2606.15828",
+    "provider": "arXiv (preprint)",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 25,
+    "level": "advanced",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Типичные ошибки конфигурации агентов — что НЕ писать в AGENTS.md",
+    "learningGoal": "Избегание config smells",
+    "whySelected": "Типичные ошибки конфигурации агентов — что НЕ писать в AGENTS.md",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Проаудитить свой AGENTS.md на smells",
+    "interviewQuestions": [
+      "Какие типичные ошибки в AGENTS.md?"
+    ],
+    "topics": [
+      "AI",
+      "Architecture"
+    ],
+    "tags": [
+      "AI",
+      "AGENTS.md",
+      "arXiv"
+    ]
+  },
+  {
+    "id": "ai-assisted-27",
+    "title": "Mind the gap: Closing the AI trust gap for developers",
+    "url": "https://stackoverflow.blog/2026/02/18/closing-the-developer-ai-trust-gap/",
+    "provider": "Stack Overflow Blog",
+    "language": "en",
+    "kind": "deep-dive",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Объясняет, почему при росте использования доверие падает — контекст для human review",
+    "learningGoal": "Связь доверия с готовностью деплоить AI-код",
+    "whySelected": "Объясняет, почему при росте использования доверие падает — контекст для human review",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сформулировать критерии, когда AI-код можно деплоить",
+    "interviewQuestions": [
+      "Почему опытные разработчики доверяют AI меньше?"
+    ],
+    "topics": [
+      "AI",
+      "Interview"
+    ],
+    "tags": [
+      "AI",
+      "Trust",
+      "Survey"
+    ]
+  },
+  {
+    "id": "ai-assisted-28",
+    "title": "The Maintainability Gap: 2026 AI Code Quality Research",
+    "url": "https://www.gitclear.com/the_ai_code_quality_maintainability_gap",
+    "provider": "GitClear",
+    "language": "en",
+    "kind": "case-study",
+    "estimatedMinutes": 25,
+    "level": "advanced",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "7 сигналов качества, 'moved' 3.8% в 2026, свежие данные о деградации",
+    "learningGoal": "Расширенное понимание сигналов качества кода",
+    "whySelected": "7 сигналов качества, 'moved' 3.8% в 2026, свежие данные о деградации",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сопоставить свои метрики с 7 сигналами GitClear",
+    "interviewQuestions": [
+      "Какие сигналы указывают на деградацию поддерживаемости?"
+    ],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "Code Quality",
+      "GitClear"
+    ]
+  },
+  {
+    "id": "ai-assisted-29",
+    "title": "Spec-Driven Development: контроль AI-кодогенерации",
+    "url": "https://habr.com/ru/articles/985498/",
+    "provider": "Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Русскоязычный разбор Research/Spec/Implementation executor и T-shirt sizing",
+    "learningGoal": "Разделение research/spec/implementation",
+    "whySelected": "Русскоязычный разбор Research/Spec/Implementation executor и T-shirt sizing",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Написать спецификацию для фичи тренажёра до кода",
+    "interviewQuestions": [
+      "Как вы разделяете спецификацию и реализацию?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "SDD",
+      "Russia",
+      "Habr"
+    ]
+  },
+  {
+    "id": "ai-assisted-30",
+    "title": "От vibe coding к Spec-Driven Development",
+    "url": "https://habr.com/ru/companies/X5Tech/articles/995466/",
+    "provider": "Habr / X5 Tech",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Кейс российской компании: spec->plan->tasks, OpenSpec, Spec Kit",
+    "learningGoal": "Практика SDD в продакшене",
+    "whySelected": "Кейс российской компании: spec->plan->tasks, OpenSpec, Spec Kit",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Применить шаблон spec->plan->tasks",
+    "interviewQuestions": [
+      "Как довести AI-проект до продакшена без хаоса?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "SDD",
+      "X5",
+      "Habr"
+    ]
+  },
+  {
+    "id": "ai-assisted-31",
+    "title": "AI-ассистент в мире кода: как стать пилотом, а не пассажиром",
+    "url": "https://habr.com/ru/companies/yandex_praktikum/articles/944998/",
+    "provider": "Habr / Яндекс Практикум",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 20,
+    "level": "basic",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Русскоязычный материал о смещении ценности к проектированию и верификации",
+    "learningGoal": "Правильный mindset использования AI",
+    "whySelected": "Русскоязычный материал о смещении ценности к проектированию и верификации",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сформулировать, как остаться 'пилотом'",
+    "interviewQuestions": [
+      "Как не потерять квалификацию, используя AI?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "Mindset",
+      "Yandex",
+      "Habr"
+    ]
+  },
+  {
+    "id": "ai-assisted-32",
+    "title": "Code Review с помощью ИИ: замена лиду или помощь стажёру?",
+    "url": "https://habr.com/ru/companies/mvideo/articles/952668/",
+    "provider": "Habr / М.Видео",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 25,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Метрики AI-ревью, роль второго анализатора, комплаенс — российский кейс",
+    "learningGoal": "Метрики и роль AI code review",
+    "whySelected": "Метрики AI-ревью, роль второго анализатора, комплаенс — российский кейс",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Определить метрики для оценки AI-ревью",
+    "interviewQuestions": [
+      "Как измерить пользу AI code review?"
+    ],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "Code Review",
+      "MVideo",
+      "Habr"
+    ]
+  },
+  {
+    "id": "ai-assisted-33",
+    "title": "ИИ-ассистенты не ломают поддерживаемость кода (Echoes of AI)",
+    "url": "https://habr.com/ru/articles/996118/",
+    "provider": "Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 20,
+    "level": "advanced",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Русскоязычный разбор исследования Echoes of AI (с участием Дейва Фарли) — контрточка к GitClear",
+    "learningGoal": "Сбалансированный взгляд на поддерживаемость AI-кода",
+    "whySelected": "Русскоязычный разбор исследования Echoes of AI (с участием Дейва Фарли) — контрточка к GitClear",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Сопоставить выводы Echoes of AI и GitClear",
+    "interviewQuestions": [
+      "Всегда ли AI ухудшает поддерживаемость?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "Research",
+      "Habr"
+    ]
+  },
+  {
+    "id": "ai-assisted-34",
+    "title": "Внедряем AI Code Review на GitHub: сомнительно, но окэй",
+    "url": "https://habr.com/ru/articles/887194/",
+    "provider": "Habr",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Практический русскоязычный кейс настройки AI-ревью с примером уязвимости",
+    "learningGoal": "Практика настройки AI-ревью в CI",
+    "whySelected": "Практический русскоязычный кейс настройки AI-ревью с примером уязвимости",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Настроить AI-ревью на своём репо в режиме комментариев",
+    "interviewQuestions": [
+      "Как вы внедряли AI code review?"
+    ],
+    "topics": [
+      "AI",
+      "Testing"
+    ],
+    "tags": [
+      "AI",
+      "Code Review",
+      "GitHub",
+      "Habr"
+    ]
+  },
+  {
+    "id": "ai-assisted-35",
+    "title": "T-Bank: умный помощник для разработки",
+    "url": "https://www.tbank.ru/career/technologies/ai-assistant/",
+    "provider": "Т-Банк",
+    "language": "ru",
+    "kind": "case-study",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "publishedYear": 2024,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Почему бигтех строит своё (санкции, безопасность); inline/block suggestions, RepoBench/CrossCodeEval",
+    "learningGoal": "Понимание мотивации внутренних ассистентов и метрик оценки",
+    "whySelected": "Почему бигтех строит своё (санкции, безопасность); inline/block suggestions, RepoBench/CrossCodeEval",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сформулировать аргументы за внутренний ассистент",
+    "interviewQuestions": [
+      "Почему компания строит свой ассистент вместо Copilot?",
+      "Какими бенчмарками оценивают code-модель?"
+    ],
+    "topics": [
+      "AI"
+    ],
+    "tags": [
+      "AI",
+      "T-Bank",
+      "Russia",
+      "Compliance"
+    ]
+  }
+]
+
