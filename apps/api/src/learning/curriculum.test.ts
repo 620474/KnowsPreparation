@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AI_SPRINT_DAYS, CURRICULUM, QUESTION_BANK } from "./curriculum";
 import {
   AI_RESOURCE_CATALOG_VERIFIED_AT,
+  PRINCIPLES_RESOURCE_CATALOG_VERIFIED_AT,
   RESOURCE_CATALOG_VERIFIED_AT,
   RESOURCE_IDS,
   RESOURCE_PLANS,
@@ -63,7 +64,9 @@ describe("curriculum", () => {
 
   it("includes the merged AI research catalog", () => {
     const aiResources = RESOURCES.filter(
-      (resource) => resource.verifiedAt === AI_RESOURCE_CATALOG_VERIFIED_AT,
+      (resource) =>
+        resource.verifiedAt === AI_RESOURCE_CATALOG_VERIFIED_AT &&
+        resource.topics.includes("AI"),
     );
 
     expect(aiResources).toHaveLength(86);
@@ -73,6 +76,36 @@ describe("curriculum", () => {
       expect(resource.priority).toBeTruthy();
       expect(resource.practicalTask).toBeTruthy();
       expect(resource.tags?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("includes the SOLID, DRY, and KISS resource collection", () => {
+    const principleResourceIds = new Set([
+      "yandex-solid",
+      "cleancoder-srp",
+      "pragmatic-dry",
+      "fowler-beck-design-rules",
+      "google-code-review-complexity",
+      "google-tests-dry-damp",
+      "react-components-pure",
+    ]);
+    const principleResources = RESOURCES.filter((resource) =>
+      principleResourceIds.has(resource.id),
+    );
+
+    expect(principleResources).toHaveLength(7);
+    expect(
+      principleResources.every(
+        (resource) => resource.verifiedAt === PRINCIPLES_RESOURCE_CATALOG_VERIFIED_AT,
+      ),
+    ).toBe(true);
+    expect(principleResources.filter((resource) => resource.priority === "must")).toHaveLength(4);
+    expect(principleResources.filter((resource) => resource.priority === "should")).toHaveLength(2);
+    expect(principleResources.filter((resource) => resource.priority === "optional")).toHaveLength(1);
+    for (const resource of principleResources) {
+      expect(resource.learningGoal).toBeTruthy();
+      expect(resource.practicalTask).toBeTruthy();
+      expect(resource.interviewQuestions?.length).toBeGreaterThan(0);
     }
   });
 
@@ -117,6 +150,12 @@ describe("curriculum", () => {
       "feh-system-design",
       "greatfrontend-radio",
       "wb-head-frontend-interview",
+      "cleancoder-srp",
+      "pragmatic-dry",
+      "fowler-beck-design-rules",
+      "google-code-review-complexity",
+      "google-tests-dry-damp",
+      "react-components-pure",
     ];
 
     for (const resourceId of newResourceIds) {

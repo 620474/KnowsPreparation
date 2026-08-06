@@ -51,6 +51,7 @@ interface WeekResourcePlan {
 
 export const RESOURCE_CATALOG_VERIFIED_AT = "2026-08-04";
 export const AI_RESOURCE_CATALOG_VERIFIED_AT = "2026-08-06";
+export const PRINCIPLES_RESOURCE_CATALOG_VERIFIED_AT = "2026-08-06";
 
 const RESOURCE_LANGUAGES = new Set<ResourceLanguage>(["ru", "en"]);
 const RESOURCE_KINDS = new Set<ResourceKind>([
@@ -327,8 +328,19 @@ export const RESOURCE_PLANS: WeekResourcePlan[] = [
   },
   {
     theory: [
-      ["yandex-solid", "patterns-dev"],
-      ["developer-composition", "developer-component-prop", "avito-components"],
+      [
+        "yandex-solid",
+        "cleancoder-srp",
+        "pragmatic-dry",
+        "fowler-beck-design-rules",
+        "patterns-dev",
+      ],
+      [
+        "developer-composition",
+        "developer-component-prop",
+        "avito-components",
+        "react-components-pure",
+      ],
       ["fsd-overview", "fsd-layers", "vk-fsd"],
       ["nx-monorepo", "nx-dev-monorepo", "yandex-frontend-architecture"],
       ["martin-microfrontends", "avito-microfrontends", "ozon-microfrontend"],
@@ -336,8 +348,13 @@ export const RESOURCE_PLANS: WeekResourcePlan[] = [
       ["yandex-prep", "frontend-handbook"],
     ],
     practice: [
-      ["yandex-solid", "patterns-dev"],
-      ["yandex-frontend-architecture", "avito-components"],
+      [
+        "yandex-solid",
+        "google-code-review-complexity",
+        "google-tests-dry-damp",
+        "patterns-dev",
+      ],
+      ["yandex-frontend-architecture", "avito-components", "react-components-pure"],
       ["fsd-layers"],
       ["nx-monorepo"],
       ["martin-microfrontends", "avito-microfrontends"],

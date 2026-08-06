@@ -1619,7 +1619,219 @@
     ],
     "estimatedMinutes": 21,
     "description": "SOLID на конкретных React + TypeScript компонентах и контрактах.",
-    "publishedYear": 2021
+    "level": "intermediate",
+    "publishedYear": 2021,
+    "status": "evergreen",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Применять SOLID к компонентам, хукам и TypeScript-контрактам без лишних абстракций.",
+    "whySelected": "Практический русскоязычный разбор SOLID на близких frontend-разработчику примерах.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Разобрать один крупный компонент и предложить разделение ответственности без изменения поведения.",
+    "interviewQuestions": [
+      "Как SOLID применяется к функциональным React-компонентам?",
+      "Когда следование SOLID создаёт лишнюю сложность?"
+    ],
+    "tags": [
+      "SOLID",
+      "React",
+      "TypeScript"
+    ]
+  },
+  {
+    "id": "cleancoder-srp",
+    "title": "The Single Responsibility Principle",
+    "url": "https://blog.cleancoder.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html",
+    "provider": "The Clean Code Blog",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Architecture"
+    ],
+    "estimatedMinutes": 15,
+    "description": "Первоисточник о SRP: ответственность определяется причиной изменения и группой заинтересованных людей.",
+    "level": "intermediate",
+    "publishedYear": 2014,
+    "status": "evergreen",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Отличать одну обязанность от одной функции и находить независимые причины изменения модуля.",
+    "whySelected": "Автор принципа уточняет формулировку, которую часто неверно пересказывают на собеседованиях.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Найти в компоненте изменения от продукта, дизайна и инфраструктуры и предложить границы модулей.",
+    "interviewQuestions": [
+      "Что означает одна причина для изменения?",
+      "Почему SRP не означает, что функция должна делать только одну операцию?"
+    ],
+    "tags": [
+      "SOLID",
+      "SRP",
+      "Связность"
+    ]
+  },
+  {
+    "id": "pragmatic-dry",
+    "title": "DRY — The Evils of Duplication",
+    "url": "https://media.pragprog.com/titles/tpp20/dry.pdf",
+    "provider": "The Pragmatic Programmer",
+    "language": "en",
+    "kind": "main",
+    "topics": [
+      "Architecture"
+    ],
+    "estimatedMinutes": 30,
+    "description": "Бесплатная глава о DRY, дублировании знаний и единственном авторитетном представлении правил системы.",
+    "level": "intermediate",
+    "publishedYear": 2019,
+    "status": "evergreen",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Отличать дублирование знаний от случайно похожего кода и выбирать безопасный момент для обобщения.",
+    "whySelected": "Первичная формулировка DRY от авторов The Pragmatic Programmer с примерами разных видов дублирования.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Найти два похожих фрагмента и определить, представляют ли они одно знание или меняются независимо.",
+    "interviewQuestions": [
+      "Почему DRY относится не только к повторяющимся строкам кода?",
+      "Когда устранение дублирования ухудшает дизайн?"
+    ],
+    "tags": [
+      "DRY",
+      "Дублирование",
+      "Рефакторинг"
+    ]
+  },
+  {
+    "id": "fowler-beck-design-rules",
+    "title": "Beck Design Rules",
+    "url": "https://martinfowler.com/bliki/BeckDesignRules.html",
+    "provider": "Martin Fowler",
+    "language": "en",
+    "kind": "deep-dive",
+    "topics": [
+      "Architecture",
+      "Testing"
+    ],
+    "estimatedMinutes": 15,
+    "description": "Четыре правила простого дизайна: тесты, отсутствие дублирования, выражение намерения и минимум сущностей.",
+    "level": "intermediate",
+    "publishedYear": 2015,
+    "status": "evergreen",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Оценивать простоту решения по проверяемым критериям, а не по количеству строк.",
+    "whySelected": "Связывает KISS, DRY, читаемость и тестируемость в единую модель принятия решений.",
+    "verifiedAt": "2026-08-06",
+    "priority": "must",
+    "practicalTask": "Упростить небольшое решение, сохранив тесты и явно выраженное намерение кода.",
+    "interviewQuestions": [
+      "Что такое простой дизайн по Кенту Беку?",
+      "Как выбирать между устранением дублирования и читаемостью?"
+    ],
+    "tags": [
+      "KISS",
+      "DRY",
+      "Простой дизайн"
+    ]
+  },
+  {
+    "id": "google-code-review-complexity",
+    "title": "What to look for in a code review",
+    "url": "https://google.github.io/eng-practices/review/reviewer/looking-for.html",
+    "provider": "Google Engineering Practices",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "Architecture",
+      "Interview"
+    ],
+    "estimatedMinutes": 15,
+    "description": "Практическая проверка сложности, over-engineering, читаемости и качества дизайна на code review.",
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Применять KISS и YAGNI во время code review и аргументировать упрощение решения.",
+    "whySelected": "Инженерные рекомендации Google переводят абстрактные принципы в конкретные вопросы к изменению кода.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Провести review небольшого pull request и отметить лишнюю сложность, преждевременные обобщения и неясные имена.",
+    "interviewQuestions": [
+      "Как определить, что решение переусложнено?",
+      "Чем KISS отличается от запрета на сложные решения?"
+    ],
+    "tags": [
+      "KISS",
+      "YAGNI",
+      "Code review"
+    ]
+  },
+  {
+    "id": "google-tests-dry-damp",
+    "title": "Tests Too DRY? Make Them DAMP!",
+    "url": "https://testing.googleblog.com/2019/12/testing-on-toilet-tests-too-dry-make.html",
+    "provider": "Google Testing Blog",
+    "language": "en",
+    "kind": "case-study",
+    "topics": [
+      "Testing",
+      "Architecture"
+    ],
+    "estimatedMinutes": 10,
+    "description": "Разбор компромисса между DRY и читаемостью тестов с альтернативой DAMP.",
+    "level": "intermediate",
+    "publishedYear": 2019,
+    "status": "evergreen",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Не устранять дублирование механически, если явный тест проще проверять и поддерживать.",
+    "whySelected": "Короткий контрпример догматичному применению DRY от инженерной команды Google.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Сравнить DRY- и DAMP-версии теста и обосновать, какая из них быстрее читается при падении.",
+    "interviewQuestions": [
+      "Почему DRY может навредить unit-тестам?",
+      "Что означает DAMP и когда его применять?"
+    ],
+    "tags": [
+      "DRY",
+      "DAMP",
+      "Тестирование"
+    ]
+  },
+  {
+    "id": "react-components-pure",
+    "title": "Keeping Components Pure",
+    "url": "https://react.dev/learn/keeping-components-pure",
+    "provider": "React",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "React",
+      "Architecture"
+    ],
+    "estimatedMinutes": 20,
+    "description": "Официальное руководство по чистым компонентам, локальным мутациям и размещению побочных эффектов.",
+    "level": "intermediate",
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "learningGoal": "Проектировать предсказуемые React-компоненты и отделять вычисление UI от побочных эффектов.",
+    "whySelected": "Показывает практическое применение простоты и разделения ответственности в современном React.",
+    "verifiedAt": "2026-08-06",
+    "priority": "optional",
+    "practicalTask": "Исправить компонент с мутацией во время render и перенести побочный эффект в корректное место.",
+    "interviewQuestions": [
+      "Почему React-компонент должен быть чистым?",
+      "Где допустимы побочные эффекты в React?"
+    ],
+    "tags": [
+      "React",
+      "Чистые функции",
+      "Побочные эффекты"
+    ]
   },
   {
     "id": "fsd-overview",
