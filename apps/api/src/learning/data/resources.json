@@ -5062,6 +5062,43 @@
       "Russia",
       "Compliance"
     ]
+  },
+  {
+    "id": "ai-agent-javascript-kevin-yank",
+    "title": "How to Build an Agent in JavaScript",
+    "url": "https://kevinyank.com/posts/how-to-build-an-agent-in-javascript/",
+    "provider": "Kevin Yank",
+    "language": "en",
+    "kind": "practice",
+    "topics": [
+      "AI",
+      "TypeScript",
+      "Architecture",
+      "Security"
+    ],
+    "tags": [
+      "AI",
+      "Agents",
+      "Tool Calling",
+      "TypeScript",
+      "Human in the Loop"
+    ],
+    "estimatedMinutes": 55,
+    "level": "intermediate",
+    "publishedYear": 2025,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": false,
+    "description": "Пошаговая реализация минимального coding agent на TypeScript: история диалога, tool definitions, цикл tool_use/tool_result, чтение, просмотр и редактирование файлов, а также подтверждение действий пользователем.",
+    "learningGoal": "Понимать внутренний цикл агента без фреймворков и объяснять границы между моделью, orchestration loop и исполняемыми tools.",
+    "whySelected": "Практический и доступный мост между теорией function calling и устройством реальных coding agents; исходный код сопровождает статью.",
+    "verifiedAt": "2026-08-06",
+    "priority": "should",
+    "practicalTask": "Повторить agent loop с одним read-only tool и добавить Zod-валидацию, maxSteps, AbortSignal, ограничение рабочей директорией и audit log.",
+    "interviewQuestions": [
+      "Чем AI-agent отличается от обычного чата с LLM?",
+      "Зачем отправлять tool result обратно модели?",
+      "Почему human approval не заменяет sandbox и server-side validation?"
+    ]
   }
 ]
-

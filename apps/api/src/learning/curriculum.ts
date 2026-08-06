@@ -333,7 +333,7 @@ export const AI_SPRINT_DAYS = [
   {
     title: "Workflow или автономный агент",
     description: "Выбрать минимальную архитектуру для одной функции тренажёра и обосновать уровень автономности.",
-    resourceIds: ["ai-assisted-09"],
+    resourceIds: ["ai-assisted-09", "ai-agent-javascript-kevin-yank"],
   },
   {
     title: "Инструкции для разных AI-инструментов",

@@ -66,7 +66,7 @@ describe("curriculum", () => {
       (resource) => resource.verifiedAt === AI_RESOURCE_CATALOG_VERIFIED_AT,
     );
 
-    expect(aiResources).toHaveLength(85);
+    expect(aiResources).toHaveLength(86);
     expect(aiResources.every((resource) => resource.topics.includes("AI"))).toBe(true);
     expect(aiResources.filter((resource) => resource.priority === "must")).toHaveLength(35);
     for (const resource of aiResources) {
