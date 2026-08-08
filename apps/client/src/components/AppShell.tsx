@@ -7,10 +7,18 @@ import {
   Code2,
   Gauge,
   LibraryBig,
+  ListChecks,
   Settings,
 } from "lucide-react";
 
-export type AppView = "today" | "plan" | "resources" | "questions" | "algorithms" | "settings";
+export type AppView =
+  | "today"
+  | "yandex"
+  | "plan"
+  | "resources"
+  | "questions"
+  | "algorithms"
+  | "settings";
 
 interface AppShellProps {
   activeView: AppView;
@@ -26,9 +34,10 @@ const navigation: Array<{
   icon: typeof Gauge;
 }> = [
   { id: "today", label: "Сегодня", shortLabel: "Сегодня", icon: Gauge },
+  { id: "yandex", label: "Яндекс-спринт", shortLabel: "Яндекс", icon: ListChecks },
   { id: "plan", label: "Учебный план", shortLabel: "План", icon: CalendarDays },
   { id: "resources", label: "Библиотека", shortLabel: "База", icon: LibraryBig },
-  { id: "questions", label: "Банк вопросов", shortLabel: "Вопросы", icon: BookOpenCheck },
+  { id: "questions", label: "Банк вопросов", shortLabel: "Вопр.", icon: BookOpenCheck },
   { id: "algorithms", label: "Алгоритмы", shortLabel: "Алго", icon: Code2 },
   { id: "settings", label: "Настройки", shortLabel: "Ещё", icon: Settings },
 ];

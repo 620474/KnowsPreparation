@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AI_SPRINT_DAYS, CURRICULUM, QUESTION_BANK } from "./curriculum";
+import { AI_SPRINT_DAYS, CURRICULUM, QUESTION_BANK, TASK_IDS } from "./curriculum";
 import {
   AI_RESOURCE_CATALOG_VERIFIED_AT,
   PRINCIPLES_RESOURCE_CATALOG_VERIFIED_AT,
@@ -8,7 +8,9 @@ import {
   RESOURCE_IDS,
   RESOURCE_PLANS,
   RESOURCES,
+  YANDEX_SPRINT_RESOURCE_CATALOG_VERIFIED_AT,
 } from "./resources";
+import { YANDEX_SPRINT, YANDEX_TASK_IDS } from "./yandex-sprint";
 
 describe("curriculum", () => {
   it("contains ten core weeks and two buffer weeks", () => {
@@ -22,6 +24,51 @@ describe("curriculum", () => {
     expect(days).toHaveLength(84);
     for (const day of days) {
       expect(day.blocks.reduce((total, block) => total + block.minutes, 0)).toBe(120);
+    }
+  });
+
+  it("provides a standalone 21-day Yandex interview sprint", () => {
+    expect(YANDEX_SPRINT).toHaveLength(21);
+    expect(YANDEX_SPRINT.map((day) => day.dayNumber)).toEqual(
+      Array.from({ length: 21 }, (_, index) => index + 1),
+    );
+
+    const sprintBlocks = YANDEX_SPRINT.flatMap((day) => day.blocks);
+    expect(YANDEX_TASK_IDS.size).toBe(sprintBlocks.length);
+    expect(sprintBlocks.every((block) => !TASK_IDS.has(block.id))).toBe(true);
+
+    for (const day of YANDEX_SPRINT) {
+      expect(day.blocks.reduce((total, block) => total + block.minutes, 0)).toBe(120);
+      const isMockDay = [7, 14, 21].includes(day.dayNumber);
+      expect(day.blocks).toHaveLength(isMockDay ? 2 : 4);
+      expect(day.blocks.some((block) => block.kind === "ai")).toBe(!isMockDay);
+
+      for (const block of day.blocks) {
+        if (block.kind === "review") {
+          expect(block.resourceIds).toEqual([]);
+          continue;
+        }
+        expect(block.resourceIds.length).toBeGreaterThan(0);
+        for (const resourceId of block.resourceIds) {
+          expect(RESOURCE_IDS.has(resourceId)).toBe(true);
+        }
+      }
+    }
+
+    expect(RESOURCE_IDS.has("yandex-coderun-frontend-2026")).toBe(true);
+  });
+
+  it("includes verified Yandex sprint resources", () => {
+    const yandexSprintResources = RESOURCES.filter(
+      (resource) => resource.verifiedAt === YANDEX_SPRINT_RESOURCE_CATALOG_VERIFIED_AT,
+    );
+
+    expect(yandexSprintResources).toHaveLength(2);
+    expect(yandexSprintResources.every((resource) => resource.priority === "must")).toBe(true);
+    for (const resource of yandexSprintResources) {
+      expect(resource.learningGoal).toBeTruthy();
+      expect(resource.practicalTask).toBeTruthy();
+      expect(resource.interviewQuestions?.length).toBeGreaterThan(0);
     }
   });
 
@@ -50,7 +97,7 @@ describe("curriculum", () => {
       (resource) => resource.verifiedAt === RESOURCE_CATALOG_VERIFIED_AT,
     );
 
-    expect(researchedResources).toHaveLength(51);
+    expect(researchedResources).toHaveLength(50);
     for (const resource of researchedResources) {
       expect(resource.level).toBeTruthy();
       expect(resource.status).toBeTruthy();

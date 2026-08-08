@@ -104,6 +104,7 @@ export interface BootstrapData {
     bufferWeeks: number;
   };
   curriculum: StudyWeek[];
+  yandexSprint: StudyDay[];
   resources: LearningResource[];
   questions: InterviewQuestion[];
   algorithmPatterns: string[];

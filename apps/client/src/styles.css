@@ -910,6 +910,291 @@ p {
   background: var(--accent);
 }
 
+.yandex-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  gap: 14px;
+}
+
+.yandex-progress-card,
+.yandex-next-card,
+.yandex-week-card {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.yandex-progress-card,
+.yandex-next-card {
+  min-height: 116px;
+  border-radius: 18px;
+  padding: 20px 22px;
+}
+
+.yandex-progress-card {
+  display: grid;
+  align-content: center;
+  gap: 18px;
+}
+
+.yandex-progress-card .section-heading {
+  justify-content: space-between;
+}
+
+.yandex-progress-card .section-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.yandex-progress-card .section-heading span,
+.yandex-next-card span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.yandex-progress-card .section-heading strong {
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+.yandex-progress-card svg,
+.yandex-next-card svg {
+  color: var(--accent);
+}
+
+.yandex-next-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.yandex-next-card svg {
+  flex: 0 0 auto;
+}
+
+.yandex-next-card div {
+  display: grid;
+  gap: 6px;
+}
+
+.yandex-next-card strong {
+  line-height: 1.35;
+}
+
+.yandex-week-list {
+  display: grid;
+  gap: 18px;
+}
+
+.yandex-week-card {
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.yandex-week-heading {
+  display: flex;
+  min-height: 94px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+}
+
+.yandex-week-heading span {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.yandex-week-heading h2 {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+}
+
+.yandex-week-heading > strong {
+  display: grid;
+  min-width: 66px;
+  min-height: 42px;
+  place-items: center;
+  border: 1px solid rgba(107, 245, 176, 0.22);
+  border-radius: 13px;
+  color: var(--accent);
+  background: rgba(107, 245, 176, 0.05);
+}
+
+.yandex-day-list {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid var(--line);
+  background: var(--line);
+}
+
+.yandex-day {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 20px;
+  padding: 22px 24px;
+  background: #0b1915;
+}
+
+.yandex-day.complete {
+  background: rgba(12, 31, 24, 0.98);
+}
+
+.yandex-day-marker {
+  display: grid;
+  min-height: 82px;
+  align-content: center;
+  justify-items: center;
+  align-self: start;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: #08130f;
+}
+
+.yandex-day-marker span,
+.yandex-day-marker small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.yandex-day-marker strong {
+  color: var(--accent);
+  font-size: 1.45rem;
+}
+
+.yandex-day.complete .yandex-day-marker {
+  border-color: rgba(107, 245, 176, 0.32);
+  background: rgba(107, 245, 176, 0.07);
+}
+
+.yandex-day-content {
+  min-width: 0;
+}
+
+.yandex-day-content > h3 {
+  margin: 2px 0 15px;
+  font-size: 1.1rem;
+}
+
+.yandex-task-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.yandex-task {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 14px;
+  background: #08130f;
+  transition: 150ms ease;
+}
+
+.yandex-task:hover {
+  border-color: var(--line-strong);
+  border-left-color: var(--accent);
+}
+
+.yandex-task.kind-practice {
+  border-left-color: var(--orange);
+}
+
+.yandex-task.kind-ai {
+  border-left-color: #b79cff;
+}
+
+.yandex-task.kind-review {
+  border-left-color: #71847d;
+}
+
+.yandex-task.complete {
+  border-color: rgba(107, 245, 176, 0.2);
+  color: #8db8a6;
+  background: rgba(107, 245, 176, 0.05);
+}
+
+.yandex-task-toggle {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+  padding: 14px;
+  color: inherit;
+  text-align: left;
+}
+
+.yandex-check {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  color: transparent;
+  background: #091712;
+}
+
+.yandex-task.complete .yandex-check {
+  border-color: var(--accent);
+  color: #07110f;
+  background: var(--accent);
+}
+
+.yandex-task-copy {
+  min-width: 0;
+}
+
+.yandex-task-copy small,
+.yandex-task-copy strong {
+  display: block;
+}
+
+.yandex-task-copy small {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.yandex-task-copy strong {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.yandex-task-copy p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.yandex-task.complete .yandex-task-copy p {
+  color: #769b8c;
+}
+
+.yandex-task .resource-links.compact {
+  border-top: 1px solid var(--line);
+  margin: 0;
+  padding: 7px 10px 10px 51px;
+}
+
 .resource-links.compact {
   gap: 4px;
   margin: -2px 0 0;
@@ -1440,7 +1725,7 @@ p {
     bottom: calc(10px + env(safe-area-inset-bottom));
     left: 10px;
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     border: 1px solid var(--line-strong);
     border-radius: 18px;
     padding: 7px;
@@ -1537,6 +1822,25 @@ p {
 
   .plan-day {
     grid-template-columns: 1fr;
+  }
+
+  .yandex-overview,
+  .yandex-task-list {
+    grid-template-columns: 1fr;
+  }
+
+  .yandex-day {
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px 16px;
+  }
+
+  .yandex-day-marker {
+    min-height: 74px;
+  }
+
+  .yandex-task .resource-links.compact {
+    padding-left: 48px;
   }
 
   .filter-bar {

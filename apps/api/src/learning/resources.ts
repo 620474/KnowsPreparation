@@ -52,6 +52,7 @@ interface WeekResourcePlan {
 export const RESOURCE_CATALOG_VERIFIED_AT = "2026-08-04";
 export const AI_RESOURCE_CATALOG_VERIFIED_AT = "2026-08-06";
 export const PRINCIPLES_RESOURCE_CATALOG_VERIFIED_AT = "2026-08-06";
+export const YANDEX_SPRINT_RESOURCE_CATALOG_VERIFIED_AT = "2026-08-09";
 
 const RESOURCE_LANGUAGES = new Set<ResourceLanguage>(["ru", "en"]);
 const RESOURCE_KINDS = new Set<ResourceKind>([

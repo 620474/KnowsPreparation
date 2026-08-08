@@ -24,6 +24,7 @@ import { QuestionsView } from "./views/QuestionsView";
 import { ResourcesView } from "./views/ResourcesView";
 import { SettingsView } from "./views/SettingsView";
 import { TodayView } from "./views/TodayView";
+import { YandexSprintView } from "./views/YandexSprintView";
 
 const BOOTSTRAP_KEY = ["bootstrap"] as const;
 type MutationContext = { previous?: BootstrapData };
@@ -33,7 +34,7 @@ type QuestionMutationVariables = { questionId: string; progress: QuestionProgres
 export default function App() {
   const queryClient = useQueryClient();
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
-  const [activeView, setActiveView] = useState<AppView>("today");
+  const [activeView, setActiveView] = useState<AppView>("yandex");
   const [syncError, setSyncError] = useState("");
 
   useEffect(() => {
@@ -232,6 +233,9 @@ export default function App() {
         </Alert>
       ) : null}
       {activeView === "today" ? <TodayView data={data} onUpdateTask={updateTask} /> : null}
+      {activeView === "yandex" ? (
+        <YandexSprintView data={data} onUpdateTask={updateTask} />
+      ) : null}
       {activeView === "plan" ? <PlanView data={data} onUpdateTask={updateTask} /> : null}
       {activeView === "resources" ? <ResourcesView data={data} /> : null}
       {activeView === "questions" ? (

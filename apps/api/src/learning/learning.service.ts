@@ -10,6 +10,7 @@ import {
   TASK_IDS,
 } from "./curriculum";
 import { RESOURCES } from "./resources";
+import { YANDEX_SPRINT, YANDEX_TASK_IDS } from "./yandex-sprint";
 import {
   CreateAlgorithmDto,
   UpdateQuestionDto,
@@ -67,6 +68,7 @@ export class LearningService {
         bufferWeeks: settings.bufferWeeks,
       },
       curriculum: CURRICULUM,
+      yandexSprint: YANDEX_SPRINT,
       resources: RESOURCES,
       questions: QUESTION_BANK,
       algorithmPatterns: ALGORITHM_PATTERNS,
@@ -113,7 +115,7 @@ export class LearningService {
   }
 
   async updateTask(taskId: string, dto: UpdateTaskDto) {
-    if (!TASK_IDS.has(taskId)) {
+    if (!TASK_IDS.has(taskId) && !YANDEX_TASK_IDS.has(taskId)) {
       throw new NotFoundException("Задание не найдено");
     }
 

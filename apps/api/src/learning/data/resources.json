@@ -2609,26 +2609,66 @@
   {
     "id": "yandex-frontend-interview",
     "title": "Как мы нанимаем фронтенд-разработчиков",
-    "url": "https://yandex.ru/jobs/pages/frontend-interview",
+    "url": "https://yandex.ru/jobs/interview/frontend",
     "provider": "Яндекс (официально)",
     "language": "ru",
     "kind": "reference",
     "estimatedMinutes": 20,
     "level": "intermediate",
-    "publishedYear": 2024,
+    "publishedYear": 2026,
     "status": "current",
     "paywall": false,
     "registrationRequired": false,
     "description": "Секции Платформа, Проверка навыков, Архитектура, Финалы; правила и советы.",
     "learningGoal": "Понимать формат интервью Яндекса и готовиться под него.",
     "whySelected": "Официальная страница найма.",
-    "verifiedAt": "2026-08-04",
+    "verifiedAt": "2026-08-09",
+    "priority": "must",
+    "practicalTask": "Провести две пробные секции по 60 минут с демонстрацией браузера и без сторонней помощи.",
+    "interviewQuestions": [
+      "Какие темы проверяют на секции Фронтенд-платформа?",
+      "Как должен выглядеть процесс решения алгоритмической задачи?"
+    ],
     "topics": [
       "Interview"
     ],
     "tags": [
       "Собеседования",
       "Яндекс"
+    ]
+  },
+  {
+    "id": "yandex-coderun-frontend-2026",
+    "title": "CodeRun: Собеседования // Фронтенд",
+    "url": "https://coderun.yandex.ru/selections/frontend-interview-2026",
+    "provider": "Яндекс CodeRun",
+    "language": "ru",
+    "kind": "practice",
+    "estimatedMinutes": 45,
+    "level": "intermediate",
+    "publishedYear": 2026,
+    "status": "current",
+    "paywall": false,
+    "registrationRequired": true,
+    "description": "Официальная подборка из восьми задач, приближенных к frontend-собеседованиям Яндекса.",
+    "learningGoal": "Тренировать JS-платформу и решение задач в формате, близком к интервью.",
+    "whySelected": "Подборка прямо рекомендована на официальной странице найма frontend-разработчиков Яндекса.",
+    "verifiedAt": "2026-08-09",
+    "priority": "must",
+    "practicalTask": "Решать задачи под таймер, проговаривая подход, Big-O и граничные тесты до отправки решения.",
+    "interviewQuestions": [
+      "Какую сложность имеет решение по времени и памяти?",
+      "Какие крайние случаи необходимо проверить?"
+    ],
+    "topics": [
+      "JavaScript",
+      "Algorithms",
+      "Interview"
+    ],
+    "tags": [
+      "Собеседования",
+      "Яндекс",
+      "CodeRun"
     ]
   },
   {
