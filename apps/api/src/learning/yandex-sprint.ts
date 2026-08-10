@@ -1,9 +1,10 @@
-import type { StudyBlock, StudyBlockKind, StudyDay } from "./curriculum";
+import type { StudyBlock, StudyBlockKind, StudyDay, StudyExercise } from "./curriculum";
 
 interface SprintBlockDefinition {
   title: string;
   description: string;
   resourceIds: string[];
+  exercise?: StudyExercise;
 }
 
 interface SprintDayDefinition {
@@ -181,7 +182,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Запрос с повтором",
       description: "Реши задачу из официальной подборки и отдельно разбери количество попыток, ошибки и асинхронные границы.",
-      resourceIds: ["yandex-coderun-frontend-2026", "js-promise-api"],
+      resourceIds: ["coderun-fetch-with-retry", "js-promise-api"],
     },
     ai: {
       title: "Получить план реализации",
@@ -199,7 +200,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Разбиение строк",
       description: "Реализуй разбор строки по разделителю без скрытых допущений и протестируй пустые части и крайние разделители.",
-      resourceIds: ["yandex-coderun-frontend-2026", "yandex-algorithms"],
+      resourceIds: ["coderun-split-words-by-separator", "yandex-algorithms"],
     },
     ai: {
       title: "Реализовать один шаг",
@@ -217,7 +218,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Объект счётчика",
       description: "Реализуй требуемый объект, проверь состояние и контекст методов, затем предложи альтернативный API.",
-      resourceIds: ["yandex-coderun-frontend-2026", "js-this"],
+      resourceIds: ["coderun-counter-object", "js-this"],
     },
     ai: {
       title: "Проверить тесты и diff",
@@ -235,7 +236,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Сложение промисов",
       description: "Реши официальную задачу, сравни последовательное и параллельное решение и оцени время выполнения.",
-      resourceIds: ["yandex-coderun-frontend-2026", "js-promise-api"],
+      resourceIds: ["coderun-promise-sum", "js-promise-api"],
     },
     ai: {
       title: "Провести AI code review",
@@ -266,7 +267,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Мемоизация",
       description: "Реши задачу, выбери ключ кеша, обсуди удержание памяти и поведение для разных аргументов.",
-      resourceIds: ["yandex-coderun-frontend-2026", "js-memory-mdn"],
+      resourceIds: ["coderun-memoize", "js-memory-mdn"],
     },
     ai: {
       title: "Сформулировать большое задание",
@@ -284,7 +285,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Максимальное значение строки",
       description: "Реши сложную задачу по этапам: примеры, brute force, оптимизация, доказательство и тестирование.",
-      resourceIds: ["yandex-coderun-frontend-2026", "yandex-algorithms"],
+      resourceIds: ["coderun-max-string-value", "yandex-algorithms"],
     },
     ai: {
       title: "Explore и plan большой задачи",
@@ -302,7 +303,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Авиабилеты",
       description: "Построй решение сложной задачи, явно зафиксируй модель данных и проверяй сложность после каждого улучшения.",
-      resourceIds: ["yandex-coderun-frontend-2026", "hello-algo"],
+      resourceIds: ["coderun-airline-tickets", "hello-algo"],
     },
     ai: {
       title: "Реализация с coding agent",
@@ -320,7 +321,7 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     algorithms: {
       title: "CodeRun: Полифил replaceAll",
       description: "Реализуй задачу из подборки, перечисли ограничения решения и проверь повторяющиеся и пустые совпадения.",
-      resourceIds: ["yandex-coderun-frontend-2026", "learn-js"],
+      resourceIds: ["coderun-replace-all-polyfill", "learn-js"],
     },
     ai: {
       title: "Тесты и исправление AI-кода",
@@ -379,12 +380,204 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
   },
 ];
 
+const SPRINT_EXERCISES: StudyExercise[] = [
+  {
+    statement: "Реализуй функцию, которая возвращает самый частый элемент массива. Если несколько элементов встречаются одинаково часто, верни тот, который встретился раньше. Для пустого массива верни null.",
+    signature: "findMostFrequent(numbers: number[]): number | null",
+    constraints: ["0 ≤ numbers.length ≤ 100 000", "Элементы — целые числа", "Не изменяй исходный массив"],
+    examples: [
+      { input: "[1, 2, 2, 3, 3, 3]", output: "3" },
+      { input: "[4, 4, 2, 2]", output: "4", explanation: "Частоты равны, но 4 встретилась раньше." },
+      { input: "[]", output: "null" },
+    ],
+  },
+  {
+    statement: "Выполни две функции: первая строит частотный словарь слов, вторая возвращает индекс первого неповторяющегося символа строки или -1.",
+    signature: "countWords(words: string[]): Record<string, number>\nfirstUniqueChar(text: string): number",
+    constraints: ["Сравнение чувствительно к регистру", "Не сортируй входные данные", "Обоснуй сложность обеих функций"],
+    examples: [
+      { input: "countWords(['js', 'react', 'js'])", output: "{ js: 2, react: 1 }" },
+      { input: "firstUniqueChar('aabbcdde')", output: "4", explanation: "Первый уникальный символ — c." },
+    ],
+  },
+  {
+    statement: "Дан массив чисел и целевая сумма. Верни индексы двух разных элементов, сумма которых равна target. Гарантируется ровно одно решение.",
+    signature: "twoSum(numbers: number[], target: number): [number, number]",
+    constraints: ["2 ≤ numbers.length ≤ 100 000", "Нельзя использовать один элемент дважды", "Сначала опиши полный перебор, затем оптимизацию"],
+    examples: [
+      { input: "numbers = [2, 7, 11, 15], target = 9", output: "[0, 1]" },
+      { input: "numbers = [3, 2, 4], target = 6", output: "[1, 2]" },
+    ],
+  },
+  {
+    statement: "Сгруппируй строки-анаграммы. Порядок групп и строк внутри групп не важен.",
+    signature: "groupAnagrams(words: string[]): string[][]",
+    constraints: ["Все слова состоят из строчных латинских букв", "Суммарная длина строк ≤ 100 000", "Сравни два способа построения ключа"],
+    examples: [
+      { input: "['eat', 'tea', 'tan', 'ate', 'nat', 'bat']", output: "[['eat', 'tea', 'ate'], ['tan', 'nat'], ['bat']]" },
+      { input: "['']", output: "[['']]" },
+    ],
+  },
+  {
+    statement: "В отсортированном по возрастанию массиве найди индексы двух разных элементов с суммой target. Дополнительная память должна быть O(1). Если пары нет, верни [-1, -1].",
+    signature: "findSortedPair(numbers: number[], target: number): [number, number]",
+    constraints: ["Массив уже отсортирован", "0 ≤ numbers.length ≤ 100 000", "Индексы нумеруются с нуля"],
+    examples: [
+      { input: "numbers = [1, 2, 4, 6, 10], target = 8", output: "[1, 3]" },
+      { input: "numbers = [1, 2, 3], target = 10", output: "[-1, -1]" },
+    ],
+  },
+  {
+    statement: "Верни длину самой длинной подстроки без повторяющихся символов.",
+    signature: "longestUniqueSubstring(text: string): number",
+    constraints: ["0 ≤ text.length ≤ 100 000", "Учитывай пробелы и регистр", "Подстрока должна быть непрерывной"],
+    examples: [
+      { input: "'abcabcbb'", output: "3", explanation: "Например, abc." },
+      { input: "'bbbbb'", output: "1" },
+      { input: "''", output: "0" },
+    ],
+  },
+  {
+    statement: "Верни k самых частых слов. Слова с большей частотой идут раньше; при равной частоте раньше идёт лексикографически меньшее слово.",
+    signature: "topKFrequentWords(words: string[], k: number): string[]",
+    constraints: ["1 ≤ words.length ≤ 100 000", "1 ≤ k ≤ числу уникальных слов", "Сначала проговори решение, затем пиши код"],
+    examples: [
+      { input: "words = ['i', 'love', 'js', 'i', 'love', 'code'], k = 2", output: "['i', 'love']" },
+      { input: "words = ['b', 'a', 'c', 'b', 'a'], k = 2", output: "['a', 'b']" },
+    ],
+  },
+  {
+    statement: "Реализуй счётчик недавних запросов. Метод ping(t) добавляет запрос в момент t и возвращает число запросов за интервал [t - 3000, t].",
+    signature: "class RecentCounter { ping(timestamp: number): number }",
+    constraints: ["Временные метки приходят строго по возрастанию", "1 ≤ timestamp ≤ 1 000 000 000", "До 100 000 вызовов"],
+    examples: [
+      { input: "ping(1), ping(100), ping(3001), ping(3002)", output: "1, 2, 3, 3" },
+    ],
+  },
+  {
+    statement: "Проверь корректность скобочной последовательности из символов (), [] и {}. Каждая закрывающая скобка должна соответствовать последней незакрытой.",
+    signature: "isValidBrackets(text: string): boolean",
+    constraints: ["0 ≤ text.length ≤ 100 000", "Строка содержит только скобки", "Пустая строка считается корректной"],
+    examples: [
+      { input: "'()[]{}'", output: "true" },
+      { input: "'([)]'", output: "false" },
+      { input: "'{[]}'", output: "true" },
+    ],
+  },
+  {
+    statement: "Реализуй обёртку над асинхронным запросом. При ошибке она повторяет вызов не более retries раз и после последней неудачи выбрасывает последнюю ошибку.",
+    signature: "fetchWithRetry<T>(request: () => Promise<T>, retries: number): Promise<T>",
+    constraints: ["retries — число повторных попыток после первого вызова", "Не запускай попытки параллельно", "Успешный результат сразу завершает функцию"],
+    examples: [
+      { input: "request падает дважды и успешно завершается, retries = 2", output: "Успешный результат после 3 вызовов" },
+      { input: "request всегда падает, retries = 1", output: "Последняя ошибка после 2 вызовов" },
+    ],
+  },
+  {
+    statement: "Раздели каждую строку массива по заданному разделителю и верни плоский массив непустых частей, сохраняя исходный порядок.",
+    signature: "splitWordsBySeparator(words: string[], separator: string): string[]",
+    constraints: ["separator — непустая строка", "Пустые части результата нужно удалить", "Не изменяй входной массив"],
+    examples: [
+      { input: "words = ['one.two', 'three.four'], separator = '.'", output: "['one', 'two', 'three', 'four']" },
+      { input: "words = ['$easy$', '$problem$'], separator = '$'", output: "['easy', 'problem']" },
+    ],
+  },
+  {
+    statement: "Создай объект-счётчик с методами increment, decrement и reset. Метод reset возвращает значение к начальному, а текущее значение доступно через getValue.",
+    signature: "createCounter(initialValue: number): { increment(): number; decrement(): number; reset(): number; getValue(): number }",
+    constraints: ["Каждый изменяющий метод возвращает новое значение", "Экземпляры не должны делить состояние", "Методы должны работать после передачи в отдельную переменную"],
+    examples: [
+      { input: "counter = createCounter(5); increment(); increment(); decrement(); reset()", output: "6, 7, 6, 5" },
+    ],
+  },
+  {
+    statement: "Даны два промиса с числами. Верни промис их суммы. Оба исходных промиса должны начать ожидаться одновременно; при отклонении любого верни отклонённый промис.",
+    signature: "promiseSum(first: Promise<number>, second: Promise<number>): Promise<number>",
+    constraints: ["Не извлекай значения вне промисной цепочки", "Не скрывай ошибки", "Объясни разницу последовательного и параллельного ожидания"],
+    examples: [
+      { input: "Promise.resolve(2), Promise.resolve(3)", output: "Promise, выполняющийся со значением 5" },
+      { input: "Promise.reject(new Error('fail')), Promise.resolve(3)", output: "Отклонённый Promise с ошибкой fail" },
+    ],
+  },
+  {
+    statement: "Найди минимальную подстроку source, содержащую все символы target с учётом их количества. Если такой подстроки нет, верни пустую строку.",
+    signature: "minWindow(source: string, target: string): string",
+    constraints: ["1 ≤ source.length ≤ 100 000", "1 ≤ target.length ≤ source.length", "Регистр символов имеет значение"],
+    examples: [
+      { input: "source = 'ADOBECODEBANC', target = 'ABC'", output: "'BANC'" },
+      { input: "source = 'a', target = 'aa'", output: "''" },
+    ],
+  },
+  {
+    statement: "Реализуй memoize для функции с произвольным числом примитивных аргументов. Повторный вызов с теми же аргументами должен вернуть сохранённый результат без вызова исходной функции.",
+    signature: "memoize<T extends (...args: unknown[]) => unknown>(fn: T): T",
+    constraints: ["Аргументы: string, number, boolean, null или undefined", "Сохраняй значение this", "Различай типы аргументов"],
+    examples: [
+      { input: "memoizedAdd(2, 3), memoizedAdd(2, 3)", output: "5, 5; исходная функция вызвана один раз" },
+    ],
+  },
+  {
+    statement: "Для каждой строки вычисли значение: если она состоит только из цифр — числовое значение, иначе её длину. Верни максимальное значение среди всех строк.",
+    signature: "maximumStringValue(values: string[]): number",
+    constraints: ["1 ≤ values.length ≤ 100 000", "Строки непустые", "Числовые строки помещаются в безопасный диапазон Number"],
+    examples: [
+      { input: "['alic3', 'bob', '3', '4', '00000']", output: "5" },
+      { input: "['1', '01', '001', '0001']", output: "1" },
+    ],
+  },
+  {
+    statement: "Даны билеты [откуда, куда], образующие один непрерывный маршрут без ветвлений. Восстанови порядок городов от начального до конечного.",
+    signature: "restoreRoute(tickets: Array<[string, string]>): string[]",
+    constraints: ["Каждый билет используется ровно один раз", "Начальный город не встречается в поле куда", "1 ≤ tickets.length ≤ 100 000"],
+    examples: [
+      { input: "[['Москва', 'Париж'], ['Берлин', 'Москва'], ['Париж', 'Лондон']]", output: "['Берлин', 'Москва', 'Париж', 'Лондон']" },
+    ],
+  },
+  {
+    statement: "Реализуй упрощённый полифил replaceAll: замени в строке все непересекающиеся вхождения search на replacement и верни новую строку.",
+    signature: "replaceAll(source: string, search: string, replacement: string): string",
+    constraints: ["search — непустая строка", "Не используй String.prototype.replaceAll", "Учитывай специальные символы как обычный текст"],
+    examples: [
+      { input: "source = 'foo.bar.foo', search = 'foo', replacement = 'x'", output: "'x.bar.x'" },
+      { input: "source = 'aaaa', search = 'aa', replacement = 'b'", output: "'bb'" },
+    ],
+  },
+  {
+    statement: "Реши две задачи: (1) слей два отсортированных массива в один; (2) найди индекс target в отсортированном массиве бинарным поиском или верни -1.",
+    signature: "mergeSorted(first: number[], second: number[]): number[]\nbinarySearch(numbers: number[], target: number): number",
+    constraints: ["Не используй sort", "Оба массива отсортированы по возрастанию", "Для binarySearch требуется O(log n) времени"],
+    examples: [
+      { input: "mergeSorted([1, 3, 5], [2, 4, 6])", output: "[1, 2, 3, 4, 5, 6]" },
+      { input: "binarySearch([1, 3, 5, 7], 5)", output: "2" },
+    ],
+  },
+  {
+    statement: "Даны интервалы встреч [start, end). Верни минимальное количество переговорных, необходимое для проведения всех встреч без конфликтов.",
+    signature: "minMeetingRooms(intervals: Array<[number, number]>): number",
+    constraints: ["0 ≤ intervals.length ≤ 100 000", "start < end", "Встреча, заканчивающаяся в t, не конфликтует с начинающейся в t"],
+    examples: [
+      { input: "[[0, 30], [5, 10], [15, 20]]", output: "2" },
+      { input: "[[7, 10], [10, 12]]", output: "1" },
+    ],
+  },
+  {
+    statement: "Верни длину самой длинной последовательности последовательных целых чисел в неотсортированном массиве. Требуемая средняя сложность — O(n).",
+    signature: "longestConsecutive(numbers: number[]): number",
+    constraints: ["0 ≤ numbers.length ≤ 100 000", "Элементы могут повторяться", "Не изменяй исходный массив"],
+    examples: [
+      { input: "[100, 4, 200, 1, 3, 2]", output: "4", explanation: "Последовательность: 1, 2, 3, 4." },
+      { input: "[0, 3, 7, 2, 5, 8, 4, 6, 0, 1]", output: "9" },
+    ],
+  },
+];
+
 const createBlock = (
   dayId: string,
   idSuffix: string,
   kind: StudyBlockKind,
   minutes: number,
   definition: SprintBlockDefinition,
+  exercise = definition.exercise,
 ): StudyBlock => ({
   id: `${dayId}-${idSuffix}`,
   kind,
@@ -392,6 +585,7 @@ const createBlock = (
   description: definition.description,
   minutes,
   resourceIds: [...definition.resourceIds],
+  exercise,
 });
 
 export const YANDEX_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => {
@@ -400,7 +594,7 @@ export const YANDEX_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => 
   const blocks: StudyBlock[] = definition.ai
     ? [
         createBlock(dayId, "platform", "theory", 40, definition.platform),
-        createBlock(dayId, "algorithms", "practice", 50, definition.algorithms),
+        createBlock(dayId, "algorithms", "practice", 50, definition.algorithms, SPRINT_EXERCISES[index]),
         createBlock(dayId, "ai", "ai", 20, definition.ai),
         {
           id: `${dayId}-review`,
@@ -413,7 +607,7 @@ export const YANDEX_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => 
       ]
     : [
         createBlock(dayId, "platform", "theory", 60, definition.platform),
-        createBlock(dayId, "algorithms", "practice", 60, definition.algorithms),
+        createBlock(dayId, "algorithms", "practice", 60, definition.algorithms, SPRINT_EXERCISES[index]),
       ];
 
   return {

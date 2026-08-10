@@ -48,6 +48,14 @@ describe("curriculum", () => {
           expect(block.resourceIds).toEqual([]);
           continue;
         }
+
+        if (block.kind === "practice") {
+          expect(block.exercise?.statement).toBeTruthy();
+          expect(block.exercise?.signature).toBeTruthy();
+          expect(block.exercise?.constraints.length).toBeGreaterThan(0);
+          expect(block.exercise?.examples.length).toBeGreaterThan(0);
+        }
+
         expect(block.resourceIds.length).toBeGreaterThan(0);
         for (const resourceId of block.resourceIds) {
           expect(RESOURCE_IDS.has(resourceId)).toBe(true);
@@ -56,6 +64,21 @@ describe("curriculum", () => {
     }
 
     expect(RESOURCE_IDS.has("yandex-coderun-frontend-2026")).toBe(true);
+  });
+
+  it("links directly to every official CodeRun frontend task", () => {
+    const directCodeRunResources = RESOURCES.filter((resource) =>
+      resource.id.startsWith("coderun-"),
+    );
+
+    expect(directCodeRunResources).toHaveLength(8);
+    expect(
+      directCodeRunResources.every((resource) =>
+        resource.url.startsWith(
+          "https://coderun.yandex.ru/selections/frontend-interview-2026/problems/",
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("includes verified Yandex sprint resources", () => {

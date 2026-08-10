@@ -1189,6 +1189,93 @@ p {
   color: #769b8c;
 }
 
+.yandex-exercise {
+  border-top: 1px solid var(--line);
+  color: var(--text);
+}
+
+.yandex-exercise summary {
+  cursor: pointer;
+  padding: 11px 14px 11px 51px;
+  color: var(--orange);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  list-style-position: inside;
+  text-transform: uppercase;
+}
+
+.yandex-exercise[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.yandex-exercise-content {
+  display: grid;
+  gap: 14px;
+  padding: 14px 14px 16px 51px;
+}
+
+.yandex-exercise-content > p,
+.yandex-exercise-section p {
+  margin: 0;
+  color: #bed0c8;
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.yandex-exercise-section {
+  display: grid;
+  gap: 7px;
+}
+
+.yandex-exercise-section > span {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.yandex-exercise pre {
+  overflow-x: auto;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 9px 10px;
+  color: #dff4ea;
+  background: #06100c;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.69rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.yandex-exercise ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: #9db2a9;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.yandex-examples {
+  display: grid;
+  gap: 8px;
+}
+
+.yandex-example {
+  display: grid;
+  gap: 5px;
+}
+
+.yandex-example small {
+  color: var(--accent);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
 .yandex-task .resource-links.compact {
   border-top: 1px solid var(--line);
   margin: 0;
@@ -1840,6 +1927,11 @@ p {
   }
 
   .yandex-task .resource-links.compact {
+    padding-left: 48px;
+  }
+
+  .yandex-exercise summary,
+  .yandex-exercise-content {
     padding-left: 48px;
   }
 

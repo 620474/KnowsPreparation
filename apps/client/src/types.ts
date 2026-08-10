@@ -45,6 +45,19 @@ export interface LearningResource {
   interviewQuestions?: string[];
 }
 
+export interface StudyExerciseExample {
+  input: string;
+  output: string;
+  explanation?: string;
+}
+
+export interface StudyExercise {
+  statement: string;
+  signature?: string;
+  constraints: string[];
+  examples: StudyExerciseExample[];
+}
+
 export interface StudyBlock {
   id: string;
   kind: StudyBlockKind;
@@ -52,6 +65,7 @@ export interface StudyBlock {
   description: string;
   minutes: number;
   resourceIds: string[];
+  exercise?: StudyExercise;
 }
 
 export interface StudyDay {

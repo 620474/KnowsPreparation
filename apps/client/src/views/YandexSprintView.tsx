@@ -145,6 +145,40 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
                                     <p>{block.description}</p>
                                   </span>
                                 </UnstyledButton>
+                                {block.exercise ? (
+                                  <details className="yandex-exercise">
+                                    <summary>Условие задачи</summary>
+                                    <div className="yandex-exercise-content">
+                                      <p>{block.exercise.statement}</p>
+                                      {block.exercise.signature ? (
+                                        <div className="yandex-exercise-section">
+                                          <span>Сигнатура</span>
+                                          <pre>{block.exercise.signature}</pre>
+                                        </div>
+                                      ) : null}
+                                      <div className="yandex-exercise-section">
+                                        <span>Ограничения</span>
+                                        <ul>
+                                          {block.exercise.constraints.map((constraint) => (
+                                            <li key={constraint}>{constraint}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                      <div className="yandex-exercise-section">
+                                        <span>Примеры</span>
+                                        <div className="yandex-examples">
+                                          {block.exercise.examples.map((example, exampleIndex) => (
+                                            <div className="yandex-example" key={`${example.input}-${exampleIndex}`}>
+                                              <small>Пример {exampleIndex + 1}</small>
+                                              <pre>Вход: {example.input}{"\n"}Выход: {example.output}</pre>
+                                              {example.explanation ? <p>{example.explanation}</p> : null}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </details>
+                                ) : null}
                                 <ResourceLinks
                                   compact
                                   resourceIds={block.resourceIds}
