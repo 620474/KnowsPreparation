@@ -13,6 +13,12 @@ export class TaskProgress {
 
   @Prop({ required: true, default: "" })
   note!: string;
+
+  @Prop({ required: true, default: "" })
+  customTask!: string;
+
+  @Prop({ required: true, default: "" })
+  solution!: string;
 }
 
 export const TaskProgressSchema = SchemaFactory.createForClass(TaskProgress);

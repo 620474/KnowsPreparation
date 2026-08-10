@@ -21,6 +21,7 @@ import { AlgorithmEntry } from "./schemas/algorithm-entry.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
+import { buildTaskProgressUpdate } from "./task-progress";
 
 @Injectable()
 export class LearningService {
@@ -76,7 +77,12 @@ export class LearningService {
         tasks: Object.fromEntries(
           tasks.map((task) => [
             task.taskId,
-            { completed: task.completed, note: task.note ?? "" },
+            {
+              completed: task.completed,
+              note: task.note ?? "",
+              customTask: task.customTask ?? "",
+              solution: task.solution ?? "",
+            },
           ]),
         ),
         questions: Object.fromEntries(
@@ -122,14 +128,20 @@ export class LearningService {
     const task = await this.taskModel
       .findOneAndUpdate(
         { taskId },
-        { $set: { completed: dto.completed, note: dto.note ?? "" } },
-        { upsert: true, returnDocument: "after", lean: true },
+        { $set: buildTaskProgressUpdate(dto) },
+        { upsert: true, returnDocument: "after", lean: true, setDefaultsOnInsert: true },
       )
       .exec();
     if (!task) {
       throw new InternalServerErrorException("Не удалось сохранить задание");
     }
-    return { taskId: task.taskId, completed: task.completed, note: task.note };
+    return {
+      taskId: task.taskId,
+      completed: task.completed,
+      note: task.note ?? "",
+      customTask: task.customTask ?? "",
+      solution: task.solution ?? "",
+    };
   }
 
   async updateQuestion(questionId: string, dto: UpdateQuestionDto) {

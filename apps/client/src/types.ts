@@ -94,7 +94,15 @@ export interface InterviewQuestion {
 export interface TaskProgress {
   completed: boolean;
   note: string;
+  customTask: string;
+  solution: string;
 }
+
+export type TaskProgressPatch = Partial<TaskProgress>;
+export type TaskUpdateHandler = (
+  taskId: string,
+  progress: TaskProgressPatch,
+) => Promise<boolean>;
 
 export interface QuestionProgress {
   status: QuestionStatus;

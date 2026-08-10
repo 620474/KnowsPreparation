@@ -20,13 +20,24 @@ export class UpdateSettingsDto {
 }
 
 export class UpdateTaskDto {
+  @IsOptional()
   @IsBoolean()
-  completed!: boolean;
+  completed?: boolean;
 
   @IsOptional()
   @IsString()
   @MaxLength(2000)
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  customTask?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50000)
+  solution?: string;
 }
 
 export class UpdateQuestionDto {

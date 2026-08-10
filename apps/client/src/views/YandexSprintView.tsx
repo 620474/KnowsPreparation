@@ -2,11 +2,12 @@ import { Progress, UnstyledButton } from "@mantine/core";
 import { Check, Clock3, ListChecks, Target } from "lucide-react";
 
 import { ResourceLinks } from "../components/ResourceLinks";
-import type { BootstrapData, StudyBlockKind, TaskProgress } from "../types";
+import { TaskWorkspace } from "../components/TaskWorkspace";
+import type { BootstrapData, StudyBlockKind, TaskUpdateHandler } from "../types";
 
 interface YandexSprintViewProps {
   data: BootstrapData;
-  onUpdateTask: (taskId: string, progress: TaskProgress) => void;
+  onUpdateTask: TaskUpdateHandler;
 }
 
 const WEEK_TITLES = [
@@ -113,9 +114,12 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
                         <h3>{day.title}</h3>
                         <div className="yandex-task-list">
                           {day.blocks.map((block) => {
-                            const task = data.progress.tasks[block.id] ?? {
+                            const task = {
                               completed: false,
                               note: "",
+                              customTask: "",
+                              solution: "",
+                              ...data.progress.tasks[block.id],
                             };
 
                             return (
@@ -130,12 +134,9 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
                                 <UnstyledButton
                                   className="yandex-task-toggle"
                                   type="button"
-                                  onClick={() =>
-                                    onUpdateTask(block.id, {
-                                      ...task,
-                                      completed: !task.completed,
-                                    })
-                                  }
+                                  onClick={() => void onUpdateTask(block.id, {
+                                    completed: !task.completed,
+                                  })}
                                   aria-pressed={task.completed}
                                 >
                                   <span className="yandex-check"><Check size={16} /></span>
@@ -184,6 +185,15 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
                                   resourceIds={block.resourceIds}
                                   resources={data.resources}
                                 />
+                                {block.kind === "practice" || block.kind === "ai" ? (
+                                  <TaskWorkspace
+                                    includeCustomTask={block.kind === "ai"}
+                                    onUpdateTask={onUpdateTask}
+                                    progress={task}
+                                    taskId={block.id}
+                                    taskTitle={block.title}
+                                  />
+                                ) : null}
                               </div>
                             );
                           })}

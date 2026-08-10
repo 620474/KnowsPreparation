@@ -3,12 +3,13 @@ import { ActionIcon, Textarea } from "@mantine/core";
 import { Check, Clock3, Flame, Target, Trophy } from "lucide-react";
 
 import { ResourceLinks } from "../components/ResourceLinks";
+import { TaskWorkspace } from "../components/TaskWorkspace";
 import { getDateForOffset, getDayForOffset, getStudyPosition, getWeekForDay } from "../lib/date";
-import type { BootstrapData, TaskProgress } from "../types";
+import type { BootstrapData, TaskUpdateHandler } from "../types";
 
 interface TodayViewProps {
   data: BootstrapData;
-  onUpdateTask: (taskId: string, progress: TaskProgress) => void;
+  onUpdateTask: TaskUpdateHandler;
 }
 
 const kindLabels = {
@@ -81,7 +82,13 @@ export function TodayView({ data, onUpdateTask }: TodayViewProps) {
 
         <div className="task-grid">
           {day.blocks.map((block, index) => {
-            const progress = data.progress.tasks[block.id] ?? { completed: false, note: "" };
+            const progress = {
+              completed: false,
+              note: "",
+              customTask: "",
+              solution: "",
+              ...data.progress.tasks[block.id],
+            };
             return (
               <article className={progress.completed ? "task-card complete" : "task-card"} key={block.id}>
                 <div className="task-number">0{index + 1}</div>
@@ -93,6 +100,15 @@ export function TodayView({ data, onUpdateTask }: TodayViewProps) {
                   <h3>{block.title}</h3>
                   <p>{block.description}</p>
                   <ResourceLinks resourceIds={block.resourceIds} resources={data.resources} />
+                  {block.kind === "practice" || block.kind === "ai" ? (
+                    <TaskWorkspace
+                      includeCustomTask={block.kind === "ai"}
+                      onUpdateTask={onUpdateTask}
+                      progress={progress}
+                      taskId={block.id}
+                      taskTitle={block.title}
+                    />
+                  ) : null}
                   <Textarea
                     className="task-note"
                     aria-label={`Заметка: ${block.title}`}
@@ -100,7 +116,7 @@ export function TodayView({ data, onUpdateTask }: TodayViewProps) {
                     placeholder="Короткая заметка или сложность…"
                     minRows={2}
                     onBlur={(event) =>
-                      onUpdateTask(block.id, { ...progress, note: event.target.value })
+                      void onUpdateTask(block.id, { note: event.target.value })
                     }
                   />
                 </div>
@@ -112,9 +128,7 @@ export function TodayView({ data, onUpdateTask }: TodayViewProps) {
                   size={42}
                   aria-label={progress.completed ? "Вернуть задание" : "Завершить задание"}
                   aria-pressed={progress.completed}
-                  onClick={() =>
-                    onUpdateTask(block.id, { ...progress, completed: !progress.completed })
-                  }
+                  onClick={() => void onUpdateTask(block.id, { completed: !progress.completed })}
                 >
                   <Check size={20} />
                 </ActionIcon>

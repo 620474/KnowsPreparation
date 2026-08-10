@@ -4,6 +4,7 @@ import type {
   Difficulty,
   QuestionProgress,
   TaskProgress,
+  TaskProgressPatch,
 } from "./types";
 
 const API_URL_KEY = "prep-api-url";
@@ -80,7 +81,7 @@ export const learningApi = {
       method: "PATCH",
       body: JSON.stringify({ startDate }),
     }),
-  updateTask: (taskId: string, progress: TaskProgress) =>
+  updateTask: (taskId: string, progress: TaskProgressPatch) =>
     request<TaskProgress & { taskId: string }>(`/learning/tasks/${taskId}`, {
       method: "PUT",
       body: JSON.stringify(progress),

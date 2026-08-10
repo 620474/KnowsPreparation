@@ -1276,6 +1276,109 @@ p {
   font-weight: 800;
 }
 
+.task-workspace {
+  overflow: hidden;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(3, 12, 9, 0.48);
+}
+
+.task-workspace summary {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  list-style-position: inside;
+  text-transform: uppercase;
+}
+
+.task-workspace summary small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.task-workspace[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.task-workspace-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.task-workspace-field .mantine-Textarea-label {
+  margin-bottom: 6px;
+  color: #c8ddd4;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.task-workspace-field .mantine-Textarea-input {
+  border-color: var(--line-strong);
+  color: #dff4ea;
+  background: #050e0b;
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.task-workspace-field .mantine-Textarea-input:focus {
+  border-color: var(--accent);
+}
+
+.solution-editor .mantine-Textarea-input {
+  tab-size: 2;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.task-workspace-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.task-workspace-actions .primary-button {
+  min-height: 36px;
+  padding-inline: 14px;
+  font-size: 0.72rem;
+}
+
+.save-success,
+.save-error {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.save-success {
+  color: var(--accent);
+}
+
+.save-error {
+  color: #ff8f8f;
+}
+
+.yandex-task .task-workspace {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.yandex-task .task-workspace summary,
+.yandex-task .task-workspace-form {
+  padding-left: 51px;
+}
+
 .yandex-task .resource-links.compact {
   border-top: 1px solid var(--line);
   margin: 0;
@@ -1931,8 +2034,19 @@ p {
   }
 
   .yandex-exercise summary,
-  .yandex-exercise-content {
+  .yandex-exercise-content,
+  .yandex-task .task-workspace summary,
+  .yandex-task .task-workspace-form {
     padding-left: 48px;
+  }
+
+  .task-workspace-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .task-workspace-actions .primary-button {
+    width: 100%;
   }
 
   .filter-bar {

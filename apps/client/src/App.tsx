@@ -17,6 +17,7 @@ import type {
   BootstrapData,
   QuestionProgress,
   TaskProgress,
+  TaskProgressPatch,
 } from "./types";
 import { AlgorithmsView } from "./views/AlgorithmsView";
 import { PlanView } from "./views/PlanView";
@@ -28,7 +29,7 @@ import { YandexSprintView } from "./views/YandexSprintView";
 
 const BOOTSTRAP_KEY = ["bootstrap"] as const;
 type MutationContext = { previous?: BootstrapData };
-type TaskMutationVariables = { taskId: string; progress: TaskProgress };
+type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
 type QuestionMutationVariables = { questionId: string; progress: QuestionProgress };
 
 export default function App() {
@@ -68,7 +69,17 @@ export default function App() {
               ...current,
               progress: {
                 ...current.progress,
-                tasks: { ...current.progress.tasks, [taskId]: progress },
+                tasks: {
+                  ...current.progress.tasks,
+                  [taskId]: {
+                    completed: false,
+                    note: "",
+                    customTask: "",
+                    solution: "",
+                    ...current.progress.tasks[taskId],
+                    ...progress,
+                  },
+                },
               },
             }
           : current,
@@ -204,9 +215,14 @@ export default function App() {
   const position = getStudyPosition(data.settings.startDate);
   const safeWeek = Math.min(Math.max(position.weekNumber, 1), data.curriculum.length);
   const weekLabel = `Неделя ${safeWeek} из ${data.curriculum.length}`;
-  const updateTask = (taskId: string, progress: TaskProgress) => {
+  const updateTask = async (taskId: string, progress: TaskProgressPatch) => {
     setSyncError("");
-    taskMutation.mutate({ taskId, progress });
+    try {
+      await taskMutation.mutateAsync({ taskId, progress });
+      return true;
+    } catch {
+      return false;
+    }
   };
   const updateQuestion = (questionId: string, progress: QuestionProgress) => {
     setSyncError("");

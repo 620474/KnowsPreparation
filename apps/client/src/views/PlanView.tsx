@@ -3,11 +3,11 @@ import { Check, ChevronDown, Clock3 } from "lucide-react";
 
 import { ResourceLinks } from "../components/ResourceLinks";
 import { getStudyPosition } from "../lib/date";
-import type { BootstrapData, TaskProgress } from "../types";
+import type { BootstrapData, TaskUpdateHandler } from "../types";
 
 interface PlanViewProps {
   data: BootstrapData;
-  onUpdateTask: (taskId: string, progress: TaskProgress) => void;
+  onUpdateTask: TaskUpdateHandler;
 }
 
 export function PlanView({ data, onUpdateTask }: PlanViewProps) {
@@ -59,7 +59,7 @@ export function PlanView({ data, onUpdateTask }: PlanViewProps) {
                     </div>
                     <div className="plan-blocks">
                       {day.blocks.map((block) => {
-                        const task = data.progress.tasks[block.id] ?? { completed: false, note: "" };
+                        const task = data.progress.tasks[block.id] ?? { completed: false };
                         return (
                           <div
                             className={task.completed ? "plan-block complete" : "plan-block"}
@@ -68,9 +68,9 @@ export function PlanView({ data, onUpdateTask }: PlanViewProps) {
                             <UnstyledButton
                               className="plan-block-toggle"
                               type="button"
-                              onClick={() =>
-                                onUpdateTask(block.id, { ...task, completed: !task.completed })
-                              }
+                              onClick={() => void onUpdateTask(block.id, {
+                                completed: !task.completed,
+                              })}
                               aria-pressed={task.completed}
                             >
                               <span className="small-check"><Check size={14} /></span>
