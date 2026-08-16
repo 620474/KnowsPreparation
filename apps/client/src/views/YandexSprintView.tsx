@@ -1,12 +1,30 @@
-import { Progress, UnstyledButton } from "@mantine/core";
-import { Check, Clock3, ListChecks, Target } from "lucide-react";
+import { Alert, Button, Progress, UnstyledButton } from "@mantine/core";
+import {
+  BookOpenText,
+  Check,
+  CircleAlert,
+  Clock3,
+  ListChecks,
+  MessageCircle,
+  RefreshCw,
+  Target,
+} from "lucide-react";
 
+import { AiLessonContent } from "../components/AiLessonContent";
 import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
-import type { BootstrapData, StudyBlockKind, TaskUpdateHandler } from "../types";
+import type {
+  AiLessonQuestionContext,
+  BootstrapData,
+  StudyBlockKind,
+  TaskUpdateHandler,
+} from "../types";
 
 interface YandexSprintViewProps {
   data: BootstrapData;
+  generatingLessonId: string | null;
+  onGenerateLesson: (blockId: string) => void;
+  onOpenChat: (blockId: string, context?: AiLessonQuestionContext) => void;
   onUpdateTask: TaskUpdateHandler;
 }
 
@@ -23,7 +41,13 @@ const BLOCK_LABELS: Record<StudyBlockKind, string> = {
   review: "Разбор",
 };
 
-export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) {
+export function YandexSprintView({
+  data,
+  generatingLessonId,
+  onGenerateLesson,
+  onOpenChat,
+  onUpdateTask,
+}: YandexSprintViewProps) {
   const sprintDays = data.yandexSprint ?? [];
   const allBlocks = sprintDays.flatMap((day) => day.blocks);
   const completedBlocks = allBlocks.filter(
@@ -56,6 +80,13 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
           <span>блоков готово</span>
         </div>
       </header>
+
+      {!data.ai.enabled ? (
+        <Alert color="orange" icon={<CircleAlert size={18} />} variant="light">
+          AI-разборы выключены. Добавь <code>OPENAI_API_KEY</code> в Runtime variables API
+          на Northflank и перезапусти deployment.
+        </Alert>
+      ) : null}
 
       <section className="yandex-overview">
         <div className="yandex-progress-card">
@@ -121,6 +152,9 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
                               solution: "",
                               ...data.progress.tasks[block.id],
                             };
+                            const lesson = data.ai.yandexLessons[block.id];
+                            const isGenerating = generatingLessonId === block.id;
+                            const supportsAiLesson = block.kind !== "review";
 
                             return (
                               <div
@@ -146,6 +180,38 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
                                     <p>{block.description}</p>
                                   </span>
                                 </UnstyledButton>
+                                {supportsAiLesson ? (
+                                  <div className="yandex-ai-actions">
+                                    <Button
+                                      className={lesson ? "secondary-button" : "primary-button"}
+                                      type="button"
+                                      variant={lesson ? "default" : "filled"}
+                                      leftSection={
+                                        lesson
+                                          ? <RefreshCw size={16} />
+                                          : <BookOpenText size={16} />
+                                      }
+                                      loading={isGenerating}
+                                      disabled={
+                                        !data.ai.enabled ||
+                                        (generatingLessonId !== null && !isGenerating)
+                                      }
+                                      onClick={() => onGenerateLesson(block.id)}
+                                    >
+                                      {lesson ? "Обновить разбор" : "Написать разбор"}
+                                    </Button>
+                                    <Button
+                                      className="secondary-button"
+                                      type="button"
+                                      variant="default"
+                                      leftSection={<MessageCircle size={16} />}
+                                      disabled={!data.ai.enabled}
+                                      onClick={() => onOpenChat(block.id)}
+                                    >
+                                      Обсудить
+                                    </Button>
+                                  </div>
+                                ) : null}
                                 {block.exercise ? (
                                   <details className="yandex-exercise">
                                     <summary>Условие задачи</summary>
@@ -185,6 +251,12 @@ export function YandexSprintView({ data, onUpdateTask }: YandexSprintViewProps) 
                                   resourceIds={block.resourceIds}
                                   resources={data.resources}
                                 />
+                                {lesson ? (
+                                  <AiLessonContent
+                                    lesson={lesson}
+                                    onAsk={(context) => onOpenChat(block.id, context)}
+                                  />
+                                ) : null}
                                 {block.kind === "practice" || block.kind === "ai" ? (
                                   <TaskWorkspace
                                     includeCustomTask={block.kind === "ai"}

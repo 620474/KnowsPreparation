@@ -1,14 +1,20 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsDateString,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
 } from "class-validator";
 
 import { DIFFICULTIES, type Difficulty } from "../schemas/algorithm-entry.schema";
+import { AI_LEVELS, type AiLevel } from "../schemas/ai-course.schema";
 import {
   QUESTION_STATUSES,
   type QuestionStatus,
@@ -17,6 +23,43 @@ import {
 export class UpdateSettingsDto {
   @IsDateString({ strict: true })
   startDate!: string;
+}
+
+export class GenerateAiCourseDto {
+  @IsString()
+  @MinLength(10)
+  @MaxLength(500)
+  goal!: string;
+
+  @IsIn(AI_LEVELS)
+  level!: AiLevel;
+
+  @IsDateString({ strict: true })
+  deadline!: string;
+
+  @IsInt()
+  @Min(30)
+  @Max(240)
+  dailyMinutes!: number;
+
+  @IsArray()
+  @ArrayMaxSize(8)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
+  targetCompanies!: string[];
+
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  weakTopics!: string[];
+}
+
+export class SendAiChatMessageDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  content!: string;
 }
 
 export class UpdateTaskDto {

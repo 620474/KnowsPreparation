@@ -1,5 +1,7 @@
 export type QuestionStatus = "new" | "learning" | "review" | "mastered";
 export type Difficulty = "easy" | "medium" | "hard";
+export type AiLevel = "middle" | "middle-plus" | "senior";
+export type AiChatScope = "course" | "yandex";
 export type StudyBlockKind = "theory" | "practice" | "ai" | "review";
 export type ResourceLanguage = "ru" | "en";
 export type ResourceKind = "main" | "deep-dive" | "practice" | "reference" | "case-study";
@@ -118,6 +120,99 @@ export interface AlgorithmEntry {
   note: string;
 }
 
+export interface AiCourseProfile {
+  goal: string;
+  level: AiLevel;
+  deadline: string;
+  dailyMinutes: number;
+  targetCompanies: string[];
+  weakTopics: string[];
+}
+
+export interface AiCourseItem {
+  id: string;
+  title: string;
+  objective: string;
+  estimatedMinutes: number;
+  resourceIds: string[];
+}
+
+export interface AiCourse extends AiCourseProfile {
+  title: string;
+  summary: string;
+  version: number;
+  generatedAt: string;
+  items: AiCourseItem[];
+}
+
+export interface AiDiagramNode {
+  id: string;
+  label: string;
+  detail: string;
+  row: number;
+  column: number;
+}
+
+export interface AiDiagramEdge {
+  from: string;
+  to: string;
+  label: string;
+}
+
+export interface AiDiagram {
+  title: string;
+  description: string;
+  nodes: AiDiagramNode[];
+  edges: AiDiagramEdge[];
+}
+
+export interface AiLesson {
+  itemId: string;
+  title: string;
+  goals: string[];
+  explanation: string;
+  codeExamples: Array<{
+    title: string;
+    code: string;
+    explanation: string;
+  }>;
+  diagrams: AiDiagram[];
+  commonMistakes: string[];
+  interviewQuestions: string[];
+  practice: {
+    title: string;
+    statement: string;
+    constraints: string[];
+    examples: Array<{
+      input: string;
+      output: string;
+      explanation: string;
+    }>;
+  };
+  summary: string;
+  resourceIds: string[];
+  version: number;
+  generatedAt: string;
+}
+
+export interface AiChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export interface AiChatHistory {
+  itemId: string;
+  title: string;
+  messages: AiChatMessage[];
+}
+
+export interface AiLessonQuestionContext {
+  section: string;
+  excerpt: string;
+}
+
 export interface BootstrapData {
   settings: {
     startDate: string;
@@ -135,4 +230,11 @@ export interface BootstrapData {
     questions: Record<string, QuestionProgress>;
   };
   algorithms: AlgorithmEntry[];
+  ai: {
+    enabled: boolean;
+    model: string;
+    course: AiCourse | null;
+    lessons: Record<string, AiLesson>;
+    yandexLessons: Record<string, AiLesson>;
+  };
 }

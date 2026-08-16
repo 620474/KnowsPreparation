@@ -48,3 +48,6 @@ next-env.d.ts
 /apps/client/android/local.properties
 /apps/client/android/app/build/
 /apps/client/android/build/
+
+# local APK exports
+/KnowsPreparation-*.apk

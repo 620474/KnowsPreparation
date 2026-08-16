@@ -9,11 +9,13 @@ import {
   LibraryBig,
   ListChecks,
   Settings,
+  Sparkles,
 } from "lucide-react";
 
 export type AppView =
   | "today"
   | "yandex"
+  | "ai-course"
   | "plan"
   | "resources"
   | "questions"
@@ -35,6 +37,7 @@ const navigation: Array<{
 }> = [
   { id: "today", label: "Сегодня", shortLabel: "Сегодня", icon: Gauge },
   { id: "yandex", label: "Яндекс-спринт", shortLabel: "Яндекс", icon: ListChecks },
+  { id: "ai-course", label: "AI-курс", shortLabel: "AI", icon: Sparkles },
   { id: "plan", label: "Учебный план", shortLabel: "План", icon: CalendarDays },
   { id: "resources", label: "Библиотека", shortLabel: "База", icon: LibraryBig },
   { id: "questions", label: "Банк вопросов", shortLabel: "Вопр.", icon: BookOpenCheck },

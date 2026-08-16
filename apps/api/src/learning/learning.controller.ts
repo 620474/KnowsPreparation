@@ -10,10 +10,13 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import {
   CreateAlgorithmDto,
+  GenerateAiCourseDto,
+  SendAiChatMessageDto,
   UpdateQuestionDto,
   UpdateSettingsDto,
   UpdateTaskDto,
@@ -29,6 +32,62 @@ export class LearningController {
   @Header("Cache-Control", "private, no-store")
   bootstrap() {
     return this.learningService.getBootstrap();
+  }
+
+  @Post("ai-course/generate")
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  generateAiCourse(@Body() dto: GenerateAiCourseDto) {
+    return this.learningService.generateAiCourse(dto);
+  }
+
+  @Post("ai-course/lessons/:itemId/generate")
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  generateAiLesson(@Param("itemId") itemId: string) {
+    return this.learningService.generateAiLesson(itemId);
+  }
+
+  @Post("yandex-sprint/blocks/:blockId/lesson/generate")
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  generateYandexLesson(@Param("blockId") blockId: string) {
+    return this.learningService.generateYandexLesson(blockId);
+  }
+
+  @Get("ai-course/lessons/:itemId/chat")
+  getAiChat(@Param("itemId") itemId: string) {
+    return this.learningService.getAiChat(itemId);
+  }
+
+  @Post("ai-course/lessons/:itemId/chat")
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  sendAiChatMessage(
+    @Param("itemId") itemId: string,
+    @Body() dto: SendAiChatMessageDto,
+  ) {
+    return this.learningService.sendAiChatMessage(itemId, dto);
+  }
+
+  @Delete("ai-course/lessons/:itemId/chat")
+  clearAiChat(@Param("itemId") itemId: string) {
+    return this.learningService.clearAiChat(itemId);
+  }
+
+  @Get("yandex-sprint/blocks/:blockId/chat")
+  getYandexAiChat(@Param("blockId") blockId: string) {
+    return this.learningService.getYandexAiChat(blockId);
+  }
+
+  @Post("yandex-sprint/blocks/:blockId/chat")
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  sendYandexAiChatMessage(
+    @Param("blockId") blockId: string,
+    @Body() dto: SendAiChatMessageDto,
+  ) {
+    return this.learningService.sendYandexAiChatMessage(blockId, dto);
+  }
+
+  @Delete("yandex-sprint/blocks/:blockId/chat")
+  clearYandexAiChat(@Param("blockId") blockId: string) {
+    return this.learningService.clearYandexAiChat(blockId);
   }
 
   @Patch("settings")

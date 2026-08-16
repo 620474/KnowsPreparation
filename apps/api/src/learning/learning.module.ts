@@ -2,9 +2,20 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
 import { AuthModule } from "../auth/auth.module";
+import { AiContentService } from "./ai-content.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
+import {
+  AiChatMessage,
+  AiChatMessageSchema,
+} from "./schemas/ai-chat-message.schema";
+import {
+  AiCourse,
+  AiCourseSchema,
+  AiLesson,
+  AiLessonSchema,
+} from "./schemas/ai-course.schema";
 import {
   QuestionProgress,
   QuestionProgressSchema,
@@ -20,9 +31,12 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
       { name: TaskProgress.name, schema: TaskProgressSchema },
       { name: QuestionProgress.name, schema: QuestionProgressSchema },
       { name: AlgorithmEntry.name, schema: AlgorithmEntrySchema },
+      { name: AiCourse.name, schema: AiCourseSchema },
+      { name: AiLesson.name, schema: AiLessonSchema },
+      { name: AiChatMessage.name, schema: AiChatMessageSchema },
     ]),
   ],
   controllers: [LearningController],
-  providers: [LearningService],
+  providers: [AiContentService, LearningService],
 })
 export class LearningModule {}

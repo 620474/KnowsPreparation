@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Loader } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -10,16 +10,23 @@ import {
   UNAUTHORIZED_EVENT,
 } from "./api";
 import { AppShell, type AppView } from "./components/AppShell";
+import { AiChatWidget } from "./components/AiChatWidget";
 import { LoginScreen } from "./components/LoginScreen";
+import { buildAiChatDraft } from "./lib/ai-chat-draft";
 import { getStudyPosition } from "./lib/date";
 import type {
   AlgorithmEntry,
+  AiCourse,
+  AiCourseProfile,
+  AiLesson,
+  AiLessonQuestionContext,
   BootstrapData,
   QuestionProgress,
   TaskProgress,
   TaskProgressPatch,
 } from "./types";
 import { AlgorithmsView } from "./views/AlgorithmsView";
+import { AiCourseView } from "./views/AiCourseView";
 import { PlanView } from "./views/PlanView";
 import { QuestionsView } from "./views/QuestionsView";
 import { ResourcesView } from "./views/ResourcesView";
@@ -37,6 +44,14 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
   const [activeView, setActiveView] = useState<AppView>("yandex");
   const [syncError, setSyncError] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatItemId, setChatItemId] = useState<string | null>(null);
+  const [chatDraftRequest, setChatDraftRequest] = useState<{
+    id: number;
+    content: string;
+  } | null>(null);
+  const chatRequestIdRef = useRef(0);
+  const readingScrollRef = useRef(0);
 
   useEffect(() => {
     const handleUnauthorized = () => setAuthenticated(false);
@@ -90,6 +105,60 @@ export default function App() {
       if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
       setSyncError(error instanceof Error ? error.message : "Не удалось сохранить задание");
     },
+  });
+
+  const generateAiCourseMutation = useMutation<AiCourse, Error, AiCourseProfile>({
+    mutationFn: learningApi.generateAiCourse,
+    onSuccess: (course) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current
+          ? { ...current, ai: { ...current.ai, course, lessons: {} } }
+          : current,
+      );
+      queryClient.removeQueries({ queryKey: ["ai-chat", "course"] });
+      setChatItemId(null);
+      setChatOpen(false);
+    },
+    onError: (error) => setSyncError(error.message),
+  });
+
+  const generateAiLessonMutation = useMutation<AiLesson, Error, string>({
+    mutationFn: learningApi.generateAiLesson,
+    onSuccess: (lesson) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current
+          ? {
+              ...current,
+              ai: {
+                ...current.ai,
+                lessons: { ...current.ai.lessons, [lesson.itemId]: lesson },
+              },
+            }
+          : current,
+      );
+    },
+    onError: (error) => setSyncError(error.message),
+  });
+
+  const generateYandexLessonMutation = useMutation<AiLesson, Error, string>({
+    mutationFn: learningApi.generateYandexLesson,
+    onSuccess: (lesson) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current
+          ? {
+              ...current,
+              ai: {
+                ...current.ai,
+                yandexLessons: {
+                  ...current.ai.yandexLessons,
+                  [lesson.itemId]: lesson,
+                },
+              },
+            }
+          : current,
+      );
+    },
+    onError: (error) => setSyncError(error.message),
   });
 
   const questionMutation = useMutation<
@@ -212,6 +281,36 @@ export default function App() {
   }
 
   const data = bootstrapQuery.data;
+  const courseChatTopics =
+    data.ai.course?.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      objective: item.objective,
+    })) ?? [];
+  const yandexChatTopics = data.yandexSprint.flatMap((day) =>
+    day.blocks
+      .filter((block) => block.kind !== "review")
+      .map((block) => ({
+        id: block.id,
+        title: block.title,
+        objective: `${day.title}. ${block.description}`,
+      })),
+  );
+  const chatScope = activeView === "yandex" ? "yandex" : "course";
+  const chatTopics =
+    activeView === "yandex"
+      ? yandexChatTopics
+      : activeView === "ai-course"
+        ? courseChatTopics
+        : [];
+  const generatedChatLessons =
+    chatScope === "yandex" ? data.ai.yandexLessons : data.ai.lessons;
+  const fallbackChatItemId =
+    chatTopics.find((item) => generatedChatLessons[item.id])?.id ?? chatTopics[0]?.id ?? null;
+  const activeChatItemId =
+    chatItemId && chatTopics.some((item) => item.id === chatItemId)
+      ? chatItemId
+      : fallbackChatItemId;
   const position = getStudyPosition(data.settings.startDate);
   const safeWeek = Math.min(Math.max(position.weekNumber, 1), data.curriculum.length);
   const weekLabel = `Неделя ${safeWeek} из ${data.curriculum.length}`;
@@ -232,9 +331,35 @@ export default function App() {
     setSyncError("");
     addAlgorithmMutation.mutate(entry);
   };
+  const openChat = (itemId: string | null, context?: AiLessonQuestionContext) => {
+    readingScrollRef.current = window.scrollY;
+    if (itemId) setChatItemId(itemId);
+    if (context) {
+      chatRequestIdRef.current += 1;
+      setChatDraftRequest({
+        id: chatRequestIdRef.current,
+        content: buildAiChatDraft(context),
+      });
+    }
+    setChatOpen(true);
+  };
+  const closeChat = () => {
+    const scrollTop = readingScrollRef.current;
+    setChatOpen(false);
+    window.setTimeout(() => window.scrollTo(0, scrollTop), 250);
+  };
 
   return (
-    <AppShell activeView={activeView} onViewChange={setActiveView} weekLabel={weekLabel}>
+    <AppShell
+      activeView={activeView}
+      onViewChange={(view) => {
+        setActiveView(view);
+        setChatOpen(false);
+        setChatItemId(null);
+        setChatDraftRequest(null);
+      }}
+      weekLabel={weekLabel}
+    >
       {syncError ? (
         <Alert
           className="sync-error"
@@ -250,7 +375,40 @@ export default function App() {
       ) : null}
       {activeView === "today" ? <TodayView data={data} onUpdateTask={updateTask} /> : null}
       {activeView === "yandex" ? (
-        <YandexSprintView data={data} onUpdateTask={updateTask} />
+        <YandexSprintView
+          data={data}
+          generatingLessonId={
+            generateYandexLessonMutation.isPending
+              ? (generateYandexLessonMutation.variables ?? null)
+              : null
+          }
+          onGenerateLesson={(blockId) => {
+            setSyncError("");
+            generateYandexLessonMutation.mutate(blockId);
+          }}
+          onOpenChat={(blockId, context) => openChat(blockId, context)}
+          onUpdateTask={updateTask}
+        />
+      ) : null}
+      {activeView === "ai-course" ? (
+        <AiCourseView
+          data={data}
+          generatingCourse={generateAiCourseMutation.isPending}
+          generatingLessonId={
+            generateAiLessonMutation.isPending
+              ? (generateAiLessonMutation.variables ?? null)
+              : null
+          }
+          onGenerateCourse={(profile) => {
+            setSyncError("");
+            generateAiCourseMutation.mutate(profile);
+          }}
+          onGenerateLesson={(itemId) => {
+            setSyncError("");
+            generateAiLessonMutation.mutate(itemId);
+          }}
+          onOpenChat={(itemId, context) => openChat(itemId, context)}
+        />
       ) : null}
       {activeView === "plan" ? <PlanView data={data} onUpdateTask={updateTask} /> : null}
       {activeView === "resources" ? <ResourcesView data={data} /> : null}
@@ -271,6 +429,18 @@ export default function App() {
           onLogout={logout}
         />
       ) : null}
+      <AiChatWidget
+        key={`ai-chat-${chatDraftRequest?.id ?? 0}`}
+        enabled={data.ai.enabled}
+        scope={chatScope}
+        topics={chatTopics}
+        opened={chatOpen}
+        activeItemId={activeChatItemId}
+        draftRequest={chatDraftRequest}
+        onOpen={() => openChat(activeChatItemId)}
+        onClose={closeChat}
+        onItemChange={setChatItemId}
+      />
     </AppShell>
   );
 }

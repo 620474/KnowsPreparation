@@ -619,6 +619,9 @@ export const YANDEX_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => 
   };
 });
 
+export const YANDEX_SPRINT_AI_KEY = "yandex-sprint";
+export const YANDEX_SPRINT_AI_VERSION = 1;
+
 export const YANDEX_TASK_IDS = new Set(
   YANDEX_SPRINT.flatMap((day) => day.blocks.map((block) => block.id)),
 );

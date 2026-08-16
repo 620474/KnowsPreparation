@@ -1,11 +1,25 @@
+import {
+  normalizeBootstrapData,
+  type BootstrapPayload,
+} from "./lib/bootstrap";
 import type {
   AlgorithmEntry,
-  BootstrapData,
+  AiChatScope,
+  AiCourse,
+  AiCourseProfile,
+  AiChatHistory,
+  AiChatMessage,
+  AiLesson,
   Difficulty,
   QuestionProgress,
   TaskProgress,
   TaskProgressPatch,
 } from "./types";
+
+const getAiChatPath = (scope: AiChatScope, itemId: string) =>
+  scope === "yandex"
+    ? `/learning/yandex-sprint/blocks/${encodeURIComponent(itemId)}/chat`
+    : `/learning/ai-course/lessons/${encodeURIComponent(itemId)}/chat`;
 
 const API_URL_KEY = "prep-api-url";
 const TOKEN_KEY = "prep-auth-token";
@@ -75,7 +89,31 @@ export async function login(apiUrl: string, password: string) {
 }
 
 export const learningApi = {
-  bootstrap: () => request<BootstrapData>("/learning/bootstrap"),
+  bootstrap: () =>
+    request<BootstrapPayload>("/learning/bootstrap").then(normalizeBootstrapData),
+  generateAiCourse: (profile: AiCourseProfile) =>
+    request<AiCourse>("/learning/ai-course/generate", {
+      method: "POST",
+      body: JSON.stringify(profile),
+    }),
+  generateAiLesson: (itemId: string) =>
+    request<AiLesson>(`/learning/ai-course/lessons/${itemId}/generate`, {
+      method: "POST",
+    }),
+  generateYandexLesson: (blockId: string) =>
+    request<AiLesson>(
+      `/learning/yandex-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
+      { method: "POST" },
+    ),
+  getAiChat: (scope: AiChatScope, itemId: string) =>
+    request<AiChatHistory>(getAiChatPath(scope, itemId)),
+  sendAiChatMessage: (scope: AiChatScope, itemId: string, content: string) =>
+    request<{ messages: AiChatMessage[] }>(getAiChatPath(scope, itemId), {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+  clearAiChat: (scope: AiChatScope, itemId: string) =>
+    request<{ deleted: boolean }>(getAiChatPath(scope, itemId), { method: "DELETE" }),
   updateSettings: (startDate: string) =>
     request<{ startDate: string }>("/learning/settings", {
       method: "PATCH",
