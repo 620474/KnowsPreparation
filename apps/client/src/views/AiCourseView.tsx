@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 
 import { ResourceLinks } from "../components/ResourceLinks";
-import { AiLessonContent } from "../components/AiLessonContent";
 import type {
   AiCourseProfile,
   AiLessonQuestionContext,
@@ -33,6 +32,7 @@ interface AiCourseViewProps {
   generatingLessonId: string | null;
   onGenerateCourse: (profile: AiCourseProfile) => void;
   onGenerateLesson: (itemId: string) => void;
+  onOpenLesson: (itemId: string) => void;
   onOpenChat: (itemId: string, context?: AiLessonQuestionContext) => void;
 }
 
@@ -68,6 +68,7 @@ export function AiCourseView({
   generatingLessonId,
   onGenerateCourse,
   onGenerateLesson,
+  onOpenLesson,
   onOpenChat,
 }: AiCourseViewProps) {
   const course = data.ai.course;
@@ -226,15 +227,17 @@ export function AiCourseView({
                     </div>
                     <div className="ai-course-item-actions">
                       <Button
-                        className={lesson ? "secondary-button" : "primary-button"}
+                        className="primary-button"
                         type="button"
-                        variant={lesson ? "default" : "filled"}
-                        leftSection={lesson ? <RefreshCw size={17} /> : <BookOpenText size={17} />}
-                        loading={isGenerating}
-                        disabled={!data.ai.enabled || (generatingLessonId !== null && !isGenerating)}
-                        onClick={() => onGenerateLesson(item.id)}
+                        leftSection={<BookOpenText size={17} />}
+                        loading={!lesson && isGenerating}
+                        disabled={
+                          !lesson &&
+                          (!data.ai.enabled || (generatingLessonId !== null && !isGenerating))
+                        }
+                        onClick={() => lesson ? onOpenLesson(item.id) : onGenerateLesson(item.id)}
                       >
-                        {lesson ? "Обновить урок" : "Написать урок"}
+                        {lesson ? "Открыть урок" : "Написать урок"}
                       </Button>
                       <Button
                         className="secondary-button"
@@ -247,13 +250,6 @@ export function AiCourseView({
                       </Button>
                     </div>
                   </div>
-
-                  {lesson ? (
-                    <AiLessonContent
-                      lesson={lesson}
-                      onAsk={(context) => onOpenChat(item.id, context)}
-                    />
-                  ) : null}
 
                   <div className="ai-course-sources">
                     <strong>Дополнительные источники</strong>

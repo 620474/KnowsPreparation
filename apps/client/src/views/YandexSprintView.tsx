@@ -6,11 +6,9 @@ import {
   Clock3,
   ListChecks,
   MessageCircle,
-  RefreshCw,
   Target,
 } from "lucide-react";
 
-import { AiLessonContent } from "../components/AiLessonContent";
 import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
 import type {
@@ -24,6 +22,7 @@ interface YandexSprintViewProps {
   data: BootstrapData;
   generatingLessonId: string | null;
   onGenerateLesson: (blockId: string) => void;
+  onOpenLesson: (blockId: string) => void;
   onOpenChat: (blockId: string, context?: AiLessonQuestionContext) => void;
   onUpdateTask: TaskUpdateHandler;
 }
@@ -45,6 +44,7 @@ export function YandexSprintView({
   data,
   generatingLessonId,
   onGenerateLesson,
+  onOpenLesson,
   onOpenChat,
   onUpdateTask,
 }: YandexSprintViewProps) {
@@ -183,22 +183,22 @@ export function YandexSprintView({
                                 {supportsAiLesson ? (
                                   <div className="yandex-ai-actions">
                                     <Button
-                                      className={lesson ? "secondary-button" : "primary-button"}
+                                      className="primary-button"
                                       type="button"
-                                      variant={lesson ? "default" : "filled"}
-                                      leftSection={
-                                        lesson
-                                          ? <RefreshCw size={16} />
-                                          : <BookOpenText size={16} />
-                                      }
-                                      loading={isGenerating}
+                                      leftSection={<BookOpenText size={16} />}
+                                      loading={!lesson && isGenerating}
                                       disabled={
-                                        !data.ai.enabled ||
-                                        (generatingLessonId !== null && !isGenerating)
+                                        !lesson &&
+                                        (!data.ai.enabled ||
+                                          (generatingLessonId !== null && !isGenerating))
                                       }
-                                      onClick={() => onGenerateLesson(block.id)}
+                                      onClick={() =>
+                                        lesson
+                                          ? onOpenLesson(block.id)
+                                          : onGenerateLesson(block.id)
+                                      }
                                     >
-                                      {lesson ? "Обновить разбор" : "Написать разбор"}
+                                      {lesson ? "Открыть разбор" : "Написать разбор"}
                                     </Button>
                                     <Button
                                       className="secondary-button"
@@ -251,12 +251,6 @@ export function YandexSprintView({
                                   resourceIds={block.resourceIds}
                                   resources={data.resources}
                                 />
-                                {lesson ? (
-                                  <AiLessonContent
-                                    lesson={lesson}
-                                    onAsk={(context) => onOpenChat(block.id, context)}
-                                  />
-                                ) : null}
                                 {block.kind === "practice" || block.kind === "ai" ? (
                                   <TaskWorkspace
                                     includeCustomTask={block.kind === "ai"}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Code2, MessageCircle } from "lucide-react";
 
 import { AiLessonDiagram } from "./AiLessonDiagram";
+import { LessonMarkdown } from "./LessonMarkdown";
 import type { AiLesson, AiLessonQuestionContext } from "../types";
 
 interface AiLessonContentProps {
@@ -91,7 +92,7 @@ export function AiLessonContent({ lesson, onAsk }: AiLessonContentProps) {
           <h3>Объяснение</h3>
           <AskButton section="Объяснение" excerpt={lesson.explanation} onAsk={onAsk} />
         </div>
-        <p className="ai-lesson-explanation">{lesson.explanation}</p>
+        <LessonMarkdown className="ai-lesson-explanation" content={lesson.explanation} />
       </section>
 
       {diagrams.length > 0 ? (
@@ -182,7 +183,7 @@ export function AiLessonContent({ lesson, onAsk }: AiLessonContentProps) {
           <h3>Короткий итог</h3>
           <AskButton section="Короткий итог" excerpt={lesson.summary} onAsk={onAsk} />
         </div>
-        <p>{lesson.summary}</p>
+        <LessonMarkdown content={lesson.summary} />
       </section>
 
       {selectedContext && onAsk ? (

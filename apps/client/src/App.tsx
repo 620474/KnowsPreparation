@@ -11,11 +11,13 @@ import {
 } from "./api";
 import { AppShell, type AppView } from "./components/AppShell";
 import { AiChatWidget } from "./components/AiChatWidget";
+import { AiLessonReader } from "./components/AiLessonReader";
 import { LoginScreen } from "./components/LoginScreen";
 import { buildAiChatDraft } from "./lib/ai-chat-draft";
 import { getStudyPosition } from "./lib/date";
 import type {
   AlgorithmEntry,
+  AiChatScope,
   AiCourse,
   AiCourseProfile,
   AiLesson,
@@ -38,6 +40,7 @@ const BOOTSTRAP_KEY = ["bootstrap"] as const;
 type MutationContext = { previous?: BootstrapData };
 type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
 type QuestionMutationVariables = { questionId: string; progress: QuestionProgress };
+type LessonReaderTarget = { scope: AiChatScope; itemId: string };
 
 export default function App() {
   const queryClient = useQueryClient();
@@ -46,6 +49,7 @@ export default function App() {
   const [syncError, setSyncError] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatItemId, setChatItemId] = useState<string | null>(null);
+  const [lessonReader, setLessonReader] = useState<LessonReaderTarget | null>(null);
   const [chatDraftRequest, setChatDraftRequest] = useState<{
     id: number;
     content: string;
@@ -58,6 +62,17 @@ export default function App() {
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
+
+  useEffect(() => {
+    if (!lessonReader) return;
+    const marker = `${lessonReader.scope}:${lessonReader.itemId}`;
+    if (window.history.state?.lessonReader !== marker) {
+      window.history.pushState({ ...window.history.state, lessonReader: marker }, "");
+    }
+    const handlePopState = () => setLessonReader(null);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [lessonReader]);
 
   const bootstrapQuery = useQuery({
     queryKey: BOOTSTRAP_KEY,
@@ -118,6 +133,7 @@ export default function App() {
       queryClient.removeQueries({ queryKey: ["ai-chat", "course"] });
       setChatItemId(null);
       setChatOpen(false);
+      setLessonReader(null);
     },
     onError: (error) => setSyncError(error.message),
   });
@@ -136,6 +152,8 @@ export default function App() {
             }
           : current,
       );
+      setChatItemId(lesson.itemId);
+      setLessonReader({ scope: "course", itemId: lesson.itemId });
     },
     onError: (error) => setSyncError(error.message),
   });
@@ -157,6 +175,8 @@ export default function App() {
             }
           : current,
       );
+      setChatItemId(lesson.itemId);
+      setLessonReader({ scope: "yandex", itemId: lesson.itemId });
     },
     onError: (error) => setSyncError(error.message),
   });
@@ -296,9 +316,42 @@ export default function App() {
         objective: `${day.title}. ${block.description}`,
       })),
   );
-  const chatScope = activeView === "yandex" ? "yandex" : "course";
-  const chatTopics =
-    activeView === "yandex"
+  const readerCourseItem =
+    lessonReader?.scope === "course"
+      ? data.ai.course?.items.find((item) => item.id === lessonReader.itemId)
+      : undefined;
+  const readerYandexEntry =
+    lessonReader?.scope === "yandex"
+      ? data.yandexSprint
+          .flatMap((day) => day.blocks.map((block) => ({ day, block })))
+          .find(({ block }) => block.id === lessonReader.itemId)
+      : undefined;
+  const readerLesson = lessonReader
+    ? lessonReader.scope === "yandex"
+      ? data.ai.yandexLessons[lessonReader.itemId]
+      : data.ai.lessons[lessonReader.itemId]
+    : undefined;
+  const readerMetadata = readerCourseItem
+    ? {
+        eyebrow: "Персональный AI-курс",
+        title: readerCourseItem.title,
+        description: readerCourseItem.objective,
+        resourceIds: readerCourseItem.resourceIds,
+      }
+    : readerYandexEntry
+      ? {
+          eyebrow: `Яндекс · день ${readerYandexEntry.day.dayNumber}`,
+          title: readerYandexEntry.block.title,
+          description: readerYandexEntry.block.description,
+          resourceIds: readerYandexEntry.block.resourceIds,
+        }
+      : undefined;
+  const chatScope = lessonReader?.scope ?? (activeView === "yandex" ? "yandex" : "course");
+  const chatTopics = lessonReader
+    ? lessonReader.scope === "yandex"
+      ? yandexChatTopics
+      : courseChatTopics
+    : activeView === "yandex"
       ? yandexChatTopics
       : activeView === "ai-course"
         ? courseChatTopics
@@ -331,6 +384,17 @@ export default function App() {
     setSyncError("");
     addAlgorithmMutation.mutate(entry);
   };
+  const openLessonReader = (scope: AiChatScope, itemId: string) => {
+    setChatItemId(itemId);
+    setLessonReader({ scope, itemId });
+  };
+  const closeLessonReader = () => {
+    if (window.history.state?.lessonReader) {
+      window.history.back();
+      return;
+    }
+    setLessonReader(null);
+  };
   const openChat = (itemId: string | null, context?: AiLessonQuestionContext) => {
     readingScrollRef.current = window.scrollY;
     if (itemId) setChatItemId(itemId);
@@ -357,6 +421,7 @@ export default function App() {
         setChatOpen(false);
         setChatItemId(null);
         setChatDraftRequest(null);
+        setLessonReader(null);
       }}
       weekLabel={weekLabel}
     >
@@ -386,6 +451,7 @@ export default function App() {
             setSyncError("");
             generateYandexLessonMutation.mutate(blockId);
           }}
+          onOpenLesson={(blockId) => openLessonReader("yandex", blockId)}
           onOpenChat={(blockId, context) => openChat(blockId, context)}
           onUpdateTask={updateTask}
         />
@@ -407,6 +473,7 @@ export default function App() {
             setSyncError("");
             generateAiLessonMutation.mutate(itemId);
           }}
+          onOpenLesson={(itemId) => openLessonReader("course", itemId)}
           onOpenChat={(itemId, context) => openChat(itemId, context)}
         />
       ) : null}
@@ -427,6 +494,32 @@ export default function App() {
           data={data}
           onUpdateStartDate={(startDate) => settingsMutation.mutate(startDate)}
           onLogout={logout}
+        />
+      ) : null}
+      {lessonReader && readerLesson && readerMetadata ? (
+        <AiLessonReader
+          description={readerMetadata.description}
+          eyebrow={readerMetadata.eyebrow}
+          isRegenerating={
+            lessonReader.scope === "yandex"
+              ? generateYandexLessonMutation.isPending
+              : generateAiLessonMutation.isPending
+          }
+          lesson={readerLesson}
+          resourceIds={readerMetadata.resourceIds}
+          resources={data.resources}
+          title={readerMetadata.title}
+          onAsk={(context) => openChat(lessonReader.itemId, context)}
+          onBack={closeLessonReader}
+          onOpenChat={() => openChat(lessonReader.itemId)}
+          onRegenerate={() => {
+            setSyncError("");
+            if (lessonReader.scope === "yandex") {
+              generateYandexLessonMutation.mutate(lessonReader.itemId);
+            } else {
+              generateAiLessonMutation.mutate(lessonReader.itemId);
+            }
+          }}
         />
       ) : null}
       <AiChatWidget
