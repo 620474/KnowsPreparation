@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Loader } from "@mantine/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
 import {
@@ -15,7 +15,19 @@ import { AiLessonReader } from "./components/AiLessonReader";
 import { LoginScreen } from "./components/LoginScreen";
 import { buildAiChatDraft } from "./lib/ai-chat-draft";
 import { useOnlineStatus } from "./lib/network";
+import {
+  createOperationId,
+  OFFLINE_MUTATION_ROOT,
+  offlineMutationKeys,
+  type MockAnswerMutationVariables,
+  type QuestionMutationVariables,
+  type QuizMutationVariables,
+  type ReviewMutationVariables,
+  type TaskMutationVariables,
+} from "./lib/offline-mutation-keys";
+import { normalizeQuestionProgress } from "./lib/question-progress";
 import { clearPersistedQueryCache } from "./lib/query-cache";
+import { scheduleQuestionReview } from "./lib/spaced-repetition";
 import {
   formatAppRoute,
   parseAppRoute,
@@ -55,14 +67,6 @@ import { YandexSprintView } from "./views/YandexSprintView";
 
 const BOOTSTRAP_KEY = ["bootstrap"] as const;
 type MutationContext = { previous?: BootstrapData };
-type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
-type QuestionMutationVariables = { questionId: string; progress: QuestionProgress };
-type ReviewMutationVariables = { questionId: string; rating: ReviewRating; note: string };
-type QuizMutationVariables = {
-  scope: AiChatScope;
-  itemId: string;
-  answers: Array<{ questionId: string; selectedOptionIndex: number }>;
-};
 type NavigationMode = "push" | "replace";
 
 const updateMockInterviews = (
@@ -76,9 +80,77 @@ const updateMockInterviews = (
   ].slice(0, 20),
 });
 
+const updateQuizProgress = (
+  current: BootstrapData,
+  scope: AiChatScope,
+  itemId: string,
+  progress: LessonQuizProgress,
+): BootstrapData => ({
+  ...current,
+  ai: {
+    ...current.ai,
+    quizProgress: {
+      ...current.ai.quizProgress,
+      [scope]: {
+        ...current.ai.quizProgress[scope],
+        [itemId]: progress,
+      },
+    },
+  },
+});
+
+const buildOptimisticQuizProgress = (
+  current: BootstrapData,
+  variables: QuizMutationVariables,
+): LessonQuizProgress | null => {
+  const lesson =
+    variables.scope === "course"
+      ? current.ai.lessons[variables.itemId]
+      : variables.scope === "yandex"
+        ? current.ai.yandexLessons[variables.itemId]
+        : current.ai.ozonLessons[variables.itemId];
+  if (!lesson || lesson.quiz.length !== 10) return null;
+  const submitted = new Map(
+    variables.answers.map((answer) => [answer.questionId, answer.selectedOptionIndex]),
+  );
+  if (submitted.size !== lesson.quiz.length) return null;
+  const answers = lesson.quiz.map((question) => {
+    const selectedOptionIndex = submitted.get(question.id);
+    if (selectedOptionIndex === undefined) return null;
+    return {
+      questionId: question.id,
+      selectedOptionIndex,
+      correct: selectedOptionIndex === question.correctOptionIndex,
+      topic: question.topic,
+    };
+  });
+  if (answers.some((answer) => answer === null)) return null;
+  const previous = current.ai.quizProgress[variables.scope][variables.itemId];
+  const previousAttempts = previous?.lessonVersion === lesson.version ? previous.attempts : [];
+  return {
+    itemId: variables.itemId,
+    lessonVersion: lesson.version,
+    attempts: [
+      ...previousAttempts,
+      {
+        score: answers.filter((answer) => answer?.correct).length,
+        answers: answers.filter((answer) => answer !== null),
+        completedAt: new Date().toISOString(),
+      },
+    ],
+  };
+};
+
 export default function App() {
   const queryClient = useQueryClient();
   const online = useOnlineStatus();
+  const queuedOfflineMutationCount = useMutationState({
+    filters: {
+      mutationKey: OFFLINE_MUTATION_ROOT,
+      status: "pending",
+      predicate: (mutation) => mutation.state.isPaused,
+    },
+  }).length;
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
   const [activeView, setActiveView] = useState<AppView>(
     () => parseAppRoute(window.location.hash).view,
@@ -145,6 +217,7 @@ export default function App() {
     TaskMutationVariables,
     MutationContext
   >({
+    mutationKey: offlineMutationKeys.task,
     mutationFn: ({ taskId, progress }) =>
       learningApi.updateTask(taskId, progress),
     onMutate: async ({ taskId, progress }) => {
@@ -294,6 +367,7 @@ export default function App() {
     QuestionMutationVariables,
     MutationContext
   >({
+    mutationKey: offlineMutationKeys.question,
     mutationFn: ({ questionId, progress }) => learningApi.updateQuestion(questionId, progress),
     onMutate: async ({ questionId, progress }) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
@@ -320,10 +394,34 @@ export default function App() {
   const reviewMutation = useMutation<
     QuestionProgress & { questionId: string },
     Error,
-    ReviewMutationVariables
+    ReviewMutationVariables,
+    MutationContext
   >({
-    mutationFn: ({ questionId, rating, note }) =>
-      learningApi.reviewQuestion(questionId, rating, note),
+    mutationKey: offlineMutationKeys.review,
+    mutationFn: ({ questionId, rating, note, operationId }) =>
+      learningApi.reviewQuestion(questionId, rating, note, operationId),
+    onMutate: async ({ questionId, rating, note }) => {
+      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
+      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) => {
+        if (!current) return current;
+        const progress = scheduleQuestionReview(
+          normalizeQuestionProgress(current.progress.questions[questionId]),
+          rating,
+        );
+        return {
+          ...current,
+          progress: {
+            ...current.progress,
+            questions: {
+              ...current.progress.questions,
+              [questionId]: { ...progress, note },
+            },
+          },
+        };
+      });
+      return { previous };
+    },
     onSuccess: ({ questionId, ...progress }) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
         current
@@ -337,32 +435,42 @@ export default function App() {
           : current,
       );
     },
-    onError: (error) => setSyncError(error.message),
+    onError: (error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
+      setSyncError(error.message);
+    },
   });
 
-  const quizMutation = useMutation<LessonQuizProgress, Error, QuizMutationVariables>({
-    mutationFn: ({ scope, itemId, answers }) =>
-      learningApi.submitLessonQuiz(scope, itemId, answers),
+  const quizMutation = useMutation<
+    LessonQuizProgress,
+    Error,
+    QuizMutationVariables,
+    MutationContext
+  >({
+    mutationKey: offlineMutationKeys.quiz,
+    mutationFn: ({ scope, itemId, answers, operationId }) =>
+      learningApi.submitLessonQuiz(scope, itemId, answers, operationId),
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
+      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) => {
+        if (!current) return current;
+        const progress = buildOptimisticQuizProgress(current, variables);
+        return progress
+          ? updateQuizProgress(current, variables.scope, variables.itemId, progress)
+          : current;
+      });
+      return { previous };
+    },
     onSuccess: (progress, { scope, itemId }) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current
-          ? {
-              ...current,
-              ai: {
-                ...current.ai,
-                quizProgress: {
-                  ...current.ai.quizProgress,
-                  [scope]: {
-                    ...current.ai.quizProgress[scope],
-                    [itemId]: progress,
-                  },
-                },
-              },
-            }
-          : current,
+        current ? updateQuizProgress(current, scope, itemId, progress) : current,
       );
     },
-    onError: (error) => setSyncError(error.message),
+    onError: (error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
+      setSyncError(error.message);
+    },
   });
 
   const startMockMutation = useMutation<MockInterview, Error>({
@@ -378,16 +486,36 @@ export default function App() {
   const saveMockAnswerMutation = useMutation<
     MockInterview,
     Error,
-    { interviewId: string; questionId: string; content: string }
+    MockAnswerMutationVariables,
+    MutationContext
   >({
+    mutationKey: offlineMutationKeys.mockAnswer,
     mutationFn: ({ interviewId, questionId, content }) =>
       learningApi.updateMockAnswer(interviewId, questionId, content),
+    onMutate: async ({ interviewId, questionId, content }) => {
+      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
+      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) => {
+        if (!current) return current;
+        const interview = current.mockInterviews.find((item) => item.id === interviewId);
+        return interview
+          ? updateMockInterviews(current, {
+              ...interview,
+              answers: { ...interview.answers, [questionId]: content },
+            })
+          : current;
+      });
+      return { previous };
+    },
     onSuccess: (interview) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
         current ? updateMockInterviews(current, interview) : current,
       );
     },
-    onError: (error) => setSyncError(error.message),
+    onError: (error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
+      setSyncError(error.message);
+    },
   });
 
   const completeMockMutation = useMutation<MockInterview, Error, string>({
@@ -400,16 +528,33 @@ export default function App() {
     onError: (error) => setSyncError(error.message),
   });
 
-  const settingsMutation = useMutation<{ startDate: string }, Error, string>({
+  const settingsMutation = useMutation<
+    { startDate: string },
+    Error,
+    string,
+    MutationContext
+  >({
+    mutationKey: offlineMutationKeys.settings,
     mutationFn: learningApi.updateSettings,
+    onMutate: async (startDate) => {
+      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
+      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current ? { ...current, settings: { ...current.settings, startDate } } : current,
+      );
+      navigateToView("today");
+      return { previous };
+    },
     onSuccess: ({ startDate }) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
         current ? { ...current, settings: { ...current.settings, startDate } } : current,
       );
       navigateToView("today");
     },
-    onError: (error) =>
-      setSyncError(error instanceof Error ? error.message : "Не удалось сохранить дату"),
+    onError: (error, _startDate, context) => {
+      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
+      setSyncError(error instanceof Error ? error.message : "Не удалось сохранить дату");
+    },
   });
 
   const addAlgorithmMutation = useMutation<
@@ -427,8 +572,24 @@ export default function App() {
       setSyncError(error instanceof Error ? error.message : "Не удалось добавить задачу"),
   });
 
-  const deleteAlgorithmMutation = useMutation<{ deleted: boolean }, Error, string>({
+  const deleteAlgorithmMutation = useMutation<
+    { deleted: boolean },
+    Error,
+    string,
+    MutationContext
+  >({
+    mutationKey: offlineMutationKeys.deleteAlgorithm,
     mutationFn: learningApi.deleteAlgorithm,
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
+      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current
+          ? { ...current, algorithms: current.algorithms.filter((entry) => entry.id !== id) }
+          : current,
+      );
+      return { previous };
+    },
     onSuccess: (_result, id) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
         current
@@ -436,8 +597,10 @@ export default function App() {
           : current,
       );
     },
-    onError: (error) =>
-      setSyncError(error instanceof Error ? error.message : "Не удалось удалить задачу"),
+    onError: (error, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
+      setSyncError(error instanceof Error ? error.message : "Не удалось удалить задачу");
+    },
   });
 
   function logout() {
@@ -452,6 +615,7 @@ export default function App() {
       <LoginScreen
         onSuccess={() => {
           setAuthenticated(true);
+          void queryClient.resumePausedMutations();
           void queryClient.invalidateQueries({ queryKey: BOOTSTRAP_KEY });
         }}
       />
@@ -597,6 +761,10 @@ export default function App() {
   const weekLabel = `Неделя ${safeWeek} из ${data.curriculum.length}`;
   const updateTask = async (taskId: string, progress: TaskProgressPatch) => {
     setSyncError("");
+    if (!online) {
+      taskMutation.mutate({ taskId, progress });
+      return true;
+    }
     try {
       await taskMutation.mutateAsync({ taskId, progress });
       return true;
@@ -610,8 +778,13 @@ export default function App() {
   };
   const reviewQuestion = async (questionId: string, rating: ReviewRating, note: string) => {
     setSyncError("");
+    const variables = { questionId, rating, note, operationId: createOperationId() };
+    if (!online) {
+      reviewMutation.mutate(variables);
+      return true;
+    }
     try {
-      await reviewMutation.mutateAsync({ questionId, rating, note });
+      await reviewMutation.mutateAsync(variables);
       return true;
     } catch {
       return false;
@@ -623,8 +796,17 @@ export default function App() {
     answers: QuizMutationVariables["answers"],
   ) => {
     setSyncError("");
+    const variables = { scope, itemId, answers, operationId: createOperationId() };
+    if (!online) {
+      const current = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
+      const optimisticProgress = current
+        ? buildOptimisticQuizProgress(current, variables)
+        : null;
+      quizMutation.mutate(variables);
+      return optimisticProgress;
+    }
     try {
-      return await quizMutation.mutateAsync({ scope, itemId, answers });
+      return await quizMutation.mutateAsync(variables);
     } catch {
       return null;
     }
@@ -643,8 +825,19 @@ export default function App() {
     content: string,
   ) => {
     setSyncError("");
+    const variables = { interviewId, questionId, content };
+    if (!online) {
+      const interview = queryClient
+        .getQueryData<BootstrapData>(BOOTSTRAP_KEY)
+        ?.mockInterviews.find((item) => item.id === interviewId);
+      const optimisticInterview = interview
+        ? { ...interview, answers: { ...interview.answers, [questionId]: content } }
+        : null;
+      saveMockAnswerMutation.mutate(variables);
+      return optimisticInterview;
+    }
     try {
-      return await saveMockAnswerMutation.mutateAsync({ interviewId, questionId, content });
+      return await saveMockAnswerMutation.mutateAsync(variables);
     } catch {
       return null;
     }
@@ -728,9 +921,13 @@ export default function App() {
       onViewChange={navigateToView}
       weekLabel={weekLabel}
     >
-      {!online || bootstrapQuery.isError ? (
+      {!online || bootstrapQuery.isError || queuedOfflineMutationCount > 0 ? (
         <Alert className="offline-alert" color="yellow" icon={<WifiOff size={17} />} variant="light">
-          Офлайн-режим: показываю сохранённые данные. Для изменений и AI нужен интернет.
+          {!online
+            ? `Офлайн-режим: изменения сохраняются на устройстве${queuedOfflineMutationCount > 0 ? ` · в очереди ${queuedOfflineMutationCount}` : ""}. AI требует интернет.`
+            : queuedOfflineMutationCount > 0
+              ? `Синхронизирую изменения: ${queuedOfflineMutationCount}`
+              : "Показываю сохранённые данные, пока API недоступен."}
         </Alert>
       ) : null}
       {syncError ? (

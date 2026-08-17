@@ -12,7 +12,7 @@ export class QuestionProgress {
   @Prop({ required: true, unique: true, index: true })
   questionId!: string;
 
-  @Prop({ required: true, enum: QUESTION_STATUSES, default: "new" })
+  @Prop({ type: String, required: true, enum: QUESTION_STATUSES, default: "new" })
   status!: QuestionStatus;
 
   @Prop({ required: true, default: "" })
@@ -41,6 +41,9 @@ export class QuestionProgress {
 
   @Prop({ type: String, enum: REVIEW_RATINGS, default: null })
   lastRating!: ReviewRating | null;
+
+  @Prop({ type: String, default: null })
+  lastReviewOperationId!: string | null;
 }
 
 export const QuestionProgressSchema = SchemaFactory.createForClass(QuestionProgress);

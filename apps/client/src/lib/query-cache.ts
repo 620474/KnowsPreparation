@@ -5,6 +5,8 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 
+import { isOfflineMutationKey } from "./offline-mutation-keys";
+
 const DATABASE_NAME = "frontend-sprint-cache";
 const STORE_NAME = "query-cache";
 const CACHE_KEY = "main";
@@ -65,10 +67,12 @@ export async function restoreQueryCache(queryClient: QueryClient) {
 
 export function subscribeToQueryCache(queryClient: QueryClient) {
   let timeout: number | undefined;
-  return queryClient.getQueryCache().subscribe(() => {
+  const scheduleWrite = () => {
     window.clearTimeout(timeout);
     timeout = window.setTimeout(() => {
       const state = dehydrate(queryClient, {
+        shouldDehydrateMutation: (mutation) =>
+          mutation.state.isPaused && isOfflineMutationKey(mutation.options.mutationKey),
         shouldDehydrateQuery: (query) => {
           const rootKey = query.queryKey[0];
           return Boolean(query.state.data) && (rootKey === "bootstrap" || rootKey === "ai-chat");
@@ -76,7 +80,14 @@ export function subscribeToQueryCache(queryClient: QueryClient) {
       });
       void writeCache({ timestamp: Date.now(), state }).catch(() => undefined);
     }, 300);
-  });
+  };
+  const unsubscribeQueries = queryClient.getQueryCache().subscribe(scheduleWrite);
+  const unsubscribeMutations = queryClient.getMutationCache().subscribe(scheduleWrite);
+  return () => {
+    unsubscribeQueries();
+    unsubscribeMutations();
+    window.clearTimeout(timeout);
+  };
 }
 
 export async function clearPersistedQueryCache() {

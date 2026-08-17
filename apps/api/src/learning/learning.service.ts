@@ -612,20 +612,59 @@ export class LearningService {
     if (!QUESTION_IDS.has(questionId)) {
       throw new NotFoundException("Вопрос не найден");
     }
+    if (dto.operationId) {
+      await this.questionModel
+        .updateOne(
+          { questionId },
+          { $setOnInsert: { questionId } },
+          { upsert: true, setDefaultsOnInsert: true },
+        )
+        .exec();
+    }
     const current = await this.questionModel.findOne({ questionId }).lean().exec();
+    if (dto.operationId && current?.lastReviewOperationId === dto.operationId) {
+      return {
+        questionId: current.questionId,
+        ...this.serializeQuestionProgress(current),
+      };
+    }
     const schedule = scheduleQuestionReview(current ?? {}, dto.rating);
     const question = await this.questionModel
       .findOneAndUpdate(
-        { questionId },
+        {
+          questionId,
+          ...(dto.operationId
+            ? { lastReviewOperationId: { $ne: dto.operationId } }
+            : {}),
+        },
         {
           $set: {
             ...schedule,
             note: dto.note ?? current?.note ?? "",
+            lastReviewOperationId:
+              dto.operationId ?? current?.lastReviewOperationId ?? null,
           },
         },
-        { upsert: true, returnDocument: "after", lean: true, setDefaultsOnInsert: true },
+        {
+          upsert: !dto.operationId,
+          returnDocument: "after",
+          lean: true,
+          setDefaultsOnInsert: true,
+        },
       )
       .exec();
+    if (!question && dto.operationId) {
+      const duplicate = await this.questionModel
+        .findOne({ questionId, lastReviewOperationId: dto.operationId })
+        .lean()
+        .exec();
+      if (duplicate) {
+        return {
+          questionId: duplicate.questionId,
+          ...this.serializeQuestionProgress(duplicate),
+        };
+      }
+    }
     if (!question) {
       throw new InternalServerErrorException("Не удалось сохранить повторение");
     }
@@ -694,13 +733,39 @@ export class LearningService {
       };
     });
     const attempt = {
+      operationId: dto.operationId ?? null,
       score: answers.filter((answer) => answer.correct).length,
       answers,
       completedAt: new Date(),
     };
+    const progressFilter = { courseKey, courseVersion, itemId, lessonVersion: lesson.version };
+    if (dto.operationId) {
+      const existing = await this.aiQuizProgressModel
+        .findOneAndUpdate(
+          progressFilter,
+          { $setOnInsert: progressFilter },
+          { upsert: true, returnDocument: "after", lean: true, setDefaultsOnInsert: true },
+        )
+        .lean()
+        .exec();
+      if (existing?.attempts.some((item) => item.operationId === dto.operationId)) {
+        return this.serializeQuizProgress(existing);
+      }
+      const progress = await this.aiQuizProgressModel
+        .findOneAndUpdate(
+          { ...progressFilter, "attempts.operationId": { $ne: dto.operationId } },
+          { $push: { attempts: attempt } },
+          { returnDocument: "after", lean: true },
+        )
+        .exec();
+      if (progress) return this.serializeQuizProgress(progress);
+      const duplicate = await this.aiQuizProgressModel.findOne(progressFilter).lean().exec();
+      if (duplicate) return this.serializeQuizProgress(duplicate);
+      throw new InternalServerErrorException("Не удалось сохранить тест");
+    }
     const progress = await this.aiQuizProgressModel
       .findOneAndUpdate(
-        { courseKey, courseVersion, itemId, lessonVersion: lesson.version },
+        progressFilter,
         {
           $setOnInsert: { courseKey, courseVersion, itemId, lessonVersion: lesson.version },
           $push: { attempts: attempt },

@@ -1,27 +1,5 @@
-import type {
-  QuestionStatus,
-  ReviewRating,
-} from "./schemas/question-progress.schema";
-
-export interface ReviewScheduleInput {
-  easeFactor?: number;
-  intervalDays?: number;
-  repetitions?: number;
-  reviewCount?: number;
-  lapseCount?: number;
-}
-
-export interface ReviewSchedule {
-  status: QuestionStatus;
-  easeFactor: number;
-  intervalDays: number;
-  repetitions: number;
-  nextReviewAt: Date;
-  lastReviewedAt: Date;
-  reviewCount: number;
-  lapseCount: number;
-  lastRating: ReviewRating;
-}
+import { normalizeQuestionProgress } from "./question-progress";
+import type { QuestionProgress, ReviewRating } from "../types";
 
 const MIN_EASE_FACTOR = 1.3;
 
@@ -32,17 +10,18 @@ const addDays = (date: Date, days: number) => {
 };
 
 export function scheduleQuestionReview(
-  progress: ReviewScheduleInput,
+  progress: QuestionProgress,
   rating: ReviewRating,
   reviewedAt = new Date(),
-): ReviewSchedule {
-  const currentEase = Math.max(MIN_EASE_FACTOR, progress.easeFactor ?? 2.5);
-  const currentInterval = Math.max(0, progress.intervalDays ?? 0);
-  const currentRepetitions = Math.max(0, progress.repetitions ?? 0);
+): QuestionProgress {
+  const current = normalizeQuestionProgress(progress);
+  const currentEase = Math.max(MIN_EASE_FACTOR, current.easeFactor);
+  const currentInterval = Math.max(0, current.intervalDays);
+  const currentRepetitions = Math.max(0, current.repetitions);
   let easeFactor = currentEase;
   let repetitions = currentRepetitions;
   let intervalDays = currentInterval;
-  let lapseCount = Math.max(0, progress.lapseCount ?? 0);
+  let lapseCount = Math.max(0, current.lapseCount);
 
   if (rating === "again") {
     easeFactor = Math.max(MIN_EASE_FACTOR, currentEase - 0.2);
@@ -71,6 +50,7 @@ export function scheduleQuestionReview(
   }
 
   return {
+    ...current,
     status:
       rating === "again" || rating === "hard"
         ? "learning"
@@ -80,9 +60,9 @@ export function scheduleQuestionReview(
     easeFactor,
     intervalDays,
     repetitions,
-    nextReviewAt: addDays(reviewedAt, intervalDays),
-    lastReviewedAt: reviewedAt,
-    reviewCount: Math.max(0, progress.reviewCount ?? 0) + 1,
+    nextReviewAt: addDays(reviewedAt, intervalDays).toISOString(),
+    lastReviewedAt: reviewedAt.toISOString(),
+    reviewCount: Math.max(0, current.reviewCount) + 1,
     lapseCount,
     lastRating: rating,
   };

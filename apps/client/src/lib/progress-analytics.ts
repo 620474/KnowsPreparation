@@ -74,7 +74,7 @@ export function calculateProgressAnalytics(data: BootstrapData, now = new Date()
       .map(([name, value]) => ({
         name,
         ...value,
-        masteryPercent: Math.round((value.mastered / value.total) * 100),
+        masteryPercent: value.total > 0 ? Math.round((value.mastered / value.total) * 100) : 0,
       }))
       .sort((left, right) => right.weakness - left.weakness),
     weakTopics: [...topicWeakness.entries()]

@@ -152,8 +152,8 @@ export function MockInterviewView({
           <Button className="secondary-button" leftSection={<ArrowLeft size={17} />} type="button" variant="default" onClick={() => setInterview(null)}>К новому интервью</Button>
         </header>
         <section className="mock-evaluation-summary">
-          <div><strong>Сильные стороны</strong>{interview.evaluation.strengths.map((item) => <span key={item}>{item}</span>)}</div>
-          <div><strong>Подтянуть</strong>{interview.evaluation.weakTopics.map((item) => <span key={item}>{item}</span>)}</div>
+          <div><strong>Сильные стороны</strong>{(interview.evaluation.strengths ?? []).map((item) => <span key={item}>{item}</span>)}</div>
+          <div><strong>Подтянуть</strong>{(interview.evaluation.weakTopics ?? []).map((item) => <span key={item}>{item}</span>)}</div>
         </section>
         <div className="mock-feedback-list">
           {interview.questions.map((item, questionIndex) => {
@@ -163,7 +163,7 @@ export function MockInterviewView({
                 <span>{questionIndex + 1}. {item.category}</span><h2>{item.prompt}</h2>
                 <p className="mock-answer">{interview.answers[item.id]}</p>
                 <strong>{evaluation?.score ?? 0} / 5</strong><p>{evaluation?.feedback}</p>
-                {evaluation?.missingPoints.length ? <small>Не хватило: {evaluation.missingPoints.join(", ")}</small> : null}
+                {evaluation?.missingPoints?.length ? <small>Не хватило: {evaluation.missingPoints.join(", ")}</small> : null}
               </article>
             );
           })}

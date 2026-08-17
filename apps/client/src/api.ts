@@ -243,19 +243,25 @@ export const learningApi = {
       method: "PUT",
       body: JSON.stringify({ status: progress.status, note: progress.note }),
     }),
-  reviewQuestion: (questionId: string, rating: ReviewRating, note: string) =>
+  reviewQuestion: (
+    questionId: string,
+    rating: ReviewRating,
+    note: string,
+    operationId?: string,
+  ) =>
     request<QuestionProgress & { questionId: string }>(
       `/learning/questions/${questionId}/review`,
-      { method: "POST", body: JSON.stringify({ rating, note }) },
+      { method: "POST", body: JSON.stringify({ rating, note, operationId }) },
     ),
   submitLessonQuiz: (
     scope: AiChatScope,
     itemId: string,
     answers: Array<{ questionId: string; selectedOptionIndex: number }>,
+    operationId?: string,
   ) =>
     request<LessonQuizProgress>(getLessonQuizPath(scope, itemId), {
       method: "POST",
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, operationId }),
     }),
   getCurrentMockInterview: () =>
     request<MockInterview | null>("/learning/mock-interviews/current"),

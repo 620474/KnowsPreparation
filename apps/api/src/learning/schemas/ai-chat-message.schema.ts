@@ -16,7 +16,7 @@ export class AiChatMessage {
   @Prop({ required: true, index: true })
   itemId!: string;
 
-  @Prop({ required: true, enum: AI_CHAT_ROLES })
+  @Prop({ type: String, required: true, enum: AI_CHAT_ROLES })
   role!: AiChatRole;
 
   @Prop({ required: true })

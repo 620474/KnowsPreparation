@@ -106,6 +106,11 @@ export class ReviewQuestionDto {
   @IsString()
   @MaxLength(4000)
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  operationId?: string;
 }
 
 export class LessonQuizAnswerDto {
@@ -127,6 +132,11 @@ export class SubmitLessonQuizDto {
   @ValidateNested({ each: true })
   @Type(() => LessonQuizAnswerDto)
   answers!: LessonQuizAnswerDto[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  operationId?: string;
 }
 
 export class UpdateMockAnswerDto {

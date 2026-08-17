@@ -60,7 +60,12 @@ export type MockInterviewDocument = HydratedDocument<MockInterview>;
 
 @Schema({ timestamps: true, versionKey: false })
 export class MockInterview {
-  @Prop({ required: true, enum: MOCK_INTERVIEW_STATUSES, default: "in_progress" })
+  @Prop({
+    type: String,
+    required: true,
+    enum: MOCK_INTERVIEW_STATUSES,
+    default: "in_progress",
+  })
   status!: MockInterviewStatus;
 
   @Prop({ type: [String], required: true })

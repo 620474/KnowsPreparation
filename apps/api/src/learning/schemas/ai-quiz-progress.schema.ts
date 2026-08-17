@@ -20,6 +20,9 @@ export const AiQuizAnswerSchema = SchemaFactory.createForClass(AiQuizAnswer);
 
 @Schema({ _id: false, versionKey: false })
 export class AiQuizAttempt {
+  @Prop({ type: String, default: null })
+  operationId!: string | null;
+
   @Prop({ required: true, min: 0, max: 10 })
   score!: number;
 

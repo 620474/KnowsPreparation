@@ -40,7 +40,7 @@ export class AiCourse {
   @Prop({ required: true })
   goal!: string;
 
-  @Prop({ required: true, enum: AI_LEVELS })
+  @Prop({ type: String, required: true, enum: AI_LEVELS })
   level!: AiLevel;
 
   @Prop({ required: true })

@@ -13,7 +13,7 @@ export class AlgorithmEntry {
   @Prop({ required: true })
   pattern!: string;
 
-  @Prop({ required: true, enum: DIFFICULTIES })
+  @Prop({ type: String, required: true, enum: DIFFICULTIES })
   difficulty!: Difficulty;
 
   @Prop({ required: true })

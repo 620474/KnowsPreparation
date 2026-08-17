@@ -38,4 +38,15 @@ describe("scheduleQuestionReview", () => {
     expect(result.status).toBe("mastered");
     expect(result.intervalDays).toBeGreaterThanOrEqual(30);
   });
+
+  it("keeps a mature hard question in learning", () => {
+    const result = scheduleQuestionReview(
+      { easeFactor: 2.5, intervalDays: 40, repetitions: 5 },
+      "hard",
+      NOW,
+    );
+
+    expect(result.status).toBe("learning");
+    expect(result.intervalDays).toBe(48);
+  });
 });
