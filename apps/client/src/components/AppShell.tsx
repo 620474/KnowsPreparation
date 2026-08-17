@@ -14,16 +14,7 @@ import {
   Sun,
 } from "lucide-react";
 
-export type AppView =
-  | "today"
-  | "yandex"
-  | "ozon"
-  | "ai-course"
-  | "plan"
-  | "resources"
-  | "questions"
-  | "algorithms"
-  | "settings";
+import type { AppView } from "../lib/app-route";
 
 interface AppShellProps {
   activeView: AppView;

@@ -9,11 +9,19 @@ import {
   learningApi,
   UNAUTHORIZED_EVENT,
 } from "./api";
-import { AppShell, type AppView } from "./components/AppShell";
+import { AppShell } from "./components/AppShell";
 import { AiChatWidget } from "./components/AiChatWidget";
 import { AiLessonReader } from "./components/AiLessonReader";
 import { LoginScreen } from "./components/LoginScreen";
 import { buildAiChatDraft } from "./lib/ai-chat-draft";
+import {
+  formatAppRoute,
+  parseAppRoute,
+  viewForLessonScope,
+  type AppRoute,
+  type AppView,
+  type LessonRouteTarget,
+} from "./lib/app-route";
 import { getStudyPosition } from "./lib/date";
 import type {
   AlgorithmEntry,
@@ -41,16 +49,20 @@ const BOOTSTRAP_KEY = ["bootstrap"] as const;
 type MutationContext = { previous?: BootstrapData };
 type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
 type QuestionMutationVariables = { questionId: string; progress: QuestionProgress };
-type LessonReaderTarget = { scope: AiChatScope; itemId: string };
+type NavigationMode = "push" | "replace";
 
 export default function App() {
   const queryClient = useQueryClient();
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
-  const [activeView, setActiveView] = useState<AppView>("yandex");
+  const [activeView, setActiveView] = useState<AppView>(
+    () => parseAppRoute(window.location.hash).view,
+  );
   const [syncError, setSyncError] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatItemId, setChatItemId] = useState<string | null>(null);
-  const [lessonReader, setLessonReader] = useState<LessonReaderTarget | null>(null);
+  const [lessonReader, setLessonReader] = useState<LessonRouteTarget | null>(
+    () => parseAppRoute(window.location.hash).lessonReader,
+  );
   const [chatDraftRequest, setChatDraftRequest] = useState<{
     id: number;
     content: string;
@@ -65,15 +77,28 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!lessonReader) return;
-    const marker = `${lessonReader.scope}:${lessonReader.itemId}`;
-    if (window.history.state?.lessonReader !== marker) {
-      window.history.pushState({ ...window.history.state, lessonReader: marker }, "");
+    const syncRoute = () => {
+      const route = parseAppRoute(window.location.hash);
+      setActiveView(route.view);
+      setLessonReader(route.lessonReader);
+      setChatOpen(false);
+      setChatItemId(route.lessonReader?.itemId ?? null);
+      setChatDraftRequest(null);
+    };
+
+    const initialRoute = parseAppRoute(window.location.hash);
+    const canonicalHash = formatAppRoute(initialRoute);
+    if (window.location.hash !== canonicalHash) {
+      window.history.replaceState(window.history.state, "", canonicalHash);
     }
-    const handlePopState = () => setLessonReader(null);
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [lessonReader]);
+
+    window.addEventListener("popstate", syncRoute);
+    window.addEventListener("hashchange", syncRoute);
+    return () => {
+      window.removeEventListener("popstate", syncRoute);
+      window.removeEventListener("hashchange", syncRoute);
+    };
+  }, []);
 
   const bootstrapQuery = useQuery({
     queryKey: BOOTSTRAP_KEY,
@@ -134,7 +159,7 @@ export default function App() {
       queryClient.removeQueries({ queryKey: ["ai-chat", "course"] });
       setChatItemId(null);
       setChatOpen(false);
-      setLessonReader(null);
+      navigateToView("ai-course", "replace");
     },
     onError: (error) => setSyncError(error.message),
   });
@@ -153,8 +178,7 @@ export default function App() {
             }
           : current,
       );
-      setChatItemId(lesson.itemId);
-      setLessonReader({ scope: "course", itemId: lesson.itemId });
+      navigateToLesson("course", lesson.itemId);
     },
     onError: (error) => setSyncError(error.message),
   });
@@ -176,8 +200,7 @@ export default function App() {
             }
           : current,
       );
-      setChatItemId(lesson.itemId);
-      setLessonReader({ scope: "yandex", itemId: lesson.itemId });
+      navigateToLesson("yandex", lesson.itemId);
     },
     onError: (error) => setSyncError(error.message),
   });
@@ -199,8 +222,7 @@ export default function App() {
             }
           : current,
       );
-      setChatItemId(lesson.itemId);
-      setLessonReader({ scope: "ozon", itemId: lesson.itemId });
+      navigateToLesson("ozon", lesson.itemId);
     },
     onError: (error) => setSyncError(error.message),
   });
@@ -240,7 +262,7 @@ export default function App() {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
         current ? { ...current, settings: { ...current.settings, startDate } } : current,
       );
-      setActiveView("today");
+      navigateToView("today");
     },
     onError: (error) =>
       setSyncError(error instanceof Error ? error.message : "Не удалось сохранить дату"),
@@ -442,16 +464,48 @@ export default function App() {
     setSyncError("");
     addAlgorithmMutation.mutate(entry);
   };
+  function navigateToRoute(route: AppRoute, mode: NavigationMode = "push") {
+    const lessonMarker = route.lessonReader
+      ? `${route.lessonReader.scope}:${route.lessonReader.itemId}`
+      : undefined;
+    const historyState = { ...(window.history.state ?? {}), lessonReader: lessonMarker };
+    const hash = formatAppRoute(route);
+    const navigationMode = window.location.hash === hash ? "replace" : mode;
+
+    if (navigationMode === "replace") {
+      window.history.replaceState(historyState, "", hash);
+    } else {
+      window.history.pushState(historyState, "", hash);
+    }
+
+    setActiveView(route.view);
+    setLessonReader(route.lessonReader);
+    setChatOpen(false);
+    setChatItemId(route.lessonReader?.itemId ?? null);
+    setChatDraftRequest(null);
+  }
+
+  function navigateToView(view: AppView, mode: NavigationMode = "push") {
+    navigateToRoute({ view, lessonReader: null }, mode);
+  }
+
+  function navigateToLesson(scope: AiChatScope, itemId: string) {
+    navigateToRoute({
+      view: viewForLessonScope(scope),
+      lessonReader: { scope, itemId },
+    });
+  }
+
   const openLessonReader = (scope: AiChatScope, itemId: string) => {
-    setChatItemId(itemId);
-    setLessonReader({ scope, itemId });
+    navigateToLesson(scope, itemId);
   };
   const closeLessonReader = () => {
-    if (window.history.state?.lessonReader) {
+    const marker = lessonReader ? `${lessonReader.scope}:${lessonReader.itemId}` : undefined;
+    if (marker && window.history.state?.lessonReader === marker) {
       window.history.back();
       return;
     }
-    setLessonReader(null);
+    navigateToView(activeView, "replace");
   };
   const openChat = (itemId: string | null, context?: AiLessonQuestionContext) => {
     readingScrollRef.current = window.scrollY;
@@ -474,13 +528,7 @@ export default function App() {
   return (
     <AppShell
       activeView={activeView}
-      onViewChange={(view) => {
-        setActiveView(view);
-        setChatOpen(false);
-        setChatItemId(null);
-        setChatDraftRequest(null);
-        setLessonReader(null);
-      }}
+      onViewChange={navigateToView}
       weekLabel={weekLabel}
     >
       {syncError ? (
@@ -568,7 +616,7 @@ export default function App() {
       {activeView === "settings" ? (
         <SettingsView
           data={data}
-          onOpenOzon={() => setActiveView("ozon")}
+          onOpenOzon={() => navigateToView("ozon")}
           onUpdateStartDate={(startDate) => settingsMutation.mutate(startDate)}
           onLogout={logout}
         />
