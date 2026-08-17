@@ -42,6 +42,6 @@ const run = (command, args, cwd) => {
 };
 
 run("npm", ["run", "android:sync"], repositoryRoot);
-run(process.platform === "win32" ? "gradlew.bat" : "./gradlew", ["assembleDebug"], androidRoot);
+run(process.platform === "win32" ? "gradlew.bat" : "./gradlew", ["assembleRelease"], androidRoot);
 
 process.stdout.write(`Built Android ${version} (${versionCode})\n`);

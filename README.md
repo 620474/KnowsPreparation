@@ -168,6 +168,9 @@ cd apps/client/android
 проверок push в `main` запускает `semantic-release`, создаёт GitHub Release и
 прикладывает APK с именем `KnowsPreparation-vX.Y.Z.apk`. Android `versionName`
 и возрастающий `versionCode` вычисляются из той же SemVer-версии во время сборки.
+Релиз подписывается постоянным ключом из GitHub Secret
+`ANDROID_DEBUG_KEYSTORE_BASE64`; ключ нельзя добавлять в репозиторий или заменять,
+иначе Android не сможет установить новую версию поверх существующей.
 
 - `fix: ...` — patch-релиз: `1.0.0` → `1.0.1`;
 - `feat: ...` — minor-релиз: `1.0.0` → `1.1.0`;
