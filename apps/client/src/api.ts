@@ -11,10 +11,14 @@ import type {
   AiChatMessage,
   AiLesson,
   Difficulty,
+  LessonQuizProgress,
+  MockInterview,
   QuestionProgress,
+  ReviewRating,
   TaskProgress,
   TaskProgressPatch,
 } from "./types";
+import { SseParser } from "./lib/sse";
 
 const getAiChatPath = (scope: AiChatScope, itemId: string) => {
   if (scope === "yandex") {
@@ -24,6 +28,20 @@ const getAiChatPath = (scope: AiChatScope, itemId: string) => {
     return `/learning/ozon-sprint/blocks/${encodeURIComponent(itemId)}/chat`;
   }
   return `/learning/ai-course/lessons/${encodeURIComponent(itemId)}/chat`;
+};
+
+const getLessonGeneratePath = (scope: AiChatScope, itemId: string) => {
+  const encodedId = encodeURIComponent(itemId);
+  if (scope === "yandex") return `/learning/yandex-sprint/blocks/${encodedId}/lesson/generate`;
+  if (scope === "ozon") return `/learning/ozon-sprint/blocks/${encodedId}/lesson/generate`;
+  return `/learning/ai-course/lessons/${encodedId}/generate`;
+};
+
+const getLessonQuizPath = (scope: AiChatScope, itemId: string) => {
+  const encodedId = encodeURIComponent(itemId);
+  if (scope === "yandex") return `/learning/yandex-sprint/blocks/${encodedId}/quiz`;
+  if (scope === "ozon") return `/learning/ozon-sprint/blocks/${encodedId}/quiz`;
+  return `/learning/ai-course/lessons/${encodedId}/quiz`;
 };
 
 const API_URL_KEY = "prep-api-url";
@@ -74,6 +92,73 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function streamRequest<T>(
+  path: string,
+  init: RequestInit,
+  onDelta: (delta: string) => void,
+): Promise<T> {
+  const token = getToken();
+  const response = await fetch(`${getApiUrl()}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init.headers,
+    },
+  });
+  if (response.status === 401) {
+    clearSession();
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { message?: string | string[] } | null;
+    const message = Array.isArray(body?.message) ? body.message.join(", ") : body?.message;
+    throw new Error(message ?? `Ошибка сервера: ${response.status}`);
+  }
+  if (!response.body) throw new Error("Сервер не открыл поток ответа");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const parser = new SseParser();
+  let result: T | undefined;
+  const handleEvents = (events: ReturnType<SseParser["push"]>) => {
+    for (const event of events) {
+      const data: unknown = JSON.parse(event.data);
+      if (
+        event.event === "delta" &&
+        typeof data === "object" &&
+        data !== null &&
+        "delta" in data &&
+        typeof data.delta === "string"
+      ) {
+        onDelta(data.delta);
+      } else if (event.event === "result") {
+        result = data as T;
+      } else if (event.event === "error") {
+        const message =
+          typeof data === "object" &&
+          data !== null &&
+          "message" in data &&
+          typeof data.message === "string"
+            ? data.message
+            : "AI-поток прерван";
+        throw new Error(message);
+      }
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    handleEvents(parser.push(decoder.decode(value, { stream: true })));
+  }
+  handleEvents(parser.push(decoder.decode()));
+  handleEvents(parser.finish());
+  if (result === undefined) throw new Error("Сервер завершил поток без результата");
+  return result;
+}
+
 export async function login(apiUrl: string, password: string) {
   const normalizedUrl = normalizeApiUrl(apiUrl);
   const response = await fetch(`${normalizedUrl}/auth/login`, {
@@ -115,6 +200,14 @@ export const learningApi = {
       `/learning/ozon-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
       { method: "POST" },
     ),
+  generateAiLessonStream: (
+    scope: AiChatScope,
+    itemId: string,
+    onDelta: (delta: string) => void,
+  ) =>
+    streamRequest<AiLesson>(`${getLessonGeneratePath(scope, itemId)}/stream`, {
+      method: "POST",
+    }, onDelta),
   getAiChat: (scope: AiChatScope, itemId: string) =>
     request<AiChatHistory>(getAiChatPath(scope, itemId)),
   sendAiChatMessage: (scope: AiChatScope, itemId: string, content: string) =>
@@ -122,6 +215,17 @@ export const learningApi = {
       method: "POST",
       body: JSON.stringify({ content }),
     }),
+  sendAiChatMessageStream: (
+    scope: AiChatScope,
+    itemId: string,
+    content: string,
+    onDelta: (delta: string) => void,
+  ) =>
+    streamRequest<{ messages: AiChatMessage[] }>(
+      `${getAiChatPath(scope, itemId)}/stream`,
+      { method: "POST", body: JSON.stringify({ content }) },
+      onDelta,
+    ),
   clearAiChat: (scope: AiChatScope, itemId: string) =>
     request<{ deleted: boolean }>(getAiChatPath(scope, itemId), { method: "DELETE" }),
   updateSettings: (startDate: string) =>
@@ -137,8 +241,36 @@ export const learningApi = {
   updateQuestion: (questionId: string, progress: QuestionProgress) =>
     request<QuestionProgress & { questionId: string }>(`/learning/questions/${questionId}`, {
       method: "PUT",
-      body: JSON.stringify(progress),
+      body: JSON.stringify({ status: progress.status, note: progress.note }),
     }),
+  reviewQuestion: (questionId: string, rating: ReviewRating, note: string) =>
+    request<QuestionProgress & { questionId: string }>(
+      `/learning/questions/${questionId}/review`,
+      { method: "POST", body: JSON.stringify({ rating, note }) },
+    ),
+  submitLessonQuiz: (
+    scope: AiChatScope,
+    itemId: string,
+    answers: Array<{ questionId: string; selectedOptionIndex: number }>,
+  ) =>
+    request<LessonQuizProgress>(getLessonQuizPath(scope, itemId), {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    }),
+  getCurrentMockInterview: () =>
+    request<MockInterview | null>("/learning/mock-interviews/current"),
+  startMockInterview: () =>
+    request<MockInterview>("/learning/mock-interviews", { method: "POST" }),
+  updateMockAnswer: (interviewId: string, questionId: string, content: string) =>
+    request<MockInterview>(
+      `/learning/mock-interviews/${encodeURIComponent(interviewId)}/answers/${encodeURIComponent(questionId)}`,
+      { method: "PUT", body: JSON.stringify({ content }) },
+    ),
+  completeMockInterview: (interviewId: string) =>
+    request<MockInterview>(
+      `/learning/mock-interviews/${encodeURIComponent(interviewId)}/complete`,
+      { method: "POST" },
+    ),
   addAlgorithm: (entry: Omit<AlgorithmEntry, "id">) =>
     request<AlgorithmEntry>("/learning/algorithms", {
       method: "POST",

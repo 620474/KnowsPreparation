@@ -2,11 +2,13 @@ import { Button } from "@mantine/core";
 import { ArrowLeft, MessageCircle, RefreshCw } from "lucide-react";
 
 import { AiLessonContent } from "./AiLessonContent";
+import { LessonQuiz } from "./LessonQuiz";
 import { ResourceLinks } from "./ResourceLinks";
 import type {
   AiLesson,
   AiLessonQuestionContext,
   LearningResource,
+  LessonQuizProgress,
 } from "../types";
 
 interface AiLessonReaderProps {
@@ -17,10 +19,14 @@ interface AiLessonReaderProps {
   resourceIds: string[];
   resources: LearningResource[];
   isRegenerating: boolean;
+  quizProgress?: LessonQuizProgress;
   onAsk: (context: AiLessonQuestionContext) => void;
   onBack: () => void;
   onOpenChat: () => void;
   onRegenerate: () => void;
+  onSubmitQuiz: (
+    answers: Array<{ questionId: string; selectedOptionIndex: number }>,
+  ) => Promise<LessonQuizProgress | null>;
 }
 
 export function AiLessonReader({
@@ -31,10 +37,12 @@ export function AiLessonReader({
   resourceIds,
   resources,
   isRegenerating,
+  quizProgress,
   onAsk,
   onBack,
   onOpenChat,
   onRegenerate,
+  onSubmitQuiz,
 }: AiLessonReaderProps) {
   return (
     <div aria-label={`Урок: ${title}`} aria-modal="true" className="ai-lesson-reader" role="dialog">
@@ -83,6 +91,8 @@ export function AiLessonReader({
           </header>
 
           <AiLessonContent lesson={lesson} onAsk={onAsk} />
+
+          <LessonQuiz lesson={lesson} progress={quizProgress} onSubmit={onSubmitQuiz} />
 
           <section className="ai-lesson-reader-sources">
             <strong>Дополнительные источники</strong>

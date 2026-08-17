@@ -8,6 +8,7 @@ import { YandexSprintView } from "./YandexSprintView";
 interface OzonSprintViewProps {
   data: BootstrapData;
   generatingLessonId: string | null;
+  generationCharacters: number;
   onGenerateLesson: (blockId: string) => void;
   onOpenLesson: (blockId: string) => void;
   onOpenChat: (blockId: string, context?: AiLessonQuestionContext) => void;

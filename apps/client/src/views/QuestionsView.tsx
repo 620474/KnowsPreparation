@@ -1,12 +1,16 @@
 import { useMemo, useState } from "react";
-import { Select, Textarea, TextInput } from "@mantine/core";
-import { CheckCircle2, Search } from "lucide-react";
+import { Button, Select, Textarea, TextInput } from "@mantine/core";
+import { BarChart3, BrainCircuit, CheckCircle2, MessagesSquare, Search } from "lucide-react";
 
+import { normalizeQuestionProgress } from "../lib/question-progress";
 import type { BootstrapData, QuestionProgress, QuestionStatus } from "../types";
 
 interface QuestionsViewProps {
   data: BootstrapData;
   onUpdateQuestion: (questionId: string, progress: QuestionProgress) => void;
+  onOpenAnalytics: () => void;
+  onOpenMock: () => void;
+  onOpenReview: () => void;
 }
 
 const statusLabels: Record<QuestionStatus, string> = {
@@ -25,7 +29,13 @@ const filterStatusOptions: Array<{ value: QuestionStatus | "all"; label: string 
   ...questionStatusOptions,
 ];
 
-export function QuestionsView({ data, onUpdateQuestion }: QuestionsViewProps) {
+export function QuestionsView({
+  data,
+  onUpdateQuestion,
+  onOpenAnalytics,
+  onOpenMock,
+  onOpenReview,
+}: QuestionsViewProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Все");
   const [status, setStatus] = useState<QuestionStatus | "all">("all");
@@ -37,7 +47,7 @@ export function QuestionsView({ data, onUpdateQuestion }: QuestionsViewProps) {
   const filteredQuestions = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("ru");
     return data.questions.filter((question) => {
-      const progress = data.progress.questions[question.id] ?? { status: "new", note: "" };
+      const progress = normalizeQuestionProgress(data.progress.questions[question.id]);
       return (
         (category === "Все" || question.category === category) &&
         (status === "all" || progress.status === status) &&
@@ -51,10 +61,15 @@ export function QuestionsView({ data, onUpdateQuestion }: QuestionsViewProps) {
       <header className="page-header">
         <div>
           <p className="eyebrow">Самопроверка</p>
-          <h1>60 вопросов без шпаргалки</h1>
+          <h1>{data.questions.length} вопросов без шпаргалки</h1>
           <p>Тема закрыта, когда ответ занимает 3–5 минут и опирается на реальный опыт.</p>
         </div>
-        <div className="header-stat accent"><CheckCircle2 size={20} /><strong>{mastered}</strong><span>готово</span></div>
+        <div className="questions-header-actions">
+          <div className="header-stat accent"><CheckCircle2 size={20} /><strong>{mastered}</strong><span>готово</span></div>
+          <Button className="primary-button" leftSection={<BrainCircuit size={17} />} type="button" onClick={onOpenReview}>Повторить</Button>
+          <Button className="secondary-button" leftSection={<MessagesSquare size={17} />} type="button" variant="default" onClick={onOpenMock}>Мок</Button>
+          <Button className="secondary-button" leftSection={<BarChart3 size={17} />} type="button" variant="default" onClick={onOpenAnalytics}>Аналитика</Button>
+        </div>
       </header>
 
       <section className="filter-bar">
@@ -88,7 +103,7 @@ export function QuestionsView({ data, onUpdateQuestion }: QuestionsViewProps) {
 
       <div className="question-list">
         {filteredQuestions.map((question) => {
-          const progress = data.progress.questions[question.id] ?? { status: "new", note: "" };
+          const progress = normalizeQuestionProgress(data.progress.questions[question.id]);
           return (
             <article className={`question-card status-${progress.status}`} key={question.id}>
               <div className="question-index">{String(question.number).padStart(2, "0")}</div>

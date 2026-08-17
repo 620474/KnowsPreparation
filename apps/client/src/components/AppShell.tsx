@@ -40,7 +40,10 @@ const navigation: Array<{
 ];
 
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
-  navigationId === activeView || (navigationId === "settings" && activeView === "ozon");
+  navigationId === activeView ||
+  (navigationId === "settings" && activeView === "ozon") ||
+  (navigationId === "questions" &&
+    ["review", "mock-interview", "analytics"].includes(activeView));
 
 function ThemeToggle() {
   const { setColorScheme } = useMantineColorScheme();

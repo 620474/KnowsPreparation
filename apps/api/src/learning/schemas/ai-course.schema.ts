@@ -163,6 +163,29 @@ export class AiPractice {
 
 export const AiPracticeSchema = SchemaFactory.createForClass(AiPractice);
 
+@Schema({ _id: false, versionKey: false })
+export class AiQuizQuestion {
+  @Prop({ required: true })
+  id!: string;
+
+  @Prop({ required: true })
+  prompt!: string;
+
+  @Prop({ type: [String], required: true })
+  options!: string[];
+
+  @Prop({ required: true, min: 0, max: 3 })
+  correctOptionIndex!: number;
+
+  @Prop({ required: true })
+  explanation!: string;
+
+  @Prop({ required: true })
+  topic!: string;
+}
+
+export const AiQuizQuestionSchema = SchemaFactory.createForClass(AiQuizQuestion);
+
 export type AiLessonDocument = HydratedDocument<AiLesson>;
 
 @Schema({ timestamps: true, versionKey: false })
@@ -199,6 +222,9 @@ export class AiLesson {
 
   @Prop({ type: AiPracticeSchema, required: true })
   practice!: AiPractice;
+
+  @Prop({ type: [AiQuizQuestionSchema], required: true, default: [] })
+  quiz!: AiQuizQuestion[];
 
   @Prop({ required: true })
   summary!: string;

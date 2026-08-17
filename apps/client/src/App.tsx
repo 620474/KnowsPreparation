@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Loader } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
 import {
   clearSession,
@@ -14,6 +14,8 @@ import { AiChatWidget } from "./components/AiChatWidget";
 import { AiLessonReader } from "./components/AiLessonReader";
 import { LoginScreen } from "./components/LoginScreen";
 import { buildAiChatDraft } from "./lib/ai-chat-draft";
+import { useOnlineStatus } from "./lib/network";
+import { clearPersistedQueryCache } from "./lib/query-cache";
 import {
   formatAppRoute,
   parseAppRoute,
@@ -31,15 +33,21 @@ import type {
   AiLesson,
   AiLessonQuestionContext,
   BootstrapData,
+  LessonQuizProgress,
+  MockInterview,
   QuestionProgress,
+  ReviewRating,
   TaskProgress,
   TaskProgressPatch,
 } from "./types";
 import { AlgorithmsView } from "./views/AlgorithmsView";
 import { AiCourseView } from "./views/AiCourseView";
+import { AnalyticsView } from "./views/AnalyticsView";
+import { MockInterviewView } from "./views/MockInterviewView";
 import { PlanView } from "./views/PlanView";
 import { OzonSprintView } from "./views/OzonSprintView";
 import { QuestionsView } from "./views/QuestionsView";
+import { ReviewView } from "./views/ReviewView";
 import { ResourcesView } from "./views/ResourcesView";
 import { SettingsView } from "./views/SettingsView";
 import { TodayView } from "./views/TodayView";
@@ -49,10 +57,28 @@ const BOOTSTRAP_KEY = ["bootstrap"] as const;
 type MutationContext = { previous?: BootstrapData };
 type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
 type QuestionMutationVariables = { questionId: string; progress: QuestionProgress };
+type ReviewMutationVariables = { questionId: string; rating: ReviewRating; note: string };
+type QuizMutationVariables = {
+  scope: AiChatScope;
+  itemId: string;
+  answers: Array<{ questionId: string; selectedOptionIndex: number }>;
+};
 type NavigationMode = "push" | "replace";
+
+const updateMockInterviews = (
+  current: BootstrapData,
+  interview: MockInterview,
+): BootstrapData => ({
+  ...current,
+  mockInterviews: [
+    interview,
+    ...current.mockInterviews.filter((item) => item.id !== interview.id),
+  ].slice(0, 20),
+});
 
 export default function App() {
   const queryClient = useQueryClient();
+  const online = useOnlineStatus();
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
   const [activeView, setActiveView] = useState<AppView>(
     () => parseAppRoute(window.location.hash).view,
@@ -69,6 +95,11 @@ export default function App() {
   } | null>(null);
   const chatRequestIdRef = useRef(0);
   const readingScrollRef = useRef(0);
+  const [generationProgress, setGenerationProgress] = useState<{
+    scope: AiChatScope;
+    itemId: string;
+    characters: number;
+  } | null>(null);
 
   useEffect(() => {
     const handleUnauthorized = () => setAuthenticated(false);
@@ -104,7 +135,7 @@ export default function App() {
     queryKey: BOOTSTRAP_KEY,
     queryFn: learningApi.bootstrap,
     enabled: authenticated,
-    refetchInterval: 60_000,
+    refetchInterval: online ? 60_000 : false,
     refetchOnWindowFocus: true,
   });
 
@@ -165,7 +196,16 @@ export default function App() {
   });
 
   const generateAiLessonMutation = useMutation<AiLesson, Error, string>({
-    mutationFn: learningApi.generateAiLesson,
+    mutationFn: (itemId) => {
+      setGenerationProgress({ scope: "course", itemId, characters: 0 });
+      return learningApi.generateAiLessonStream("course", itemId, (delta) =>
+        setGenerationProgress((current) =>
+          current?.scope === "course" && current.itemId === itemId
+            ? { ...current, characters: current.characters + delta.length }
+            : current,
+        ),
+      );
+    },
     onSuccess: (lesson) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
         current
@@ -181,10 +221,20 @@ export default function App() {
       navigateToLesson("course", lesson.itemId);
     },
     onError: (error) => setSyncError(error.message),
+    onSettled: () => setGenerationProgress(null),
   });
 
   const generateYandexLessonMutation = useMutation<AiLesson, Error, string>({
-    mutationFn: learningApi.generateYandexLesson,
+    mutationFn: (itemId) => {
+      setGenerationProgress({ scope: "yandex", itemId, characters: 0 });
+      return learningApi.generateAiLessonStream("yandex", itemId, (delta) =>
+        setGenerationProgress((current) =>
+          current?.scope === "yandex" && current.itemId === itemId
+            ? { ...current, characters: current.characters + delta.length }
+            : current,
+        ),
+      );
+    },
     onSuccess: (lesson) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
         current
@@ -203,10 +253,20 @@ export default function App() {
       navigateToLesson("yandex", lesson.itemId);
     },
     onError: (error) => setSyncError(error.message),
+    onSettled: () => setGenerationProgress(null),
   });
 
   const generateOzonLessonMutation = useMutation<AiLesson, Error, string>({
-    mutationFn: learningApi.generateOzonLesson,
+    mutationFn: (itemId) => {
+      setGenerationProgress({ scope: "ozon", itemId, characters: 0 });
+      return learningApi.generateAiLessonStream("ozon", itemId, (delta) =>
+        setGenerationProgress((current) =>
+          current?.scope === "ozon" && current.itemId === itemId
+            ? { ...current, characters: current.characters + delta.length }
+            : current,
+        ),
+      );
+    },
     onSuccess: (lesson) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
         current
@@ -225,6 +285,7 @@ export default function App() {
       navigateToLesson("ozon", lesson.itemId);
     },
     onError: (error) => setSyncError(error.message),
+    onSettled: () => setGenerationProgress(null),
   });
 
   const questionMutation = useMutation<
@@ -254,6 +315,89 @@ export default function App() {
       if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
       setSyncError(error instanceof Error ? error.message : "Не удалось сохранить вопрос");
     },
+  });
+
+  const reviewMutation = useMutation<
+    QuestionProgress & { questionId: string },
+    Error,
+    ReviewMutationVariables
+  >({
+    mutationFn: ({ questionId, rating, note }) =>
+      learningApi.reviewQuestion(questionId, rating, note),
+    onSuccess: ({ questionId, ...progress }) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current
+          ? {
+              ...current,
+              progress: {
+                ...current.progress,
+                questions: { ...current.progress.questions, [questionId]: progress },
+              },
+            }
+          : current,
+      );
+    },
+    onError: (error) => setSyncError(error.message),
+  });
+
+  const quizMutation = useMutation<LessonQuizProgress, Error, QuizMutationVariables>({
+    mutationFn: ({ scope, itemId, answers }) =>
+      learningApi.submitLessonQuiz(scope, itemId, answers),
+    onSuccess: (progress, { scope, itemId }) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current
+          ? {
+              ...current,
+              ai: {
+                ...current.ai,
+                quizProgress: {
+                  ...current.ai.quizProgress,
+                  [scope]: {
+                    ...current.ai.quizProgress[scope],
+                    [itemId]: progress,
+                  },
+                },
+              },
+            }
+          : current,
+      );
+    },
+    onError: (error) => setSyncError(error.message),
+  });
+
+  const startMockMutation = useMutation<MockInterview, Error>({
+    mutationFn: learningApi.startMockInterview,
+    onSuccess: (interview) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current ? updateMockInterviews(current, interview) : current,
+      );
+    },
+    onError: (error) => setSyncError(error.message),
+  });
+
+  const saveMockAnswerMutation = useMutation<
+    MockInterview,
+    Error,
+    { interviewId: string; questionId: string; content: string }
+  >({
+    mutationFn: ({ interviewId, questionId, content }) =>
+      learningApi.updateMockAnswer(interviewId, questionId, content),
+    onSuccess: (interview) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current ? updateMockInterviews(current, interview) : current,
+      );
+    },
+    onError: (error) => setSyncError(error.message),
+  });
+
+  const completeMockMutation = useMutation<MockInterview, Error, string>({
+    mutationFn: learningApi.completeMockInterview,
+    onSuccess: (interview) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current ? updateMockInterviews(current, interview) : current,
+      );
+    },
+    onError: (error) => setSyncError(error.message),
   });
 
   const settingsMutation = useMutation<{ startDate: string }, Error, string>({
@@ -299,6 +443,7 @@ export default function App() {
   function logout() {
     clearSession();
     queryClient.clear();
+    void clearPersistedQueryCache();
     setAuthenticated(false);
   }
 
@@ -313,7 +458,7 @@ export default function App() {
     );
   }
 
-  if (bootstrapQuery.isPending) {
+  if (bootstrapQuery.isPending && !bootstrapQuery.data) {
     return (
       <main className="state-page">
         <Loader color="mint" size="lg" />
@@ -323,7 +468,7 @@ export default function App() {
     );
   }
 
-  if (bootstrapQuery.isError || !bootstrapQuery.data) {
+  if (!bootstrapQuery.data) {
     return (
       <main className="state-page error-state">
         <AlertTriangle size={36} />
@@ -394,6 +539,9 @@ export default function App() {
         ? data.ai.ozonLessons[lessonReader.itemId]
         : data.ai.lessons[lessonReader.itemId]
     : undefined;
+  const readerQuizProgress = lessonReader
+    ? data.ai.quizProgress[lessonReader.scope]?.[lessonReader.itemId]
+    : undefined;
   const readerMetadata = readerCourseItem
     ? {
         eyebrow: "Персональный AI-курс",
@@ -459,6 +607,55 @@ export default function App() {
   const updateQuestion = (questionId: string, progress: QuestionProgress) => {
     setSyncError("");
     questionMutation.mutate({ questionId, progress });
+  };
+  const reviewQuestion = async (questionId: string, rating: ReviewRating, note: string) => {
+    setSyncError("");
+    try {
+      await reviewMutation.mutateAsync({ questionId, rating, note });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const submitLessonQuiz = async (
+    scope: AiChatScope,
+    itemId: string,
+    answers: QuizMutationVariables["answers"],
+  ) => {
+    setSyncError("");
+    try {
+      return await quizMutation.mutateAsync({ scope, itemId, answers });
+    } catch {
+      return null;
+    }
+  };
+  const startMockInterview = async () => {
+    setSyncError("");
+    try {
+      return await startMockMutation.mutateAsync();
+    } catch {
+      return null;
+    }
+  };
+  const saveMockAnswer = async (
+    interviewId: string,
+    questionId: string,
+    content: string,
+  ) => {
+    setSyncError("");
+    try {
+      return await saveMockAnswerMutation.mutateAsync({ interviewId, questionId, content });
+    } catch {
+      return null;
+    }
+  };
+  const completeMockInterview = async (interviewId: string) => {
+    setSyncError("");
+    try {
+      return await completeMockMutation.mutateAsync(interviewId);
+    } catch {
+      return null;
+    }
   };
   const addAlgorithm = (entry: Omit<AlgorithmEntry, "id">) => {
     setSyncError("");
@@ -531,6 +728,11 @@ export default function App() {
       onViewChange={navigateToView}
       weekLabel={weekLabel}
     >
+      {!online || bootstrapQuery.isError ? (
+        <Alert className="offline-alert" color="yellow" icon={<WifiOff size={17} />} variant="light">
+          Офлайн-режим: показываю сохранённые данные. Для изменений и AI нужен интернет.
+        </Alert>
+      ) : null}
       {syncError ? (
         <Alert
           className="sync-error"
@@ -544,7 +746,15 @@ export default function App() {
           {syncError}
         </Alert>
       ) : null}
-      {activeView === "today" ? <TodayView data={data} onUpdateTask={updateTask} /> : null}
+      {activeView === "today" ? (
+        <TodayView
+          data={data}
+          onOpenAnalytics={() => navigateToView("analytics")}
+          onOpenMock={() => navigateToView("mock-interview")}
+          onOpenReview={() => navigateToView("review")}
+          onUpdateTask={updateTask}
+        />
+      ) : null}
       {activeView === "yandex" ? (
         <YandexSprintView
           data={data}
@@ -552,6 +762,9 @@ export default function App() {
             generateYandexLessonMutation.isPending
               ? (generateYandexLessonMutation.variables ?? null)
               : null
+          }
+          generationCharacters={
+            generationProgress?.scope === "yandex" ? generationProgress.characters : 0
           }
           onGenerateLesson={(blockId) => {
             setSyncError("");
@@ -569,6 +782,9 @@ export default function App() {
             generateOzonLessonMutation.isPending
               ? (generateOzonLessonMutation.variables ?? null)
               : null
+          }
+          generationCharacters={
+            generationProgress?.scope === "ozon" ? generationProgress.characters : 0
           }
           onGenerateLesson={(blockId) => {
             setSyncError("");
@@ -588,6 +804,9 @@ export default function App() {
               ? (generateAiLessonMutation.variables ?? null)
               : null
           }
+          generationCharacters={
+            generationProgress?.scope === "course" ? generationProgress.characters : 0
+          }
           onGenerateCourse={(profile) => {
             setSyncError("");
             generateAiCourseMutation.mutate(profile);
@@ -603,7 +822,37 @@ export default function App() {
       {activeView === "plan" ? <PlanView data={data} onUpdateTask={updateTask} /> : null}
       {activeView === "resources" ? <ResourcesView data={data} /> : null}
       {activeView === "questions" ? (
-        <QuestionsView data={data} onUpdateQuestion={updateQuestion} />
+        <QuestionsView
+          data={data}
+          onOpenAnalytics={() => navigateToView("analytics")}
+          onOpenMock={() => navigateToView("mock-interview")}
+          onOpenReview={() => navigateToView("review")}
+          onUpdateQuestion={updateQuestion}
+        />
+      ) : null}
+      {activeView === "review" ? (
+        <ReviewView
+          data={data}
+          onBack={() => navigateToView("today")}
+          onReview={reviewQuestion}
+        />
+      ) : null}
+      {activeView === "mock-interview" ? (
+        <MockInterviewView
+          data={data}
+          onBack={() => navigateToView("questions")}
+          onComplete={completeMockInterview}
+          onSaveAnswer={saveMockAnswer}
+          onStart={startMockInterview}
+        />
+      ) : null}
+      {activeView === "analytics" ? (
+        <AnalyticsView
+          data={data}
+          onBack={() => navigateToView("questions")}
+          onOpenMock={() => navigateToView("mock-interview")}
+          onOpenReview={() => navigateToView("review")}
+        />
       ) : null}
       {activeView === "algorithms" ? (
         <AlgorithmsView
@@ -633,6 +882,7 @@ export default function App() {
                 : generateAiLessonMutation.isPending
           }
           lesson={readerLesson}
+          quizProgress={readerQuizProgress}
           resourceIds={readerMetadata.resourceIds}
           resources={data.resources}
           title={readerMetadata.title}
@@ -649,6 +899,9 @@ export default function App() {
               generateAiLessonMutation.mutate(lessonReader.itemId);
             }
           }}
+          onSubmitQuiz={(answers) =>
+            submitLessonQuiz(lessonReader.scope, lessonReader.itemId, answers)
+          }
         />
       ) : null}
       <AiChatWidget

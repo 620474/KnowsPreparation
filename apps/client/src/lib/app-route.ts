@@ -8,6 +8,9 @@ export type AppView =
   | "plan"
   | "resources"
   | "questions"
+  | "review"
+  | "mock-interview"
+  | "analytics"
   | "algorithms"
   | "settings";
 
@@ -31,6 +34,9 @@ const viewPaths: Record<AppView, string> = {
   plan: "plan",
   resources: "resources",
   questions: "questions",
+  review: "review",
+  "mock-interview": "mock-interview",
+  analytics: "analytics",
   algorithms: "algorithms",
   settings: "settings",
 };

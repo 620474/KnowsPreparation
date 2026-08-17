@@ -79,6 +79,7 @@ describe("buildAiChatContext", () => {
         constraints: [],
         examples: [],
       },
+      quiz: [],
       summary: "Микрозадачи выполняются до следующей задачи.",
       resourceIds: [],
       version: 1,

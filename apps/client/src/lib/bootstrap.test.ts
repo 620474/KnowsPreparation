@@ -27,8 +27,10 @@ describe("normalizeBootstrapData", () => {
       lessons: {},
       yandexLessons: {},
       ozonLessons: {},
+      quizProgress: { course: {}, yandex: {}, ozon: {} },
     });
     expect(normalizeBootstrapData(legacyBootstrap).ozonSprint).toEqual([]);
+    expect(normalizeBootstrapData(legacyBootstrap).mockInterviews).toEqual([]);
   });
 
   it("keeps AI data returned by the current API", () => {
@@ -39,6 +41,7 @@ describe("normalizeBootstrapData", () => {
       lessons: {},
       yandexLessons: {},
       ozonLessons: {},
+      quizProgress: { course: {}, yandex: {}, ozon: {} },
     };
 
     expect(normalizeBootstrapData({ ...legacyBootstrap, ai }).ai).toEqual(ai);

@@ -1,5 +1,6 @@
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -11,13 +12,17 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
 
 import { DIFFICULTIES, type Difficulty } from "../schemas/algorithm-entry.schema";
 import { AI_LEVELS, type AiLevel } from "../schemas/ai-course.schema";
 import {
   QUESTION_STATUSES,
+  REVIEW_RATINGS,
   type QuestionStatus,
+  type ReviewRating,
 } from "../schemas/question-progress.schema";
 
 export class UpdateSettingsDto {
@@ -91,6 +96,44 @@ export class UpdateQuestionDto {
   @IsString()
   @MaxLength(4000)
   note?: string;
+}
+
+export class ReviewQuestionDto {
+  @IsIn(REVIEW_RATINGS)
+  rating!: ReviewRating;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  note?: string;
+}
+
+export class LessonQuizAnswerDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  questionId!: string;
+
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  selectedOptionIndex!: number;
+}
+
+export class SubmitLessonQuizDto {
+  @IsArray()
+  @ArrayMinSize(10)
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => LessonQuizAnswerDto)
+  answers!: LessonQuizAnswerDto[];
+}
+
+export class UpdateMockAnswerDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  content!: string;
 }
 
 export class CreateAlgorithmDto {

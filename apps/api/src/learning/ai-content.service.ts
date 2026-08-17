@@ -10,8 +10,10 @@ import {
   normalizeGeneratedCourse,
   normalizeGeneratedLesson,
 } from "./ai-course";
-import type { StudyBlock, StudyDay } from "./curriculum";
+import type { InterviewQuestion, StudyBlock, StudyDay } from "./curriculum";
 import type { GenerateAiCourseDto } from "./dto/learning.dto";
+import { normalizeMockEvaluation } from "./mock-interview";
+import { OpenAiSseParser } from "./openai-sse";
 import type { AiCourseItem } from "./schemas/ai-course.schema";
 import type { LearningResource } from "./resources";
 
@@ -19,6 +21,8 @@ export interface AiChatHistoryMessage {
   role: "user" | "assistant";
   content: string;
 }
+
+export type AiDeltaHandler = (delta: string) => void;
 
 const courseSchema = {
   type: "object",
@@ -131,6 +135,34 @@ const lessonSchema = {
       },
       required: ["title", "statement", "constraints", "examples"],
     },
+    quiz: {
+      type: "array",
+      minItems: 10,
+      maxItems: 10,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          prompt: { type: "string" },
+          options: {
+            type: "array",
+            minItems: 4,
+            maxItems: 4,
+            items: { type: "string" },
+          },
+          correctOptionIndex: { type: "integer", minimum: 0, maximum: 3 },
+          explanation: { type: "string" },
+          topic: { type: "string" },
+        },
+        required: [
+          "prompt",
+          "options",
+          "correctOptionIndex",
+          "explanation",
+          "topic",
+        ],
+      },
+    },
     summary: { type: "string" },
   },
   required: [
@@ -141,8 +173,35 @@ const lessonSchema = {
     "commonMistakes",
     "interviewQuestions",
     "practice",
+    "quiz",
     "summary",
   ],
+} as const;
+
+const mockEvaluationSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    overallScore: { type: "integer", minimum: 0, maximum: 100 },
+    summary: { type: "string" },
+    strengths: { type: "array", items: { type: "string" } },
+    weakTopics: { type: "array", items: { type: "string" } },
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          questionId: { type: "string" },
+          score: { type: "integer", minimum: 0, maximum: 5 },
+          feedback: { type: "string" },
+          missingPoints: { type: "array", items: { type: "string" } },
+        },
+        required: ["questionId", "score", "feedback", "missingPoints"],
+      },
+    },
+  },
+  required: ["overallScore", "summary", "strengths", "weakTopics", "questions"],
 } as const;
 
 @Injectable()
@@ -186,6 +245,7 @@ export class AiContentService {
     profile: GenerateAiCourseDto,
     item: AiCourseItem,
     resources: LearningResource[],
+    onDelta?: AiDeltaHandler,
   ) {
     const sourceContext = resources.map((resource) => ({
       title: resource.title,
@@ -202,12 +262,15 @@ export class AiContentService {
         "Объяснение должно быть точным, практичным и пригодным для ответа вслух на собеседовании.",
         "Используй современные примеры JavaScript/TypeScript без сторонних библиотек, если тема не требует иного.",
         "Практическая задача должна иметь однозначное условие, ограничения и примеры, но не содержать готовое решение.",
+        "После урока добавь ровно 10 проверочных вопросов с четырьмя уникальными вариантами ответа, одним правильным вариантом и коротким объяснением.",
+        "Распредели правильные варианты по разным позициям и проверяй понимание причин, а не запоминание формулировок.",
         "Если тема выигрывает от визуализации процесса или потока данных, добавь 1–2 содержательные диаграммы; иначе верни diagrams: [].",
         "В диаграмме используй уникальные id узлов, связывай рёбра только с существующими id и размещай узлы без наложений в сетке row/column от 0 до 4.",
         "Источники переданы только как ориентиры; не добавляй ссылки и не утверждай, что цитируешь их.",
       ].join(" "),
       JSON.stringify({ profile, lesson: item, sources: sourceContext }),
-      10_000,
+      14_000,
+      onDelta,
     );
     try {
       return normalizeGeneratedLesson(result);
@@ -220,16 +283,18 @@ export class AiContentService {
     day: StudyDay,
     block: StudyBlock,
     resources: LearningResource[],
+    onDelta?: AiDeltaHandler,
   ) {
-    return this.generateInterviewSprintLesson("Яндекс", day, block, resources);
+    return this.generateInterviewSprintLesson("Яндекс", day, block, resources, onDelta);
   }
 
   async generateOzonLesson(
     day: StudyDay,
     block: StudyBlock,
     resources: LearningResource[],
+    onDelta?: AiDeltaHandler,
   ) {
-    return this.generateInterviewSprintLesson("Ozon", day, block, resources);
+    return this.generateInterviewSprintLesson("Ozon", day, block, resources, onDelta);
   }
 
   private async generateInterviewSprintLesson(
@@ -237,6 +302,7 @@ export class AiContentService {
     day: StudyDay,
     block: StudyBlock,
     resources: LearningResource[],
+    onDelta?: AiDeltaHandler,
   ) {
     const sourceContext = resources.map((resource) => ({
       title: resource.title,
@@ -256,6 +322,8 @@ export class AiContentService {
         "Для алгоритмического блока обязательно разбери подходы, структуры данных и Big-O, но не выдавай готовое решение переданной задачи.",
         "Примеры кода должны иллюстрировать отдельные идеи и не должны целиком решать переданное упражнение.",
         "Сохрани исходные ограничения упражнения и добавь практику без готового решения.",
+        "После урока добавь ровно 10 проверочных вопросов с четырьмя уникальными вариантами ответа, одним правильным вариантом и объяснением.",
+        "Вопросы должны проверять материал текущего блока и быть полезными для собеседования.",
         "Если тема выигрывает от визуализации процесса или потока данных, добавь 1–2 содержательные диаграммы; иначе верни diagrams: [].",
         "В диаграмме используй уникальные id узлов, связывай рёбра только с существующими id и размещай узлы без наложений в сетке row/column от 0 до 4.",
         "Источники используй только как ориентиры: не добавляй новые ссылки и не утверждай, что цитируешь их.",
@@ -269,7 +337,8 @@ export class AiContentService {
         block,
         sources: sourceContext,
       }),
-      10_000,
+      14_000,
+      onDelta,
     );
     try {
       return normalizeGeneratedLesson(result);
@@ -282,6 +351,7 @@ export class AiContentService {
     lessonContext: string,
     history: AiChatHistoryMessage[],
     content: string,
+    onDelta?: AiDeltaHandler,
   ) {
     return this.requestText(
       [
@@ -300,7 +370,40 @@ export class AiContentService {
         { role: "user", content },
       ],
       2_500,
+      onDelta,
     );
+  }
+
+  async evaluateMockInterview(
+    entries: Array<{ question: InterviewQuestion; answer: string }>,
+  ) {
+    const result = await this.request<unknown>(
+      "frontend_mock_interview_evaluation",
+      mockEvaluationSchema,
+      [
+        "Ты проводишь тренировочное frontend-собеседование уровня Middle+/Senior.",
+        "Оцени каждый ответ по точности, глубине, ясности и наличию практических примеров.",
+        "Не завышай оценку за общие слова. Укажи конкретные пробелы и сильные стороны.",
+        "Пиши по-русски, кратко и конструктивно. Верни оценку для каждого переданного questionId.",
+      ].join(" "),
+      JSON.stringify(
+        entries.map(({ question, answer }) => ({
+          questionId: question.id,
+          category: question.category,
+          question: question.prompt,
+          answer,
+        })),
+      ),
+      4_000,
+    );
+    try {
+      return normalizeMockEvaluation(
+        result,
+        entries.map(({ question }) => question.id),
+      );
+    } catch {
+      throw new BadGatewayException("OpenAI вернул неполную оценку интервью. Попробуй ещё раз.");
+    }
   }
 
   private async request<T>(
@@ -309,8 +412,9 @@ export class AiContentService {
     instructions: string,
     input: string,
     maxOutputTokens: number,
+    onDelta?: AiDeltaHandler,
   ) {
-    const body = await this.performRequest({
+    const payload = {
       model: this.model,
       instructions,
       input,
@@ -324,10 +428,13 @@ export class AiContentService {
           schema,
         },
       },
-    });
+    };
+    const text = onDelta
+      ? await this.performStreamingRequest(payload, onDelta)
+      : extractResponseText(await this.performRequest(payload));
 
     try {
-      return JSON.parse(extractResponseText(body)) as T;
+      return JSON.parse(text) as T;
     } catch {
       throw new BadGatewayException("OpenAI вернул ответ в неожиданном формате.");
     }
@@ -337,20 +444,96 @@ export class AiContentService {
     instructions: string,
     input: AiChatHistoryMessage[],
     maxOutputTokens: number,
+    onDelta?: AiDeltaHandler,
   ) {
-    const body = await this.performRequest({
+    const payload = {
       model: this.chatModel,
       instructions,
       input,
       max_output_tokens: maxOutputTokens,
       store: false,
-    });
+    };
     try {
-      const text = extractResponseText(body).trim();
+      const text = (
+        onDelta
+          ? await this.performStreamingRequest(payload, onDelta)
+          : extractResponseText(await this.performRequest(payload))
+      ).trim();
       if (!text) throw new Error("Empty response");
       return text;
     } catch {
       throw new BadGatewayException("OpenAI вернул пустой ответ. Попробуй ещё раз.");
+    }
+  }
+
+  private async performStreamingRequest(
+    payload: Record<string, unknown>,
+    onDelta: AiDeltaHandler,
+  ) {
+    const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        "AI-генерация не настроена. Добавь OPENAI_API_KEY в переменные сервера.",
+      );
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...payload, stream: true }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new BadGatewayException(
+          `OpenAI не смог сгенерировать материал (HTTP ${response.status}).`,
+        );
+      }
+      if (!response.body) throw new BadGatewayException("OpenAI не открыл поток ответа.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      const parser = new OpenAiSseParser();
+      let output = "";
+      const handleEvents = (events: unknown[]) => {
+        for (const value of events) {
+          if (typeof value !== "object" || value === null) continue;
+          const event = value as { type?: string; delta?: unknown; message?: unknown };
+          if (event.type === "response.output_text.delta" && typeof event.delta === "string") {
+            output += event.delta;
+            onDelta(event.delta);
+          }
+          if (event.type === "error") {
+            throw new BadGatewayException(
+              typeof event.message === "string" ? event.message : "OpenAI прервал поток ответа.",
+            );
+          }
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        handleEvents(parser.push(decoder.decode(value, { stream: true })));
+      }
+      handleEvents(parser.push(decoder.decode()));
+      handleEvents(parser.finish());
+      if (!output.trim()) throw new BadGatewayException("OpenAI вернул пустой поток.");
+      return output;
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException || error instanceof BadGatewayException) {
+        throw error;
+      }
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new BadGatewayException("OpenAI не ответил за 90 секунд. Попробуй ещё раз.");
+      }
+      throw new BadGatewayException("Не удалось прочитать поток OpenAI.");
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

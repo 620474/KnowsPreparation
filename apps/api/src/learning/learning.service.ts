@@ -5,9 +5,9 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { isValidObjectId, Model } from "mongoose";
 
-import { AiContentService } from "./ai-content.service";
+import { AiContentService, type AiDeltaHandler } from "./ai-content.service";
 import {
   buildAiChatContext,
   buildOzonAiChatContext,
@@ -37,17 +37,24 @@ import {
 import {
   CreateAlgorithmDto,
   GenerateAiCourseDto,
+  ReviewQuestionDto,
   SendAiChatMessageDto,
+  SubmitLessonQuizDto,
+  UpdateMockAnswerDto,
   UpdateQuestionDto,
   UpdateSettingsDto,
   UpdateTaskDto,
 } from "./dto/learning.dto";
+import { selectMockInterviewQuestions } from "./mock-interview";
 import { AlgorithmEntry } from "./schemas/algorithm-entry.schema";
 import { AiChatMessage } from "./schemas/ai-chat-message.schema";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
+import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
+import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
+import { scheduleQuestionReview } from "./spaced-repetition";
 import { buildTaskProgressUpdate } from "./task-progress";
 
 interface AiChatMessageRecord {
@@ -78,6 +85,10 @@ export class LearningService {
     @InjectModel(AiLesson.name) private readonly aiLessonModel: Model<AiLesson>,
     @InjectModel(AiChatMessage.name)
     private readonly aiChatMessageModel: Model<AiChatMessage>,
+    @InjectModel(AiQuizProgress.name)
+    private readonly aiQuizProgressModel: Model<AiQuizProgress>,
+    @InjectModel(MockInterview.name)
+    private readonly mockInterviewModel: Model<MockInterview>,
     private readonly aiContent: AiContentService,
   ) {}
 
@@ -98,13 +109,14 @@ export class LearningService {
         { upsert: true, returnDocument: "after", lean: true },
       )
       .exec();
-    const [tasks, questions, algorithms, aiCourse] = await Promise.all([
+    const [tasks, questions, algorithms, aiCourse, mockInterviews] = await Promise.all([
       this.taskModel.find().lean().exec(),
       this.questionModel.find().lean().exec(),
       this.algorithmModel.find().sort({ solvedAt: -1, createdAt: -1 }).lean().exec(),
       this.aiCourseModel.findOne({ key: "main" }).lean().exec(),
+      this.mockInterviewModel.find().sort({ updatedAt: -1 }).limit(20).lean().exec(),
     ]);
-    const [aiLessons, yandexLessons, ozonLessons] = await Promise.all([
+    const [aiLessons, yandexLessons, ozonLessons, quizProgresses] = await Promise.all([
       aiCourse
         ? this.aiLessonModel
             .find({ courseKey: aiCourse.key, courseVersion: aiCourse.version })
@@ -125,6 +137,7 @@ export class LearningService {
         })
         .lean()
         .exec(),
+      this.aiQuizProgressModel.find().sort({ updatedAt: -1 }).lean().exec(),
     ]);
 
     if (!settings) {
@@ -159,10 +172,11 @@ export class LearningService {
         questions: Object.fromEntries(
           questions.map((question) => [
             question.questionId,
-            { status: question.status, note: question.note ?? "" },
+            this.serializeQuestionProgress(question),
           ]),
         ),
       },
+      mockInterviews: mockInterviews.map((interview) => this.serializeMockInterview(interview)),
       algorithms: algorithms.map((entry) => ({
         id: String(entry._id),
         title: entry.title,
@@ -184,6 +198,7 @@ export class LearningService {
         ozonLessons: Object.fromEntries(
           ozonLessons.map((lesson) => [lesson.itemId, this.serializeAiLesson(lesson)]),
         ),
+        quizProgress: this.serializeQuizProgressCollection(quizProgresses, aiCourse),
       },
     };
   }
@@ -234,7 +249,7 @@ export class LearningService {
     return this.serializeAiCourse(course);
   }
 
-  async generateAiLesson(itemId: string) {
+  async generateAiLesson(itemId: string, onDelta?: AiDeltaHandler) {
     const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
     if (!course) {
       throw new NotFoundException("Сначала создай AI-курс");
@@ -259,6 +274,7 @@ export class LearningService {
       },
       item,
       resources,
+      onDelta,
     );
     const current = await this.aiLessonModel
       .findOne({ courseKey: course.key, courseVersion: course.version, itemId })
@@ -289,7 +305,7 @@ export class LearningService {
     return this.serializeAiLesson(lesson);
   }
 
-  async generateYandexLesson(blockId: string) {
+  async generateYandexLesson(blockId: string, onDelta?: AiDeltaHandler) {
     const { day, block } = this.getYandexBlock(blockId);
     if (block.kind === "review") {
       throw new BadRequestException("Для блока разбора отдельный AI-урок не требуется");
@@ -299,7 +315,12 @@ export class LearningService {
       const resource = resourceMap.get(resourceId);
       return resource ? [resource] : [];
     });
-    const generated = await this.aiContent.generateYandexLesson(day, block, resources);
+    const generated = await this.aiContent.generateYandexLesson(
+      day,
+      block,
+      resources,
+      onDelta,
+    );
     const scope = {
       courseKey: YANDEX_SPRINT_AI_KEY,
       courseVersion: YANDEX_SPRINT_AI_VERSION,
@@ -329,7 +350,7 @@ export class LearningService {
     return this.serializeAiLesson(lesson);
   }
 
-  async generateOzonLesson(blockId: string) {
+  async generateOzonLesson(blockId: string, onDelta?: AiDeltaHandler) {
     const { day, block } = this.getOzonBlock(blockId);
     if (block.kind === "review") {
       throw new BadRequestException("Для блока разбора отдельный AI-урок не требуется");
@@ -339,7 +360,7 @@ export class LearningService {
       const resource = resourceMap.get(resourceId);
       return resource ? [resource] : [];
     });
-    const generated = await this.aiContent.generateOzonLesson(day, block, resources);
+    const generated = await this.aiContent.generateOzonLesson(day, block, resources, onDelta);
     const scope = {
       courseKey: OZON_SPRINT_AI_KEY,
       courseVersion: OZON_SPRINT_AI_VERSION,
@@ -400,19 +421,35 @@ export class LearningService {
     };
   }
 
-  async sendAiChatMessage(itemId: string, dto: SendAiChatMessageDto) {
-    return this.replyToAiChat(await this.getAiChatScope(itemId), dto);
+  async sendAiChatMessage(
+    itemId: string,
+    dto: SendAiChatMessageDto,
+    onDelta?: AiDeltaHandler,
+  ) {
+    return this.replyToAiChat(await this.getAiChatScope(itemId), dto, onDelta);
   }
 
-  async sendYandexAiChatMessage(blockId: string, dto: SendAiChatMessageDto) {
-    return this.replyToAiChat(await this.getYandexAiChatScope(blockId), dto);
+  async sendYandexAiChatMessage(
+    blockId: string,
+    dto: SendAiChatMessageDto,
+    onDelta?: AiDeltaHandler,
+  ) {
+    return this.replyToAiChat(await this.getYandexAiChatScope(blockId), dto, onDelta);
   }
 
-  async sendOzonAiChatMessage(blockId: string, dto: SendAiChatMessageDto) {
-    return this.replyToAiChat(await this.getOzonAiChatScope(blockId), dto);
+  async sendOzonAiChatMessage(
+    blockId: string,
+    dto: SendAiChatMessageDto,
+    onDelta?: AiDeltaHandler,
+  ) {
+    return this.replyToAiChat(await this.getOzonAiChatScope(blockId), dto, onDelta);
   }
 
-  private async replyToAiChat(scope: AiChatScope, dto: SendAiChatMessageDto) {
+  private async replyToAiChat(
+    scope: AiChatScope,
+    dto: SendAiChatMessageDto,
+    onDelta?: AiDeltaHandler,
+  ) {
     const content = dto.content.trim();
     if (!content) {
       throw new BadRequestException("Сообщение не может быть пустым");
@@ -431,7 +468,12 @@ export class LearningService {
       role: message.role,
       content: message.content,
     }));
-    const reply = await this.aiContent.generateChatReply(scope.context, history, content);
+    const reply = await this.aiContent.generateChatReply(
+      scope.context,
+      history,
+      content,
+      onDelta,
+    );
     const created = await this.aiChatMessageModel.insertMany([
       {
         courseKey: scope.courseKey,
@@ -527,11 +569,34 @@ export class LearningService {
       throw new NotFoundException("Вопрос не найден");
     }
 
+    const current = await this.questionModel.findOne({ questionId }).lean().exec();
+    const schedulingUpdate: Partial<QuestionProgress> = {};
+    if (current?.status !== dto.status) {
+      if (dto.status === "new") {
+        Object.assign(schedulingUpdate, {
+          easeFactor: 2.5,
+          intervalDays: 0,
+          repetitions: 0,
+          nextReviewAt: null,
+          lastReviewedAt: null,
+          reviewCount: 0,
+          lapseCount: 0,
+          lastRating: null,
+        });
+      } else if (dto.status === "mastered") {
+        const nextReviewAt = new Date();
+        nextReviewAt.setUTCDate(nextReviewAt.getUTCDate() + 30);
+        Object.assign(schedulingUpdate, { intervalDays: 30, nextReviewAt });
+      } else {
+        Object.assign(schedulingUpdate, { nextReviewAt: new Date() });
+      }
+    }
+
     const question = await this.questionModel
       .findOneAndUpdate(
         { questionId },
-        { $set: { status: dto.status, note: dto.note ?? "" } },
-        { upsert: true, returnDocument: "after", lean: true },
+        { $set: { status: dto.status, note: dto.note ?? "", ...schedulingUpdate } },
+        { upsert: true, returnDocument: "after", lean: true, setDefaultsOnInsert: true },
       )
       .exec();
     if (!question) {
@@ -539,9 +604,192 @@ export class LearningService {
     }
     return {
       questionId: question.questionId,
-      status: question.status,
-      note: question.note,
+      ...this.serializeQuestionProgress(question),
     };
+  }
+
+  async reviewQuestion(questionId: string, dto: ReviewQuestionDto) {
+    if (!QUESTION_IDS.has(questionId)) {
+      throw new NotFoundException("Вопрос не найден");
+    }
+    const current = await this.questionModel.findOne({ questionId }).lean().exec();
+    const schedule = scheduleQuestionReview(current ?? {}, dto.rating);
+    const question = await this.questionModel
+      .findOneAndUpdate(
+        { questionId },
+        {
+          $set: {
+            ...schedule,
+            note: dto.note ?? current?.note ?? "",
+          },
+        },
+        { upsert: true, returnDocument: "after", lean: true, setDefaultsOnInsert: true },
+      )
+      .exec();
+    if (!question) {
+      throw new InternalServerErrorException("Не удалось сохранить повторение");
+    }
+    return {
+      questionId: question.questionId,
+      ...this.serializeQuestionProgress(question),
+    };
+  }
+
+  async submitAiLessonQuiz(itemId: string, dto: SubmitLessonQuizDto) {
+    const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
+    if (!course) throw new NotFoundException("Сначала создай AI-курс");
+    return this.submitLessonQuiz(course.key, course.version, itemId, dto);
+  }
+
+  async submitYandexLessonQuiz(blockId: string, dto: SubmitLessonQuizDto) {
+    this.getYandexBlock(blockId);
+    return this.submitLessonQuiz(
+      YANDEX_SPRINT_AI_KEY,
+      YANDEX_SPRINT_AI_VERSION,
+      blockId,
+      dto,
+    );
+  }
+
+  async submitOzonLessonQuiz(blockId: string, dto: SubmitLessonQuizDto) {
+    this.getOzonBlock(blockId);
+    return this.submitLessonQuiz(
+      OZON_SPRINT_AI_KEY,
+      OZON_SPRINT_AI_VERSION,
+      blockId,
+      dto,
+    );
+  }
+
+  private async submitLessonQuiz(
+    courseKey: string,
+    courseVersion: number,
+    itemId: string,
+    dto: SubmitLessonQuizDto,
+  ) {
+    const lesson = await this.aiLessonModel
+      .findOne({ courseKey, courseVersion, itemId })
+      .lean()
+      .exec();
+    if (!lesson) throw new NotFoundException("AI-урок не найден");
+    if ((lesson.quiz ?? []).length !== 10) {
+      throw new BadRequestException("Обнови статью, чтобы получить проверочный тест");
+    }
+    const submitted = new Map(
+      dto.answers.map((answer) => [answer.questionId, answer.selectedOptionIndex]),
+    );
+    if (submitted.size !== lesson.quiz.length) {
+      throw new BadRequestException("Нужно ответить на все вопросы теста");
+    }
+    const answers = lesson.quiz.map((question) => {
+      const selectedOptionIndex = submitted.get(question.id);
+      if (selectedOptionIndex === undefined) {
+        throw new BadRequestException("Ответы не соответствуют текущей версии теста");
+      }
+      return {
+        questionId: question.id,
+        selectedOptionIndex,
+        correct: selectedOptionIndex === question.correctOptionIndex,
+        topic: question.topic,
+      };
+    });
+    const attempt = {
+      score: answers.filter((answer) => answer.correct).length,
+      answers,
+      completedAt: new Date(),
+    };
+    const progress = await this.aiQuizProgressModel
+      .findOneAndUpdate(
+        { courseKey, courseVersion, itemId, lessonVersion: lesson.version },
+        {
+          $setOnInsert: { courseKey, courseVersion, itemId, lessonVersion: lesson.version },
+          $push: { attempts: attempt },
+        },
+        { upsert: true, returnDocument: "after", lean: true, setDefaultsOnInsert: true },
+      )
+      .exec();
+    if (!progress) throw new InternalServerErrorException("Не удалось сохранить тест");
+    return this.serializeQuizProgress(progress);
+  }
+
+  async getCurrentMockInterview() {
+    const interview = await this.mockInterviewModel
+      .findOne({ status: "in_progress" })
+      .sort({ updatedAt: -1 })
+      .lean()
+      .exec();
+    return interview ? this.serializeMockInterview(interview) : null;
+  }
+
+  async startMockInterview() {
+    const current = await this.getCurrentMockInterview();
+    if (current) return current;
+    const progressDocuments = await this.questionModel.find().lean().exec();
+    const progress = new Map(
+      progressDocuments.map((question) => [question.questionId, question]),
+    );
+    const selected = selectMockInterviewQuestions(QUESTION_BANK, progress, 5);
+    const interview = await this.mockInterviewModel.create({
+      status: "in_progress",
+      questionIds: selected.map((question) => question.id),
+      answers: [],
+      durationMinutes: 20,
+      startedAt: new Date(),
+      completedAt: null,
+      evaluation: null,
+    });
+    return this.serializeMockInterview(interview);
+  }
+
+  async updateMockAnswer(
+    interviewId: string,
+    questionId: string,
+    dto: UpdateMockAnswerDto,
+  ) {
+    const interview = await this.getMockInterviewDocument(interviewId);
+    if (interview.status !== "in_progress") {
+      throw new BadRequestException("Интервью уже завершено");
+    }
+    if (!interview.questionIds.includes(questionId)) {
+      throw new NotFoundException("Вопрос не входит в это интервью");
+    }
+    const content = dto.content.trim();
+    const answer = interview.answers.find((item) => item.questionId === questionId);
+    if (answer) answer.content = content;
+    else interview.answers.push({ questionId, content });
+    await interview.save();
+    return this.serializeMockInterview(interview);
+  }
+
+  async completeMockInterview(interviewId: string) {
+    const interview = await this.getMockInterviewDocument(interviewId);
+    if (interview.status === "completed") return this.serializeMockInterview(interview);
+    const questionMap = new Map(QUESTION_BANK.map((question) => [question.id, question]));
+    const answerMap = new Map(
+      interview.answers.map((answer) => [answer.questionId, answer.content.trim()]),
+    );
+    const entries = interview.questionIds.map((questionId) => ({
+      question: questionMap.get(questionId),
+      answer: answerMap.get(questionId) ?? "",
+    }));
+    if (entries.some(({ question, answer }) => !question || !answer)) {
+      throw new BadRequestException("Ответь на все вопросы перед завершением интервью");
+    }
+    const evaluation = await this.aiContent.evaluateMockInterview(
+      entries.map(({ question, answer }) => ({ question: question!, answer })),
+    );
+    interview.status = "completed";
+    interview.completedAt = new Date();
+    interview.evaluation = evaluation;
+    await interview.save();
+    return this.serializeMockInterview(interview);
+  }
+
+  private async getMockInterviewDocument(interviewId: string) {
+    if (!isValidObjectId(interviewId)) throw new NotFoundException("Интервью не найдено");
+    const interview = await this.mockInterviewModel.findById(interviewId).exec();
+    if (!interview) throw new NotFoundException("Интервью не найдено");
+    return interview;
   }
 
   async addAlgorithm(dto: CreateAlgorithmDto) {
@@ -597,10 +845,98 @@ export class LearningService {
       commonMistakes: lesson.commonMistakes,
       interviewQuestions: lesson.interviewQuestions,
       practice: lesson.practice,
+      quiz: lesson.quiz ?? [],
       summary: lesson.summary,
       resourceIds: lesson.resourceIds,
       version: lesson.version,
       generatedAt: lesson.generatedAt,
+    };
+  }
+
+  private serializeQuestionProgress(question: QuestionProgress) {
+    return {
+      status: question.status ?? "new",
+      note: question.note ?? "",
+      easeFactor: question.easeFactor ?? 2.5,
+      intervalDays: question.intervalDays ?? 0,
+      repetitions: question.repetitions ?? 0,
+      nextReviewAt: question.nextReviewAt?.toISOString() ?? null,
+      lastReviewedAt: question.lastReviewedAt?.toISOString() ?? null,
+      reviewCount: question.reviewCount ?? 0,
+      lapseCount: question.lapseCount ?? 0,
+      lastRating: question.lastRating ?? null,
+    };
+  }
+
+  private serializeQuizProgress(progress: AiQuizProgress) {
+    return {
+      itemId: progress.itemId,
+      lessonVersion: progress.lessonVersion,
+      attempts: progress.attempts.map((attempt) => ({
+        score: attempt.score,
+        answers: attempt.answers.map((answer) => ({
+          questionId: answer.questionId,
+          selectedOptionIndex: answer.selectedOptionIndex,
+          correct: answer.correct,
+          topic: answer.topic,
+        })),
+        completedAt: attempt.completedAt.toISOString(),
+      })),
+    };
+  }
+
+  private serializeQuizProgressCollection(
+    progresses: AiQuizProgress[],
+    aiCourse: AiCourse | null,
+  ) {
+    const result = {
+      course: {} as Record<string, ReturnType<LearningService["serializeQuizProgress"]>>,
+      yandex: {} as Record<string, ReturnType<LearningService["serializeQuizProgress"]>>,
+      ozon: {} as Record<string, ReturnType<LearningService["serializeQuizProgress"]>>,
+    };
+    for (const progress of progresses) {
+      const scope =
+        progress.courseKey === YANDEX_SPRINT_AI_KEY &&
+        progress.courseVersion === YANDEX_SPRINT_AI_VERSION
+          ? "yandex"
+          : progress.courseKey === OZON_SPRINT_AI_KEY &&
+              progress.courseVersion === OZON_SPRINT_AI_VERSION
+            ? "ozon"
+            : aiCourse &&
+                progress.courseKey === aiCourse.key &&
+                progress.courseVersion === aiCourse.version
+              ? "course"
+              : null;
+      if (!scope || result[scope][progress.itemId]) continue;
+      result[scope][progress.itemId] = this.serializeQuizProgress(progress);
+    }
+    return result;
+  }
+
+  private serializeMockInterview(interview: MockInterview & { _id: unknown }) {
+    const questionMap = new Map(QUESTION_BANK.map((question) => [question.id, question]));
+    return {
+      id: String(interview._id),
+      status: interview.status,
+      durationMinutes: interview.durationMinutes,
+      startedAt: interview.startedAt.toISOString(),
+      completedAt: interview.completedAt?.toISOString() ?? null,
+      questions: interview.questionIds.flatMap((questionId) => {
+        const question = questionMap.get(questionId);
+        return question ? [question] : [];
+      }),
+      answers: Object.fromEntries(
+        interview.answers.map((answer) => [answer.questionId, answer.content]),
+      ),
+      evaluation: interview.evaluation
+        ? {
+            overallScore: interview.evaluation.overallScore,
+            summary: interview.evaluation.summary,
+            strengths: interview.evaluation.strengths,
+            weakTopics: interview.evaluation.weakTopics,
+            questions: interview.evaluation.questions,
+          }
+        : null,
     };
   }
 

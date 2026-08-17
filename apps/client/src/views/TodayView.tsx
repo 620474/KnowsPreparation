@@ -1,15 +1,19 @@
 import type { CSSProperties } from "react";
-import { ActionIcon, Textarea } from "@mantine/core";
-import { Check, Clock3, Flame, Target, Trophy } from "lucide-react";
+import { ActionIcon, Button, Textarea } from "@mantine/core";
+import { BarChart3, BrainCircuit, Check, Clock3, MessagesSquare, Target, Trophy, Flame } from "lucide-react";
 
 import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
 import { getDateForOffset, getDayForOffset, getStudyPosition, getWeekForDay } from "../lib/date";
+import { buildReviewQueue } from "../lib/review-queue";
 import type { BootstrapData, TaskUpdateHandler } from "../types";
 
 interface TodayViewProps {
   data: BootstrapData;
   onUpdateTask: TaskUpdateHandler;
+  onOpenAnalytics: () => void;
+  onOpenMock: () => void;
+  onOpenReview: () => void;
 }
 
 const kindLabels = {
@@ -19,7 +23,13 @@ const kindLabels = {
   review: "Повторение",
 };
 
-export function TodayView({ data, onUpdateTask }: TodayViewProps) {
+export function TodayView({
+  data,
+  onUpdateTask,
+  onOpenAnalytics,
+  onOpenMock,
+  onOpenReview,
+}: TodayViewProps) {
   const position = getStudyPosition(data.settings.startDate);
   const day = getDayForOffset(data.curriculum, position.rawOffset);
   const week = getWeekForDay(data.curriculum, day);
@@ -34,6 +44,7 @@ export function TodayView({ data, onUpdateTask }: TodayViewProps) {
     (block) => data.progress.tasks[block.id]?.completed,
   ).length ?? 0;
   const dialStyle = { "--progress": `${totalProgress * 3.6}deg` } as CSSProperties;
+  const reviewQueue = buildReviewQueue(data.questions, data.progress.questions);
 
   if (!day || !week) return null;
 
@@ -67,6 +78,24 @@ export function TodayView({ data, onUpdateTask }: TodayViewProps) {
             <p>Закрывай три небольших блока вместо одной размытой цели.</p>
           </div>
         </div>
+      </section>
+
+      <section className="today-training-grid">
+        <article>
+          <BrainCircuit size={25} />
+          <div><strong>{reviewQueue.length}</strong><span>вопросов на сегодня</span></div>
+          <Button className="primary-button" type="button" onClick={onOpenReview}>Начать повторение</Button>
+        </article>
+        <article>
+          <MessagesSquare size={25} />
+          <div><strong>5</strong><span>вопросов · 20 минут</span></div>
+          <Button className="secondary-button" type="button" variant="default" onClick={onOpenMock}>Мок-интервью</Button>
+        </article>
+        <article>
+          <BarChart3 size={25} />
+          <div><strong>Слабые темы</strong><span>по тестам и ответам</span></div>
+          <Button className="secondary-button" type="button" variant="default" onClick={onOpenAnalytics}>Открыть аналитику</Button>
+        </article>
       </section>
 
       <section>

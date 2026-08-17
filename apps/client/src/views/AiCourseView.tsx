@@ -30,6 +30,7 @@ interface AiCourseViewProps {
   data: BootstrapData;
   generatingCourse: boolean;
   generatingLessonId: string | null;
+  generationCharacters: number;
   onGenerateCourse: (profile: AiCourseProfile) => void;
   onGenerateLesson: (itemId: string) => void;
   onOpenLesson: (itemId: string) => void;
@@ -66,6 +67,7 @@ export function AiCourseView({
   data,
   generatingCourse,
   generatingLessonId,
+  generationCharacters,
   onGenerateCourse,
   onGenerateLesson,
   onOpenLesson,
@@ -237,7 +239,11 @@ export function AiCourseView({
                         }
                         onClick={() => lesson ? onOpenLesson(item.id) : onGenerateLesson(item.id)}
                       >
-                        {lesson ? "Открыть урок" : "Написать урок"}
+                        {lesson
+                          ? "Открыть урок"
+                          : isGenerating && generationCharacters > 0
+                            ? `Пишу · ${generationCharacters.toLocaleString("ru-RU")} симв.`
+                            : "Написать урок"}
                       </Button>
                       <Button
                         className="secondary-button"

@@ -17,18 +17,24 @@
     "lint": "eslint .",
     "test": "npm run test -w @prep/api && npm run test -w @prep/client",
     "android:sync": "npm run build -w @prep/client && npm run cap:sync -w @prep/client",
-    "android:open": "npm run cap:open -w @prep/client"
+    "android:open": "npm run cap:open -w @prep/client",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run --no-ci",
+    "release:android": "node scripts/build-release-apk.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
     "@rolldown/pluginutils": "^1.0.1",
+    "@semantic-release/exec": "^7.1.0",
     "concurrently": "^9.2.1",
+    "conventional-changelog-conventionalcommits": "^10.3.0",
     "detect-libc": "^2.0.3",
     "eslint": "^9.39.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "nanoid": "^3.3.16",
+    "semantic-release": "^24.2.9",
     "source-map-js": "^1.2.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.0"

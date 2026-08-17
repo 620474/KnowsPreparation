@@ -55,6 +55,14 @@ export interface GeneratedLesson {
       explanation: string;
     }>;
   };
+  quiz: Array<{
+    id: string;
+    prompt: string;
+    options: string[];
+    correctOptionIndex: number;
+    explanation: string;
+    topic: string;
+  }>;
   summary: string;
 }
 
@@ -175,9 +183,13 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
   if (
     !Array.isArray(lesson.codeExamples) ||
     !Array.isArray(lesson.diagrams) ||
-    !Array.isArray(practice.examples)
+    !Array.isArray(practice.examples) ||
+    !Array.isArray(lesson.quiz)
   ) {
     throw new Error("lesson examples must be arrays");
+  }
+  if (lesson.quiz.length !== 10) {
+    throw new Error("lesson.quiz must contain exactly 10 questions");
   }
 
   return {
@@ -230,6 +242,30 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
         };
       }),
     },
+    quiz: lesson.quiz.map((value, index) => {
+      const question = asRecord(value, `lesson.quiz.${index}`);
+      if (!Array.isArray(question.options) || question.options.length !== 4) {
+        throw new Error(`lesson.quiz.${index}.options must contain exactly 4 items`);
+      }
+      const options = question.options.map((option, optionIndex) =>
+        asText(option, `lesson.quiz.${index}.options.${optionIndex}`, 500),
+      );
+      if (new Set(options).size !== options.length) {
+        throw new Error(`lesson.quiz.${index}.options must be unique`);
+      }
+      const correctOptionIndex = Number(question.correctOptionIndex);
+      if (!Number.isInteger(correctOptionIndex) || correctOptionIndex < 0 || correctOptionIndex > 3) {
+        throw new Error(`lesson.quiz.${index}.correctOptionIndex must be between 0 and 3`);
+      }
+      return {
+        id: `quiz-${String(index + 1).padStart(2, "0")}`,
+        prompt: asText(question.prompt, `lesson.quiz.${index}.prompt`, 1_000),
+        options,
+        correctOptionIndex,
+        explanation: asText(question.explanation, `lesson.quiz.${index}.explanation`, 1_500),
+        topic: asText(question.topic, `lesson.quiz.${index}.topic`, 120),
+      };
+    }),
     summary: asText(lesson.summary, "lesson.summary", 2_000),
   };
 }

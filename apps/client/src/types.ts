@@ -1,4 +1,5 @@
 export type QuestionStatus = "new" | "learning" | "review" | "mastered";
+export type ReviewRating = "again" | "hard" | "good" | "easy";
 export type Difficulty = "easy" | "medium" | "hard";
 export type AiLevel = "middle" | "middle-plus" | "senior";
 export type AiChatScope = "course" | "yandex" | "ozon";
@@ -109,6 +110,14 @@ export type TaskUpdateHandler = (
 export interface QuestionProgress {
   status: QuestionStatus;
   note: string;
+  easeFactor: number;
+  intervalDays: number;
+  repetitions: number;
+  nextReviewAt: string | null;
+  lastReviewedAt: string | null;
+  reviewCount: number;
+  lapseCount: number;
+  lastRating: ReviewRating | null;
 }
 
 export interface AlgorithmEntry {
@@ -189,10 +198,39 @@ export interface AiLesson {
       explanation: string;
     }>;
   };
+  quiz: AiQuizQuestion[];
   summary: string;
   resourceIds: string[];
   version: number;
   generatedAt: string;
+}
+
+export interface AiQuizQuestion {
+  id: string;
+  prompt: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation: string;
+  topic: string;
+}
+
+export interface LessonQuizAnswer {
+  questionId: string;
+  selectedOptionIndex: number;
+  correct: boolean;
+  topic: string;
+}
+
+export interface LessonQuizAttempt {
+  score: number;
+  answers: LessonQuizAnswer[];
+  completedAt: string;
+}
+
+export interface LessonQuizProgress {
+  itemId: string;
+  lessonVersion: number;
+  attempts: LessonQuizAttempt[];
 }
 
 export interface AiChatMessage {
@@ -213,6 +251,32 @@ export interface AiLessonQuestionContext {
   excerpt: string;
 }
 
+export interface MockQuestionEvaluation {
+  questionId: string;
+  score: number;
+  feedback: string;
+  missingPoints: string[];
+}
+
+export interface MockInterviewEvaluation {
+  overallScore: number;
+  summary: string;
+  strengths: string[];
+  weakTopics: string[];
+  questions: MockQuestionEvaluation[];
+}
+
+export interface MockInterview {
+  id: string;
+  status: "in_progress" | "completed";
+  durationMinutes: number;
+  startedAt: string;
+  completedAt: string | null;
+  questions: InterviewQuestion[];
+  answers: Record<string, string>;
+  evaluation: MockInterviewEvaluation | null;
+}
+
 export interface BootstrapData {
   settings: {
     startDate: string;
@@ -231,6 +295,7 @@ export interface BootstrapData {
     questions: Record<string, QuestionProgress>;
   };
   algorithms: AlgorithmEntry[];
+  mockInterviews: MockInterview[];
   ai: {
     enabled: boolean;
     model: string;
@@ -238,5 +303,10 @@ export interface BootstrapData {
     lessons: Record<string, AiLesson>;
     yandexLessons: Record<string, AiLesson>;
     ozonLessons: Record<string, AiLesson>;
+    quizProgress: {
+      course: Record<string, LessonQuizProgress>;
+      yandex: Record<string, LessonQuizProgress>;
+      ozon: Record<string, LessonQuizProgress>;
+    };
   };
 }

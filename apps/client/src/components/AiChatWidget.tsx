@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, MessageCircle, Send, Sparkles, Trash2 } from "lucide-react";
 
 import { learningApi } from "../api";
-import type { AiChatHistory, AiChatScope } from "../types";
+import type { AiChatHistory, AiChatMessage, AiChatScope } from "../types";
 
 export interface AiChatTopic {
   id: string;
@@ -36,6 +36,18 @@ const chatKey = (scope: AiChatScope, itemId: string) => ["ai-chat", scope, itemI
 
 const formatTime = (value: string) =>
   new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+
+interface SendMessageVariables {
+  itemId: string;
+  content: string;
+  userMessageId: string;
+  assistantMessageId: string;
+  createdAt: string;
+}
+
+interface SendMessageContext {
+  previous?: AiChatHistory;
+}
 
 export function AiChatWidget({
   enabled,
@@ -61,20 +73,76 @@ export function AiChatWidget({
     staleTime: 15_000,
   });
 
-  const sendMutation = useMutation({
-    mutationFn: ({ itemId, content }: { itemId: string; content: string }) =>
-      learningApi.sendAiChatMessage(scope, itemId, content),
-    onSuccess: ({ messages }, { itemId }) => {
+  const sendMutation = useMutation<
+    { messages: AiChatMessage[] },
+    Error,
+    SendMessageVariables,
+    SendMessageContext
+  >({
+    mutationFn: ({ itemId, content, assistantMessageId }) =>
+      learningApi.sendAiChatMessageStream(scope, itemId, content, (delta) => {
+        queryClient.setQueryData<AiChatHistory>(chatKey(scope, itemId), (current) =>
+          current
+            ? {
+                ...current,
+                messages: current.messages.map((message) =>
+                  message.id === assistantMessageId
+                    ? { ...message, content: message.content + delta }
+                    : message,
+                ),
+              }
+            : current,
+        );
+      }),
+    onMutate: async (variables) => {
+      const key = chatKey(scope, variables.itemId);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<AiChatHistory>(key);
+      const optimisticMessages: AiChatMessage[] = [
+        {
+          id: variables.userMessageId,
+          role: "user",
+          content: variables.content,
+          createdAt: variables.createdAt,
+        },
+        {
+          id: variables.assistantMessageId,
+          role: "assistant",
+          content: "",
+          createdAt: variables.createdAt,
+        },
+      ];
+      queryClient.setQueryData<AiChatHistory>(key, (current) => ({
+        itemId: variables.itemId,
+        title: current?.title ?? topics.find((item) => item.id === variables.itemId)?.title ?? "AI-чат",
+        messages: [...(current?.messages ?? []), ...optimisticMessages],
+      }));
+      setDraft("");
+      return { previous };
+    },
+    onSuccess: ({ messages }, { itemId, userMessageId, assistantMessageId }) => {
       queryClient.setQueryData<AiChatHistory>(chatKey(scope, itemId), (current) =>
         current
-          ? { ...current, messages: [...current.messages, ...messages] }
+          ? {
+              ...current,
+              messages: [
+                ...current.messages.filter(
+                  (message) =>
+                    message.id !== userMessageId && message.id !== assistantMessageId,
+                ),
+                ...messages,
+              ],
+            }
           : {
               itemId,
               title: topics.find((item) => item.id === itemId)?.title ?? "AI-чат",
               messages,
             },
       );
-      setDraft("");
+    },
+    onError: (_error, variables, context) => {
+      queryClient.setQueryData(chatKey(scope, variables.itemId), context?.previous);
+      setDraft(variables.content);
     },
   });
 
@@ -88,9 +156,10 @@ export function AiChatWidget({
   });
 
   const messages = chatQuery.data?.messages ?? [];
+  const lastMessageContent = messages.at(-1)?.content ?? "";
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, sendMutation.isPending]);
+  }, [messages.length, lastMessageContent, sendMutation.isPending]);
 
   useEffect(() => {
     if (!opened || !draftRequest) return;
@@ -101,7 +170,14 @@ export function AiChatWidget({
     event.preventDefault();
     const content = draft.trim();
     if (!activeItemId || !content || sendMutation.isPending) return;
-    sendMutation.mutate({ itemId: activeItemId, content });
+    const requestId = `${Date.now()}-${crypto.randomUUID()}`;
+    sendMutation.mutate({
+      itemId: activeItemId,
+      content,
+      userMessageId: `temporary-user-${requestId}`,
+      assistantMessageId: `temporary-assistant-${requestId}`,
+      createdAt: new Date().toISOString(),
+    });
   };
 
   if (topics.length === 0) return null;
@@ -165,12 +241,13 @@ export function AiChatWidget({
             {messages.map((message) => (
               <article className={`ai-chat-message ${message.role}`} key={message.id}>
                 <div>{message.role === "user" ? "Ты" : "AI"}<span>{formatTime(message.createdAt)}</span></div>
-                <p>{message.content}</p>
+                <p>
+                  {message.content || (sendMutation.isPending && message.id.startsWith("temporary-assistant-") ? (
+                    <span className="ai-chat-inline-loader"><Loader color="mint" size="xs" />Начинаю ответ…</span>
+                  ) : null)}
+                </p>
               </article>
             ))}
-            {sendMutation.isPending ? (
-              <div className="ai-chat-typing"><Loader color="mint" size="xs" />AI разбирает вопрос…</div>
-            ) : null}
             {sendMutation.isError ? (
               <Alert color="red" icon={<AlertTriangle size={16} />} variant="light">
                 {sendMutation.error.message}

@@ -17,6 +17,9 @@ describe("app routes", () => {
     ["plan", "#/plan"],
     ["resources", "#/resources"],
     ["questions", "#/questions"],
+    ["review", "#/review"],
+    ["mock-interview", "#/mock-interview"],
+    ["analytics", "#/analytics"],
     ["algorithms", "#/algorithms"],
     ["settings", "#/settings"],
   ])("round-trips the %s view", (view, hash) => {

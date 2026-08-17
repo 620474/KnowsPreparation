@@ -29,6 +29,7 @@ interface YandexSprintViewProps {
   description?: string;
   weekTitles?: string[];
   generatingLessonId: string | null;
+  generationCharacters: number;
   onGenerateLesson: (blockId: string) => void;
   onOpenLesson: (blockId: string) => void;
   onOpenChat: (blockId: string, context?: AiLessonQuestionContext) => void;
@@ -57,6 +58,7 @@ export function YandexSprintView({
   description = "Проходи пункты в любом темпе. Ничего не переносится и не пропадает из-за даты.",
   weekTitles = WEEK_TITLES,
   generatingLessonId,
+  generationCharacters,
   onGenerateLesson,
   onOpenLesson,
   onOpenChat,
@@ -213,7 +215,11 @@ export function YandexSprintView({
                                           : onGenerateLesson(block.id)
                                       }
                                     >
-                                      {lesson ? "Открыть разбор" : "Написать разбор"}
+                                      {lesson
+                                        ? "Открыть разбор"
+                                        : isGenerating && generationCharacters > 0
+                                          ? `Пишу · ${generationCharacters.toLocaleString("ru-RU")} симв.`
+                                          : "Написать разбор"}
                                     </Button>
                                     <Button
                                       className="secondary-button"

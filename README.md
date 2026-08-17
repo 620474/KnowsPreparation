@@ -162,6 +162,24 @@ cd apps/client/android
 
 Результат: `apps/client/android/app/build/outputs/apk/debug/app-debug.apk`.
 
+## Версии и релизы
+
+Версия релиза определяется Git-тегами и Conventional Commits. После успешных
+проверок push в `main` запускает `semantic-release`, создаёт GitHub Release и
+прикладывает APK с именем `KnowsPreparation-vX.Y.Z.apk`. Android `versionName`
+и возрастающий `versionCode` вычисляются из той же SemVer-версии во время сборки.
+
+- `fix: ...` — patch-релиз: `1.0.0` → `1.0.1`;
+- `feat: ...` — minor-релиз: `1.0.0` → `1.1.0`;
+- `feat!: ...` или `BREAKING CHANGE:` — major-релиз: `1.0.0` → `2.0.0`;
+- `docs:`, `test:`, `chore:` — сами по себе релиз не создают.
+
+Версии и release notes не нужно менять вручную. Локальная проверка конфигурации:
+
+```bash
+npm run release:dry-run
+```
+
 ## Проверки
 
 ```bash

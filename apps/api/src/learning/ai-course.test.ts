@@ -87,6 +87,13 @@ describe("AI course helpers", () => {
         constraints: ["Не запускай код"],
         examples: [{ input: "Promise.resolve()", output: "microtask", explanation: "Очередь" }],
       },
+      quiz: Array.from({ length: 10 }, (_, index) => ({
+        prompt: `Вопрос ${index + 1}`,
+        options: ["Вариант A", "Вариант B", "Вариант C", `Вариант D ${index}`],
+        correctOptionIndex: index % 4,
+        explanation: "Проверяет понимание порядка выполнения.",
+        topic: "Event loop",
+      })),
       summary: "Сначала синхронный код, затем микрозадачи.",
     });
 
@@ -94,6 +101,8 @@ describe("AI course helpers", () => {
     expect(lesson.codeExamples[0]?.title).toBe("Очереди");
     expect(lesson.diagrams).toHaveLength(1);
     expect(lesson.diagrams[0]?.nodes[1]?.row).toBe(4);
+    expect(lesson.quiz).toHaveLength(10);
+    expect(lesson.quiz[0]?.id).toBe("quiz-01");
   });
 
   it("links generated topics to the existing resource catalog", () => {
