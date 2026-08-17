@@ -52,7 +52,10 @@ export function AiLessonContent({ lesson, onAsk }: AiLessonContentProps) {
       const selectedText = selection?.toString().trim() ?? "";
       const anchorNode = selection?.anchorNode;
       const root = rootRef.current;
-      if (!selectedText || !anchorNode || !root) return;
+      if (!selectedText || !anchorNode || !root) {
+        setSelectedContext(null);
+        return;
+      }
 
       if (!root.contains(anchorNode)) {
         setSelectedContext(null);
