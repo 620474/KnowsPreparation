@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { UnstyledButton } from "@mantine/core";
+import { UnstyledButton, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
   BookOpenCheck,
   CalendarDays,
@@ -8,8 +8,10 @@ import {
   Gauge,
   LibraryBig,
   ListChecks,
+  Moon,
   Settings,
   Sparkles,
+  Sun,
 } from "lucide-react";
 
 export type AppView =
@@ -49,6 +51,32 @@ const navigation: Array<{
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
   navigationId === activeView || (navigationId === "settings" && activeView === "ozon");
 
+function ThemeToggle() {
+  const { setColorScheme } = useMantineColorScheme();
+  const colorScheme = useComputedColorScheme("dark");
+  const nextColorScheme = colorScheme === "dark" ? "light" : "dark";
+  const label = colorScheme === "dark" ? "Включить светлую тему" : "Включить тёмную тему";
+
+  function toggleTheme() {
+    setColorScheme(nextColorScheme);
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", nextColorScheme === "light" ? "#f4f8f5" : "#07110f");
+  }
+
+  return (
+    <UnstyledButton
+      className="theme-toggle"
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={toggleTheme}
+    >
+      {colorScheme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+    </UnstyledButton>
+  );
+}
+
 export function AppShell({ activeView, onViewChange, children, weekLabel }: AppShellProps) {
   return (
     <div className="app-shell">
@@ -59,6 +87,7 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
             <strong>Frontend Sprint</strong>
             <span>Interview OS</span>
           </div>
+          <ThemeToggle />
         </div>
 
         <nav aria-label="Основная навигация">
@@ -92,6 +121,7 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
             <strong>Frontend Sprint</strong>
             <span>{weekLabel}</span>
           </div>
+          <ThemeToggle />
         </header>
         <main className="main-content">{children}</main>
       </div>
