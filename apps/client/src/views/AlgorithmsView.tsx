@@ -1,29 +1,47 @@
 import { useState, type FormEvent } from "react";
 import { ActionIcon, Button, Progress, Select, Textarea, TextInput } from "@mantine/core";
-import { Code2, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Code2, Plus, Trash2 } from "lucide-react";
 
 import { difficultyLabels } from "../api";
+import { TaskWorkspace } from "../components/TaskWorkspace";
+import { getPracticeTasks } from "../lib/algorithm-practice";
 import { dateToInputValue } from "../lib/date";
-import type { AlgorithmEntry, BootstrapData, Difficulty } from "../types";
+import type {
+  AlgorithmEntry,
+  BootstrapData,
+  Difficulty,
+  TaskUpdateHandler,
+} from "../types";
 
 interface AlgorithmsViewProps {
   data: BootstrapData;
   onAdd: (entry: Omit<AlgorithmEntry, "id">) => void;
   onDelete: (id: string) => void;
+  onUpdateTask: TaskUpdateHandler;
 }
 
 const difficultyOptions: Array<{ value: Difficulty; label: string }> = Object.entries(
   difficultyLabels,
 ).map(([value, label]) => ({ value: value as Difficulty, label }));
 
-export function AlgorithmsView({ data, onAdd, onDelete }: AlgorithmsViewProps) {
+export function AlgorithmsView({
+  data,
+  onAdd,
+  onDelete,
+  onUpdateTask,
+}: AlgorithmsViewProps) {
   const [title, setTitle] = useState("");
   const [pattern, setPattern] = useState(data.algorithmPatterns[0] ?? "Массивы и строки");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [solvedAt, setSolvedAt] = useState(dateToInputValue());
   const [note, setNote] = useState("");
+  const practiceTasks = getPracticeTasks(data.yandexSprint, data.ozonSprint);
+  const completedPracticeTasks = practiceTasks.filter(
+    (task) => data.progress.tasks[task.id]?.completed,
+  ).length;
   const goal = 80;
-  const progress = Math.min(Math.round((data.algorithms.length / goal) * 100), 100);
+  const solvedCount = completedPracticeTasks + data.algorithms.length;
+  const progress = Math.min(Math.round((solvedCount / goal) * 100), 100);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,12 +60,106 @@ export function AlgorithmsView({ data, onAdd, onDelete }: AlgorithmsViewProps) {
         </div>
         <div className="algorithm-score">
           <Code2 size={24} />
-          <strong>{data.algorithms.length}</strong>
+          <strong>{solvedCount}</strong>
           <span>из {goal}</span>
         </div>
       </header>
 
       <Progress className="goal-track" value={progress} color="mint" radius="xl" size="sm" />
+
+      <section className="algorithm-practice-section">
+        <div className="section-heading compact algorithm-practice-heading">
+          <div>
+            <p className="eyebrow">Готовые условия</p>
+            <h2>Задачи для практики</h2>
+            <p>Задачи из спринтов Яндекса и Ozon. Решения сохраняются в общей MongoDB.</p>
+          </div>
+          <strong>{completedPracticeTasks}/{practiceTasks.length}</strong>
+        </div>
+
+        <div className="algorithm-practice-list">
+          {practiceTasks.map((task) => {
+            const progressEntry = {
+              completed: false,
+              note: "",
+              customTask: "",
+              solution: "",
+              ...data.progress.tasks[task.id],
+            };
+
+            return (
+              <details
+                className={
+                  progressEntry.completed
+                    ? "algorithm-practice-card complete"
+                    : "algorithm-practice-card"
+                }
+                key={task.id}
+              >
+                <summary>
+                  <span className="algorithm-practice-check" aria-hidden="true">
+                    <Check size={17} />
+                  </span>
+                  <span className="algorithm-practice-copy">
+                    <small>{task.source} · день {task.dayNumber} · {task.dayTitle}</small>
+                    <strong>{task.block.title}</strong>
+                    <p>{task.block.description}</p>
+                  </span>
+                  <ChevronDown className="algorithm-practice-chevron" size={20} />
+                </summary>
+
+                <div className="algorithm-practice-content">
+                  <p>{task.block.exercise.statement}</p>
+                  {task.block.exercise.signature ? (
+                    <div className="algorithm-practice-part">
+                      <span>Сигнатура</span>
+                      <pre>{task.block.exercise.signature}</pre>
+                    </div>
+                  ) : null}
+                  <div className="algorithm-practice-part">
+                    <span>Ограничения</span>
+                    <ul>
+                      {task.block.exercise.constraints.map((constraint) => (
+                        <li key={constraint}>{constraint}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="algorithm-practice-part">
+                    <span>Примеры</span>
+                    <div className="algorithm-practice-examples">
+                      {task.block.exercise.examples.map((example, index) => (
+                        <div key={`${example.input}-${index}`}>
+                          <small>Пример {index + 1}</small>
+                          <pre>Вход: {example.input}{"\n"}Выход: {example.output}</pre>
+                          {example.explanation ? <p>{example.explanation}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    className={progressEntry.completed ? "secondary-button" : "primary-button"}
+                    type="button"
+                    variant={progressEntry.completed ? "default" : "filled"}
+                    leftSection={<Check size={17} />}
+                    onClick={() => void onUpdateTask(task.id, {
+                      completed: !progressEntry.completed,
+                    })}
+                  >
+                    {progressEntry.completed ? "Вернуть в работу" : "Отметить решённой"}
+                  </Button>
+                  <TaskWorkspace
+                    includeCustomTask={false}
+                    onUpdateTask={onUpdateTask}
+                    progress={progressEntry}
+                    taskId={task.id}
+                    taskTitle={task.block.title}
+                  />
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="algorithm-layout">
         <form className="algorithm-form" onSubmit={handleSubmit}>

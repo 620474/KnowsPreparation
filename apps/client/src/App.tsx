@@ -562,6 +562,7 @@ export default function App() {
           data={data}
           onAdd={addAlgorithm}
           onDelete={(id) => deleteAlgorithmMutation.mutate(id)}
+          onUpdateTask={updateTask}
         />
       ) : null}
       {activeView === "settings" ? (
