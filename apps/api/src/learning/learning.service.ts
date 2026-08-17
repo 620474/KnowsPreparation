@@ -8,7 +8,11 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 
 import { AiContentService } from "./ai-content.service";
-import { buildAiChatContext, buildYandexAiChatContext } from "./ai-chat";
+import {
+  buildAiChatContext,
+  buildOzonAiChatContext,
+  buildYandexAiChatContext,
+} from "./ai-chat";
 import { selectResourcesForCourseItem } from "./ai-course";
 import {
   ALGORITHM_PATTERNS,
@@ -18,6 +22,12 @@ import {
   TASK_IDS,
 } from "./curriculum";
 import { RESOURCES } from "./resources";
+import {
+  OZON_SPRINT,
+  OZON_SPRINT_AI_KEY,
+  OZON_SPRINT_AI_VERSION,
+  OZON_TASK_IDS,
+} from "./ozon-sprint";
 import {
   YANDEX_SPRINT,
   YANDEX_SPRINT_AI_KEY,
@@ -94,7 +104,7 @@ export class LearningService {
       this.algorithmModel.find().sort({ solvedAt: -1, createdAt: -1 }).lean().exec(),
       this.aiCourseModel.findOne({ key: "main" }).lean().exec(),
     ]);
-    const [aiLessons, yandexLessons] = await Promise.all([
+    const [aiLessons, yandexLessons, ozonLessons] = await Promise.all([
       aiCourse
         ? this.aiLessonModel
             .find({ courseKey: aiCourse.key, courseVersion: aiCourse.version })
@@ -105,6 +115,13 @@ export class LearningService {
         .find({
           courseKey: YANDEX_SPRINT_AI_KEY,
           courseVersion: YANDEX_SPRINT_AI_VERSION,
+        })
+        .lean()
+        .exec(),
+      this.aiLessonModel
+        .find({
+          courseKey: OZON_SPRINT_AI_KEY,
+          courseVersion: OZON_SPRINT_AI_VERSION,
         })
         .lean()
         .exec(),
@@ -123,6 +140,7 @@ export class LearningService {
       },
       curriculum: CURRICULUM,
       yandexSprint: YANDEX_SPRINT,
+      ozonSprint: OZON_SPRINT,
       resources: RESOURCES,
       questions: QUESTION_BANK,
       algorithmPatterns: ALGORITHM_PATTERNS,
@@ -162,6 +180,9 @@ export class LearningService {
         ),
         yandexLessons: Object.fromEntries(
           yandexLessons.map((lesson) => [lesson.itemId, this.serializeAiLesson(lesson)]),
+        ),
+        ozonLessons: Object.fromEntries(
+          ozonLessons.map((lesson) => [lesson.itemId, this.serializeAiLesson(lesson)]),
         ),
       },
     };
@@ -308,12 +329,56 @@ export class LearningService {
     return this.serializeAiLesson(lesson);
   }
 
+  async generateOzonLesson(blockId: string) {
+    const { day, block } = this.getOzonBlock(blockId);
+    if (block.kind === "review") {
+      throw new BadRequestException("Для блока разбора отдельный AI-урок не требуется");
+    }
+    const resourceMap = new Map(RESOURCES.map((resource) => [resource.id, resource]));
+    const resources = block.resourceIds.flatMap((resourceId) => {
+      const resource = resourceMap.get(resourceId);
+      return resource ? [resource] : [];
+    });
+    const generated = await this.aiContent.generateOzonLesson(day, block, resources);
+    const scope = {
+      courseKey: OZON_SPRINT_AI_KEY,
+      courseVersion: OZON_SPRINT_AI_VERSION,
+      itemId: blockId,
+    };
+    const current = await this.aiLessonModel.findOne(scope).lean().exec();
+    const lesson = await this.aiLessonModel
+      .findOneAndUpdate(
+        scope,
+        {
+          $set: {
+            ...scope,
+            title: block.title,
+            ...generated,
+            resourceIds: block.resourceIds,
+            version: (current?.version ?? 0) + 1,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+        { upsert: true, returnDocument: "after", lean: true },
+      )
+      .exec();
+
+    if (!lesson) {
+      throw new InternalServerErrorException("Не удалось сохранить разбор темы Ozon");
+    }
+    return this.serializeAiLesson(lesson);
+  }
+
   async getAiChat(itemId: string) {
     return this.readAiChat(await this.getAiChatScope(itemId));
   }
 
   async getYandexAiChat(blockId: string) {
     return this.readAiChat(await this.getYandexAiChatScope(blockId));
+  }
+
+  async getOzonAiChat(blockId: string) {
+    return this.readAiChat(await this.getOzonAiChatScope(blockId));
   }
 
   private async readAiChat(scope: AiChatScope) {
@@ -341,6 +406,10 @@ export class LearningService {
 
   async sendYandexAiChatMessage(blockId: string, dto: SendAiChatMessageDto) {
     return this.replyToAiChat(await this.getYandexAiChatScope(blockId), dto);
+  }
+
+  async sendOzonAiChatMessage(blockId: string, dto: SendAiChatMessageDto) {
+    return this.replyToAiChat(await this.getOzonAiChatScope(blockId), dto);
   }
 
   private async replyToAiChat(scope: AiChatScope, dto: SendAiChatMessageDto) {
@@ -393,6 +462,10 @@ export class LearningService {
     return this.deleteAiChat(await this.getYandexAiChatScope(blockId));
   }
 
+  async clearOzonAiChat(blockId: string) {
+    return this.deleteAiChat(await this.getOzonAiChatScope(blockId));
+  }
+
   private async deleteAiChat(scope: AiChatScope) {
     await this.aiChatMessageModel
       .deleteMany({
@@ -422,7 +495,11 @@ export class LearningService {
   }
 
   async updateTask(taskId: string, dto: UpdateTaskDto) {
-    if (!TASK_IDS.has(taskId) && !YANDEX_TASK_IDS.has(taskId)) {
+    if (
+      !TASK_IDS.has(taskId) &&
+      !YANDEX_TASK_IDS.has(taskId) &&
+      !OZON_TASK_IDS.has(taskId)
+    ) {
       throw new NotFoundException("Задание не найдено");
     }
 
@@ -578,12 +655,44 @@ export class LearningService {
     };
   }
 
+  private async getOzonAiChatScope(blockId: string): Promise<AiChatScope> {
+    const { day, block } = this.getOzonBlock(blockId);
+    const lesson = await this.aiLessonModel
+      .findOne({
+        courseKey: OZON_SPRINT_AI_KEY,
+        courseVersion: OZON_SPRINT_AI_VERSION,
+        itemId: blockId,
+      })
+      .lean()
+      .exec();
+    const resourceMap = new Map(RESOURCES.map((resource) => [resource.id, resource]));
+    const resources = block.resourceIds.flatMap((resourceId) => {
+      const resource = resourceMap.get(resourceId);
+      return resource ? [resource] : [];
+    });
+    return {
+      courseKey: OZON_SPRINT_AI_KEY,
+      courseVersion: OZON_SPRINT_AI_VERSION,
+      itemId: blockId,
+      title: block.title,
+      context: buildOzonAiChatContext({ day, block, lesson, resources }),
+    };
+  }
+
   private getYandexBlock(blockId: string) {
     for (const day of YANDEX_SPRINT) {
       const block = day.blocks.find((candidate) => candidate.id === blockId);
       if (block) return { day, block };
     }
     throw new NotFoundException("Тема Яндекс-спринта не найдена");
+  }
+
+  private getOzonBlock(blockId: string) {
+    for (const day of OZON_SPRINT) {
+      const block = day.blocks.find((candidate) => candidate.id === blockId);
+      if (block) return { day, block };
+    }
+    throw new NotFoundException("Тема Ozon-спринта не найдена");
   }
 
   private serializeAiChatMessage(message: AiChatMessageRecord) {

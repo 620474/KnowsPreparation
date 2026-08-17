@@ -221,6 +221,23 @@ export class AiContentService {
     block: StudyBlock,
     resources: LearningResource[],
   ) {
+    return this.generateInterviewSprintLesson("Яндекс", day, block, resources);
+  }
+
+  async generateOzonLesson(
+    day: StudyDay,
+    block: StudyBlock,
+    resources: LearningResource[],
+  ) {
+    return this.generateInterviewSprintLesson("Ozon", day, block, resources);
+  }
+
+  private async generateInterviewSprintLesson(
+    company: "Яндекс" | "Ozon",
+    day: StudyDay,
+    block: StudyBlock,
+    resources: LearningResource[],
+  ) {
     const sourceContext = resources.map((resource) => ({
       title: resource.title,
       provider: resource.provider,
@@ -228,11 +245,13 @@ export class AiContentService {
       learningGoal: resource.learningGoal ?? "",
     }));
     const result = await this.request<unknown>(
-      "yandex_frontend_interview_lesson",
+      company === "Ozon"
+        ? "ozon_frontend_interview_lesson"
+        : "yandex_frontend_interview_lesson",
       lessonSchema,
       [
-        "Ты сильный frontend-инженер и интервьюер Яндекса.",
-        "Подготовь самостоятельный урок на русском языке для Middle+/Senior frontend-разработчика по текущему блоку 21-дневного спринта.",
+        `Ты сильный frontend-инженер, готовящий кандидата к интервью в ${company}.`,
+        `Подготовь самостоятельный урок на русском языке для Middle+/Senior frontend-разработчика по текущему блоку ${company === "Ozon" ? "14" : "21"}-дневного спринта.`,
         "Материал должен помогать на секциях платформы, решения задач и работы с AI: объясняй причинно-следственные связи и формулировки для ответа вслух.",
         "Для алгоритмического блока обязательно разбери подходы, структуры данных и Big-O, но не выдавай готовое решение переданной задачи.",
         "Примеры кода должны иллюстрировать отдельные идеи и не должны целиком решать переданное упражнение.",
@@ -240,9 +259,12 @@ export class AiContentService {
         "Если тема выигрывает от визуализации процесса или потока данных, добавь 1–2 содержательные диаграммы; иначе верни diagrams: [].",
         "В диаграмме используй уникальные id узлов, связывай рёбра только с существующими id и размещай узлы без наложений в сетке row/column от 0 до 4.",
         "Источники используй только как ориентиры: не добавляй новые ссылки и не утверждай, что цитируешь их.",
+        company === "Ozon"
+          ? "Программа составлена по пользовательским конспектам интервью 2024 года. Не называй её официальным процессом Ozon и используй React вместо других UI-фреймворков."
+          : "Ориентируй материал на заявленные секции frontend-интервью Яндекса.",
       ].join(" "),
       JSON.stringify({
-        targetCompany: "Яндекс",
+        targetCompany: company,
         day: { number: day.dayNumber, title: day.title },
         block,
         sources: sourceContext,

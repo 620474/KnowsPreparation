@@ -52,6 +52,12 @@ export class LearningController {
     return this.learningService.generateYandexLesson(blockId);
   }
 
+  @Post("ozon-sprint/blocks/:blockId/lesson/generate")
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  generateOzonLesson(@Param("blockId") blockId: string) {
+    return this.learningService.generateOzonLesson(blockId);
+  }
+
   @Get("ai-course/lessons/:itemId/chat")
   getAiChat(@Param("itemId") itemId: string) {
     return this.learningService.getAiChat(itemId);
@@ -88,6 +94,25 @@ export class LearningController {
   @Delete("yandex-sprint/blocks/:blockId/chat")
   clearYandexAiChat(@Param("blockId") blockId: string) {
     return this.learningService.clearYandexAiChat(blockId);
+  }
+
+  @Get("ozon-sprint/blocks/:blockId/chat")
+  getOzonAiChat(@Param("blockId") blockId: string) {
+    return this.learningService.getOzonAiChat(blockId);
+  }
+
+  @Post("ozon-sprint/blocks/:blockId/chat")
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  sendOzonAiChatMessage(
+    @Param("blockId") blockId: string,
+    @Body() dto: SendAiChatMessageDto,
+  ) {
+    return this.learningService.sendOzonAiChatMessage(blockId, dto);
+  }
+
+  @Delete("ozon-sprint/blocks/:blockId/chat")
+  clearOzonAiChat(@Param("blockId") blockId: string) {
+    return this.learningService.clearOzonAiChat(blockId);
   }
 
   @Patch("settings")

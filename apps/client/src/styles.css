@@ -2305,17 +2305,89 @@ p {
   line-height: 1.5;
 }
 
-.ai-diagram-scroll {
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-color: rgba(107, 245, 176, 0.45) transparent;
-  touch-action: pan-x pan-y;
+.ai-diagram-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: #050f0c;
+  cursor: zoom-in;
+}
+
+.ai-diagram-preview:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ai-diagram-preview .ai-diagram-node {
+  cursor: zoom-in;
+}
+
+.ai-diagram-expand-hint {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(107, 245, 176, 0.38);
+  border-radius: 999px;
+  padding: 8px 11px;
+  color: #dff8ee;
+  background: rgba(5, 15, 12, 0.88);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  font-size: 0.75rem;
+  font-weight: 800;
+  pointer-events: none;
 }
 
 .ai-diagram-svg {
   display: block;
   width: 100%;
-  min-height: 300px;
+  height: auto;
+  margin-inline: auto;
+}
+
+.ai-diagram-svg--preview {
+  max-height: min(70vh, 720px);
+}
+
+.ai-diagram-modal-content {
+  overflow: hidden;
+  border: 1px solid rgba(107, 245, 176, 0.3);
+  background: #050f0c;
+}
+
+.ai-diagram-modal-header {
+  border-bottom: 1px solid var(--line);
+  background: #091712;
+}
+
+.ai-diagram-modal-title {
+  color: #e8fff6;
+  font-weight: 800;
+}
+
+.ai-diagram-modal-body {
+  max-height: calc(90dvh - 62px);
+  overflow: auto;
+  padding: 0;
+}
+
+.ai-diagram-expanded-scroll {
+  min-height: 0;
+  max-height: calc(90dvh - 190px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(107, 245, 176, 0.45) transparent;
+  touch-action: pan-x pan-y;
+}
+
+.ai-diagram-svg--expanded {
+  max-width: none;
 }
 
 .ai-diagram-svg marker path {
@@ -2965,6 +3037,42 @@ p {
     width: 56px;
     height: 56px;
     border-radius: 18px;
+  }
+
+  .ai-diagram-svg--preview {
+    max-height: min(58dvh, 520px);
+  }
+
+  .ai-diagram-expand-hint {
+    right: 8px;
+    bottom: 8px;
+    padding: 7px 9px;
+  }
+
+  .ai-diagram-modal-content {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .ai-diagram-modal-body {
+    display: flex;
+    height: calc(100dvh - 60px);
+    max-height: none;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .ai-diagram-expanded-scroll {
+    max-height: none;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .ai-diagram-modal-body > .ai-diagram-detail {
+    max-height: 32dvh;
+    overflow-y: auto;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    flex: 0 0 auto;
   }
 
   .ai-lesson-reader-toolbar {

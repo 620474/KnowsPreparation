@@ -1,17 +1,23 @@
 import { useState, type FormEvent } from "react";
 import { Button, TextInput } from "@mantine/core";
-import { CalendarClock, LogOut, Server, ShieldCheck } from "lucide-react";
+import { Building2, CalendarClock, LogOut, Server, ShieldCheck } from "lucide-react";
 
 import { getApiUrl } from "../api";
 import type { BootstrapData } from "../types";
 
 interface SettingsViewProps {
   data: BootstrapData;
+  onOpenOzon: () => void;
   onUpdateStartDate: (startDate: string) => void;
   onLogout: () => void;
 }
 
-export function SettingsView({ data, onUpdateStartDate, onLogout }: SettingsViewProps) {
+export function SettingsView({
+  data,
+  onOpenOzon,
+  onUpdateStartDate,
+  onLogout,
+}: SettingsViewProps) {
   const [startDate, setStartDate] = useState(data.settings.startDate);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -24,10 +30,21 @@ export function SettingsView({ data, onUpdateStartDate, onLogout }: SettingsView
       <header className="page-header">
         <div>
           <p className="eyebrow">Управление</p>
-          <h1>Настройки</h1>
-          <p>План и прогресс едины для компьютера и Android.</p>
+          <h1>Ещё</h1>
+          <p>Дополнительные программы и настройки приложения.</p>
         </div>
       </header>
+
+      <section className="settings-card">
+        <div className="settings-icon"><Building2 /></div>
+        <div>
+          <h2>Подготовка к Ozon</h2>
+          <p>14 дней: JavaScript, асинхронность, браузер, сеть, React и мок-интервью.</p>
+          <Button className="primary-button" type="button" onClick={onOpenOzon}>
+            Открыть Ozon-спринт
+          </Button>
+        </div>
+      </section>
 
       <section className="settings-card">
         <div className="settings-icon"><CalendarClock /></div>

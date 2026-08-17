@@ -30,6 +30,7 @@ import type {
 import { AlgorithmsView } from "./views/AlgorithmsView";
 import { AiCourseView } from "./views/AiCourseView";
 import { PlanView } from "./views/PlanView";
+import { OzonSprintView } from "./views/OzonSprintView";
 import { QuestionsView } from "./views/QuestionsView";
 import { ResourcesView } from "./views/ResourcesView";
 import { SettingsView } from "./views/SettingsView";
@@ -181,6 +182,29 @@ export default function App() {
     onError: (error) => setSyncError(error.message),
   });
 
+  const generateOzonLessonMutation = useMutation<AiLesson, Error, string>({
+    mutationFn: learningApi.generateOzonLesson,
+    onSuccess: (lesson) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
+        current
+          ? {
+              ...current,
+              ai: {
+                ...current.ai,
+                ozonLessons: {
+                  ...current.ai.ozonLessons,
+                  [lesson.itemId]: lesson,
+                },
+              },
+            }
+          : current,
+      );
+      setChatItemId(lesson.itemId);
+      setLessonReader({ scope: "ozon", itemId: lesson.itemId });
+    },
+    onError: (error) => setSyncError(error.message),
+  });
+
   const questionMutation = useMutation<
     QuestionProgress & { questionId: string },
     Error,
@@ -316,6 +340,15 @@ export default function App() {
         objective: `${day.title}. ${block.description}`,
       })),
   );
+  const ozonChatTopics = data.ozonSprint.flatMap((day) =>
+    day.blocks
+      .filter((block) => block.kind !== "review")
+      .map((block) => ({
+        id: block.id,
+        title: block.title,
+        objective: `${day.title}. ${block.description}`,
+      })),
+  );
   const readerCourseItem =
     lessonReader?.scope === "course"
       ? data.ai.course?.items.find((item) => item.id === lessonReader.itemId)
@@ -326,10 +359,18 @@ export default function App() {
           .flatMap((day) => day.blocks.map((block) => ({ day, block })))
           .find(({ block }) => block.id === lessonReader.itemId)
       : undefined;
+  const readerOzonEntry =
+    lessonReader?.scope === "ozon"
+      ? data.ozonSprint
+          .flatMap((day) => day.blocks.map((block) => ({ day, block })))
+          .find(({ block }) => block.id === lessonReader.itemId)
+      : undefined;
   const readerLesson = lessonReader
     ? lessonReader.scope === "yandex"
       ? data.ai.yandexLessons[lessonReader.itemId]
-      : data.ai.lessons[lessonReader.itemId]
+      : lessonReader.scope === "ozon"
+        ? data.ai.ozonLessons[lessonReader.itemId]
+        : data.ai.lessons[lessonReader.itemId]
     : undefined;
   const readerMetadata = readerCourseItem
     ? {
@@ -345,19 +386,36 @@ export default function App() {
           description: readerYandexEntry.block.description,
           resourceIds: readerYandexEntry.block.resourceIds,
         }
+      : readerOzonEntry
+        ? {
+            eyebrow: `Ozon · день ${readerOzonEntry.day.dayNumber}`,
+            title: readerOzonEntry.block.title,
+            description: readerOzonEntry.block.description,
+            resourceIds: readerOzonEntry.block.resourceIds,
+          }
       : undefined;
-  const chatScope = lessonReader?.scope ?? (activeView === "yandex" ? "yandex" : "course");
+  const chatScope =
+    lessonReader?.scope ??
+    (activeView === "yandex" ? "yandex" : activeView === "ozon" ? "ozon" : "course");
   const chatTopics = lessonReader
     ? lessonReader.scope === "yandex"
       ? yandexChatTopics
-      : courseChatTopics
+      : lessonReader.scope === "ozon"
+        ? ozonChatTopics
+        : courseChatTopics
     : activeView === "yandex"
       ? yandexChatTopics
-      : activeView === "ai-course"
-        ? courseChatTopics
-        : [];
+      : activeView === "ozon"
+        ? ozonChatTopics
+        : activeView === "ai-course"
+          ? courseChatTopics
+          : [];
   const generatedChatLessons =
-    chatScope === "yandex" ? data.ai.yandexLessons : data.ai.lessons;
+    chatScope === "yandex"
+      ? data.ai.yandexLessons
+      : chatScope === "ozon"
+        ? data.ai.ozonLessons
+        : data.ai.lessons;
   const fallbackChatItemId =
     chatTopics.find((item) => generatedChatLessons[item.id])?.id ?? chatTopics[0]?.id ?? null;
   const activeChatItemId =
@@ -456,6 +514,23 @@ export default function App() {
           onUpdateTask={updateTask}
         />
       ) : null}
+      {activeView === "ozon" ? (
+        <OzonSprintView
+          data={data}
+          generatingLessonId={
+            generateOzonLessonMutation.isPending
+              ? (generateOzonLessonMutation.variables ?? null)
+              : null
+          }
+          onGenerateLesson={(blockId) => {
+            setSyncError("");
+            generateOzonLessonMutation.mutate(blockId);
+          }}
+          onOpenLesson={(blockId) => openLessonReader("ozon", blockId)}
+          onOpenChat={(blockId, context) => openChat(blockId, context)}
+          onUpdateTask={updateTask}
+        />
+      ) : null}
       {activeView === "ai-course" ? (
         <AiCourseView
           data={data}
@@ -492,6 +567,7 @@ export default function App() {
       {activeView === "settings" ? (
         <SettingsView
           data={data}
+          onOpenOzon={() => setActiveView("ozon")}
           onUpdateStartDate={(startDate) => settingsMutation.mutate(startDate)}
           onLogout={logout}
         />
@@ -503,7 +579,9 @@ export default function App() {
           isRegenerating={
             lessonReader.scope === "yandex"
               ? generateYandexLessonMutation.isPending
-              : generateAiLessonMutation.isPending
+              : lessonReader.scope === "ozon"
+                ? generateOzonLessonMutation.isPending
+                : generateAiLessonMutation.isPending
           }
           lesson={readerLesson}
           resourceIds={readerMetadata.resourceIds}
@@ -516,6 +594,8 @@ export default function App() {
             setSyncError("");
             if (lessonReader.scope === "yandex") {
               generateYandexLessonMutation.mutate(lessonReader.itemId);
+            } else if (lessonReader.scope === "ozon") {
+              generateOzonLessonMutation.mutate(lessonReader.itemId);
             } else {
               generateAiLessonMutation.mutate(lessonReader.itemId);
             }

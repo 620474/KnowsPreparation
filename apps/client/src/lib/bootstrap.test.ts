@@ -26,7 +26,9 @@ describe("normalizeBootstrapData", () => {
       course: null,
       lessons: {},
       yandexLessons: {},
+      ozonLessons: {},
     });
+    expect(normalizeBootstrapData(legacyBootstrap).ozonSprint).toEqual([]);
   });
 
   it("keeps AI data returned by the current API", () => {
@@ -36,6 +38,7 @@ describe("normalizeBootstrapData", () => {
       course: null,
       lessons: {},
       yandexLessons: {},
+      ozonLessons: {},
     };
 
     expect(normalizeBootstrapData({ ...legacyBootstrap, ai }).ai).toEqual(ai);

@@ -1,7 +1,7 @@
 export type QuestionStatus = "new" | "learning" | "review" | "mastered";
 export type Difficulty = "easy" | "medium" | "hard";
 export type AiLevel = "middle" | "middle-plus" | "senior";
-export type AiChatScope = "course" | "yandex";
+export type AiChatScope = "course" | "yandex" | "ozon";
 export type StudyBlockKind = "theory" | "practice" | "ai" | "review";
 export type ResourceLanguage = "ru" | "en";
 export type ResourceKind = "main" | "deep-dive" | "practice" | "reference" | "case-study";
@@ -222,6 +222,7 @@ export interface BootstrapData {
   };
   curriculum: StudyWeek[];
   yandexSprint: StudyDay[];
+  ozonSprint: StudyDay[];
   resources: LearningResource[];
   questions: InterviewQuestion[];
   algorithmPatterns: string[];
@@ -236,5 +237,6 @@ export interface BootstrapData {
     course: AiCourse | null;
     lessons: Record<string, AiLesson>;
     yandexLessons: Record<string, AiLesson>;
+    ozonLessons: Record<string, AiLesson>;
   };
 }

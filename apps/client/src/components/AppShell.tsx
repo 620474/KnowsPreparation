@@ -15,6 +15,7 @@ import {
 export type AppView =
   | "today"
   | "yandex"
+  | "ozon"
   | "ai-course"
   | "plan"
   | "resources"
@@ -42,8 +43,11 @@ const navigation: Array<{
   { id: "resources", label: "Библиотека", shortLabel: "База", icon: LibraryBig },
   { id: "questions", label: "Банк вопросов", shortLabel: "Вопр.", icon: BookOpenCheck },
   { id: "algorithms", label: "Алгоритмы", shortLabel: "Алго", icon: Code2 },
-  { id: "settings", label: "Настройки", shortLabel: "Ещё", icon: Settings },
+  { id: "settings", label: "Ещё", shortLabel: "Ещё", icon: Settings },
 ];
+
+const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
+  navigationId === activeView || (navigationId === "settings" && activeView === "ozon");
 
 export function AppShell({ activeView, onViewChange, children, weekLabel }: AppShellProps) {
   return (
@@ -61,10 +65,10 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
           {navigation.map(({ id, label, icon: Icon }) => (
             <UnstyledButton
               key={id}
-              className={activeView === id ? "nav-button active" : "nav-button"}
+              className={isNavigationActive(id, activeView) ? "nav-button active" : "nav-button"}
               type="button"
               onClick={() => onViewChange(id)}
-              aria-current={activeView === id ? "page" : undefined}
+              aria-current={isNavigationActive(id, activeView) ? "page" : undefined}
             >
               <Icon size={20} />
               {label}
@@ -96,10 +100,10 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
         {navigation.map(({ id, shortLabel, icon: Icon }) => (
           <UnstyledButton
             key={id}
-            className={activeView === id ? "active" : ""}
+            className={isNavigationActive(id, activeView) ? "active" : ""}
             type="button"
             onClick={() => onViewChange(id)}
-            aria-current={activeView === id ? "page" : undefined}
+            aria-current={isNavigationActive(id, activeView) ? "page" : undefined}
           >
             <Icon size={20} />
             <span>{shortLabel}</span>

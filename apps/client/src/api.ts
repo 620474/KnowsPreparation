@@ -16,10 +16,15 @@ import type {
   TaskProgressPatch,
 } from "./types";
 
-const getAiChatPath = (scope: AiChatScope, itemId: string) =>
-  scope === "yandex"
-    ? `/learning/yandex-sprint/blocks/${encodeURIComponent(itemId)}/chat`
-    : `/learning/ai-course/lessons/${encodeURIComponent(itemId)}/chat`;
+const getAiChatPath = (scope: AiChatScope, itemId: string) => {
+  if (scope === "yandex") {
+    return `/learning/yandex-sprint/blocks/${encodeURIComponent(itemId)}/chat`;
+  }
+  if (scope === "ozon") {
+    return `/learning/ozon-sprint/blocks/${encodeURIComponent(itemId)}/chat`;
+  }
+  return `/learning/ai-course/lessons/${encodeURIComponent(itemId)}/chat`;
+};
 
 const API_URL_KEY = "prep-api-url";
 const TOKEN_KEY = "prep-auth-token";
@@ -103,6 +108,11 @@ export const learningApi = {
   generateYandexLesson: (blockId: string) =>
     request<AiLesson>(
       `/learning/yandex-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
+      { method: "POST" },
+    ),
+  generateOzonLesson: (blockId: string) =>
+    request<AiLesson>(
+      `/learning/ozon-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
       { method: "POST" },
     ),
   getAiChat: (scope: AiChatScope, itemId: string) =>

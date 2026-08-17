@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAiChatContext, buildYandexAiChatContext } from "./ai-chat";
+import {
+  buildAiChatContext,
+  buildOzonAiChatContext,
+  buildYandexAiChatContext,
+} from "./ai-chat";
 import type { StudyDay } from "./curriculum";
 import type { AiCourse, AiCourseItem, AiLesson } from "./schemas/ai-course.schema";
 
@@ -124,5 +128,41 @@ describe("buildAiChatContext", () => {
     expect(context).toContain("Сложность Array, Object, Map и Set");
     expect(context).toContain("Найди самый частый элемент");
     expect(context).toContain("Полный текст урока ещё не сгенерирован");
+  });
+
+  it("includes the Ozon block and its exercise", () => {
+    const day: StudyDay = {
+      id: "ozon-d01",
+      dayNumber: 1,
+      offset: 0,
+      title: "Типы и преобразования",
+      blocks: [
+        {
+          id: "ozon-d01-practice",
+          kind: "practice",
+          title: "Разворот 32-битного числа",
+          description: "Обработай знак и переполнение.",
+          minutes: 50,
+          resourceIds: [],
+          exercise: {
+            statement: "Разверни цифры числа.",
+            signature: "reverseInteger(value: number): number",
+            constraints: ["Верни 0 при переполнении"],
+            examples: [],
+          },
+        },
+      ],
+    };
+
+    const context = buildOzonAiChatContext({
+      day,
+      block: day.blocks[0]!,
+      lesson: null,
+      resources: [],
+    });
+
+    expect(context).toContain("frontend-собеседование в Ozon");
+    expect(context).toContain("Разворот 32-битного числа");
+    expect(context).toContain("Разверни цифры числа");
   });
 });

@@ -11,6 +11,7 @@ import {
   YANDEX_SPRINT_RESOURCE_CATALOG_VERIFIED_AT,
 } from "./resources";
 import { YANDEX_SPRINT, YANDEX_TASK_IDS } from "./yandex-sprint";
+import { OZON_SPRINT, OZON_TASK_IDS } from "./ozon-sprint";
 
 describe("curriculum", () => {
   it("contains ten core weeks and two buffer weeks", () => {
@@ -64,6 +65,44 @@ describe("curriculum", () => {
     }
 
     expect(RESOURCE_IDS.has("yandex-coderun-frontend-2026")).toBe(true);
+  });
+
+  it("provides a standalone 14-day Ozon interview sprint for React", () => {
+    expect(OZON_SPRINT).toHaveLength(14);
+    expect(OZON_SPRINT.map((day) => day.dayNumber)).toEqual(
+      Array.from({ length: 14 }, (_, index) => index + 1),
+    );
+
+    const sprintBlocks = OZON_SPRINT.flatMap((day) => day.blocks);
+    expect(OZON_TASK_IDS.size).toBe(sprintBlocks.length);
+    expect(sprintBlocks.every((block) => !TASK_IDS.has(block.id))).toBe(true);
+    expect(sprintBlocks.every((block) => !YANDEX_TASK_IDS.has(block.id))).toBe(true);
+
+    for (const day of OZON_SPRINT) {
+      expect(day.blocks.reduce((total, block) => total + block.minutes, 0)).toBe(120);
+      const isMockDay = [5, 14].includes(day.dayNumber);
+      expect(day.blocks).toHaveLength(isMockDay ? 2 : 4);
+      expect(day.blocks.some((block) => block.kind === "ai")).toBe(!isMockDay);
+
+      for (const block of day.blocks) {
+        if (block.kind === "review") {
+          expect(block.resourceIds).toEqual([]);
+          continue;
+        }
+        if (block.kind === "practice") {
+          expect(block.exercise?.statement).toBeTruthy();
+          expect(block.exercise?.signature).toBeTruthy();
+          expect(block.exercise?.constraints.length).toBeGreaterThan(0);
+          expect(block.exercise?.examples.length).toBeGreaterThan(0);
+        }
+        for (const resourceId of block.resourceIds) {
+          expect(RESOURCE_IDS.has(resourceId)).toBe(true);
+        }
+      }
+    }
+
+    expect(JSON.stringify(OZON_SPRINT)).not.toMatch(/vue|nuxt/i);
+    expect(JSON.stringify(OZON_SPRINT)).toMatch(/react/i);
   });
 
   it("links directly to every official CodeRun frontend task", () => {

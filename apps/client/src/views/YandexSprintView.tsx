@@ -13,13 +13,21 @@ import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
 import type {
   AiLessonQuestionContext,
+  AiLesson,
   BootstrapData,
+  StudyDay,
   StudyBlockKind,
   TaskUpdateHandler,
 } from "../types";
 
 interface YandexSprintViewProps {
   data: BootstrapData;
+  sprintDays?: StudyDay[];
+  lessons?: Record<string, AiLesson>;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  weekTitles?: string[];
   generatingLessonId: string | null;
   onGenerateLesson: (blockId: string) => void;
   onOpenLesson: (blockId: string) => void;
@@ -42,13 +50,20 @@ const BLOCK_LABELS: Record<StudyBlockKind, string> = {
 
 export function YandexSprintView({
   data,
+  sprintDays: providedSprintDays,
+  lessons: providedLessons,
+  eyebrow = "Яндекс · 21 день · без календаря",
+  title = "Спринт к собеседованию",
+  description = "Проходи пункты в любом темпе. Ничего не переносится и не пропадает из-за даты.",
+  weekTitles = WEEK_TITLES,
   generatingLessonId,
   onGenerateLesson,
   onOpenLesson,
   onOpenChat,
   onUpdateTask,
 }: YandexSprintViewProps) {
-  const sprintDays = data.yandexSprint ?? [];
+  const sprintDays = providedSprintDays ?? data.yandexSprint ?? [];
+  const lessons = providedLessons ?? data.ai.yandexLessons;
   const allBlocks = sprintDays.flatMap((day) => day.blocks);
   const completedBlocks = allBlocks.filter(
     (block) => data.progress.tasks[block.id]?.completed,
@@ -62,7 +77,7 @@ export function YandexSprintView({
   const nextBlock = nextDay?.blocks.find(
     (block) => !data.progress.tasks[block.id]?.completed,
   );
-  const weeks = Array.from({ length: 3 }, (_, weekIndex) =>
+  const weeks = Array.from({ length: Math.ceil(sprintDays.length / 7) }, (_, weekIndex) =>
     sprintDays.slice(weekIndex * 7, weekIndex * 7 + 7),
   );
 
@@ -70,9 +85,9 @@ export function YandexSprintView({
     <div className="page-stack yandex-page">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Яндекс · 21 день · без календаря</p>
-          <h1>Спринт к собеседованию</h1>
-          <p>Проходи пункты в любом темпе. Ничего не переносится и не пропадает из-за даты.</p>
+          <p className="eyebrow">{eyebrow}</p>
+          <h1>{title}</h1>
+          <p>{description}</p>
         </div>
         <div className="header-stat accent">
           <Target size={20} />
@@ -120,7 +135,7 @@ export function YandexSprintView({
               <header className="yandex-week-heading">
                 <div>
                   <span>Неделя {weekIndex + 1}</span>
-                  <h2>{WEEK_TITLES[weekIndex]}</h2>
+                  <h2>{weekTitles[weekIndex] ?? `Неделя ${weekIndex + 1}`}</h2>
                 </div>
                 <strong>{weekCompleted}/{weekBlocks.length}</strong>
               </header>
@@ -152,7 +167,7 @@ export function YandexSprintView({
                               solution: "",
                               ...data.progress.tasks[block.id],
                             };
-                            const lesson = data.ai.yandexLessons[block.id];
+                            const lesson = lessons[block.id];
                             const isGenerating = generatingLessonId === block.id;
                             const supportsAiLesson = block.kind !== "review";
 

@@ -9,7 +9,7 @@ interface AiChatContextInput {
   resources: LearningResource[];
 }
 
-interface YandexAiChatContextInput {
+interface InterviewSprintAiChatContextInput {
   day: StudyDay;
   block: StudyBlock;
   lesson: AiLesson | null;
@@ -80,14 +80,17 @@ export function buildAiChatContext({
   return sections.join("\n\n").slice(0, 30_000);
 }
 
-export function buildYandexAiChatContext({
-  day,
-  block,
-  lesson,
-  resources,
-}: YandexAiChatContextInput) {
+function buildInterviewSprintAiChatContext(
+  company: string,
+  {
+    day,
+    block,
+    lesson,
+    resources,
+  }: InterviewSprintAiChatContextInput,
+) {
   const sections = [
-    "Цель подготовки: пройти frontend-собеседование в Яндекс",
+    `Цель подготовки: пройти frontend-собеседование в ${company}`,
     "Уровень: Middle+/Senior",
     `День спринта: ${day.dayNumber}. ${day.title}`,
     `Текущий блок: ${block.title}`,
@@ -109,4 +112,12 @@ export function buildYandexAiChatContext({
   if (resourceSection) sections.push(resourceSection);
 
   return sections.join("\n\n").slice(0, 30_000);
+}
+
+export function buildYandexAiChatContext(input: InterviewSprintAiChatContextInput) {
+  return buildInterviewSprintAiChatContext("Яндекс", input);
+}
+
+export function buildOzonAiChatContext(input: InterviewSprintAiChatContextInput) {
+  return buildInterviewSprintAiChatContext("Ozon", input);
 }

@@ -5520,5 +5520,49 @@
       "Зачем отправлять tool result обратно модели?",
       "Почему human approval не заменяет sandbox и server-side validation?"
     ]
+  },
+  {
+    "id": "mdn-object-descriptors",
+    "title": "Object.defineProperty()",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty",
+    "provider": "MDN",
+    "language": "ru",
+    "kind": "reference",
+    "topics": ["JavaScript"],
+    "estimatedMinutes": 25,
+    "description": "Дескрипторы свойств: value, writable, enumerable, configurable, get и set."
+  },
+  {
+    "id": "mdn-event-bubbling",
+    "title": "Всплытие событий",
+    "url": "https://developer.mozilla.org/ru/docs/Learn_web_development/Core/Scripting/Event_bubbling",
+    "provider": "MDN",
+    "language": "ru",
+    "kind": "reference",
+    "topics": ["Browser", "JavaScript"],
+    "estimatedMinutes": 25,
+    "description": "Фазы DOM-событий, target, currentTarget и делегирование обработчиков."
+  },
+  {
+    "id": "mdn-request-animation-frame",
+    "title": "Window.requestAnimationFrame()",
+    "url": "https://developer.mozilla.org/ru/docs/Web/API/Window/requestAnimationFrame",
+    "provider": "MDN",
+    "language": "ru",
+    "kind": "reference",
+    "topics": ["Browser", "Performance"],
+    "estimatedMinutes": 15,
+    "description": "Планирование анимации перед следующим обновлением экрана браузером."
+  },
+  {
+    "id": "graphql-learn",
+    "title": "Learn GraphQL",
+    "url": "https://graphql.org/learn/",
+    "provider": "GraphQL Foundation",
+    "language": "en",
+    "kind": "reference",
+    "topics": ["Architecture", "TypeScript"],
+    "estimatedMinutes": 35,
+    "description": "Официальное введение в схему, типы, запросы, мутации и ответы GraphQL."
   }
 ]
