@@ -17,6 +17,7 @@ import {
 
 import { learningApi } from "../api";
 import { AudioAnswerRecorder } from "../components/AudioAnswerRecorder";
+import { CodeEditor } from "../components/CodeEditor";
 import type {
   InterviewExercise,
   InterviewSession,
@@ -388,7 +389,14 @@ export function InterviewSimulatorView() {
         <section className="interview-stage-card">
           <div className="interview-stage-heading"><Code2 /><div><span>Без AI</span><h2>{session.codingExercise.title}</h2></div></div>
           <p>{session.codingExercise.statement}</p>
-          <Textarea className="interview-code-editor" minRows={16} value={codingSolution} onChange={(event) => setCodingDraft({ sessionId: session.id, value: event.currentTarget.value })} />
+          <CodeEditor
+            ariaLabel={`Решение задачи: ${session.codingExercise.title}`}
+            label="Решение"
+            minHeight={420}
+            value={codingSolution}
+            onChange={(value) => setCodingDraft({ sessionId: session.id, value })}
+            onRun={() => void run("coding-attempt", () => learningApi.submitInterviewCodingAttempt(session.id, codingSolution))}
+          />
           <ExerciseResult exercise={session.codingExercise} />
           <div className="interview-actions">
             <Button className="secondary-button" variant="default" leftSection={<Play size={16} />} loading={busy === "coding-attempt"} onClick={() => void run("coding-attempt", () => learningApi.submitInterviewCodingAttempt(session.id, codingSolution))}>Запустить тесты</Button>
@@ -403,7 +411,14 @@ export function InterviewSimulatorView() {
           <p>{session.aiExercise.statement}</p>
           <div className="interview-ai-grid">
             <div>
-              <Textarea className="interview-code-editor" minRows={18} value={aiSolution} onChange={(event) => setAiCodeDraft({ sessionId: session.id, value: event.currentTarget.value })} />
+              <CodeEditor
+                ariaLabel={`AI-решение задачи: ${session.aiExercise.title}`}
+                label="Решение с AI"
+                minHeight={460}
+                value={aiSolution}
+                onChange={(value) => setAiCodeDraft({ sessionId: session.id, value })}
+                onRun={() => void run("ai-attempt", () => learningApi.submitInterviewAiAttempt(session.id, aiSolution))}
+              />
               <ExerciseResult exercise={session.aiExercise} />
               <Button className="secondary-button" variant="default" leftSection={<Play size={16} />} loading={busy === "ai-attempt"} onClick={() => void run("ai-attempt", () => learningApi.submitInterviewAiAttempt(session.id, aiSolution))}>Запустить тесты</Button>
             </div>

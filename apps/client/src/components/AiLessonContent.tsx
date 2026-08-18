@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Textarea } from "@mantine/core";
 import { Code2, MessageCircle } from "lucide-react";
 
 import { AiLessonDiagram } from "./AiLessonDiagram";
-import { CodePlayground } from "./CodePlayground";
+import { CodeEditor } from "./CodeEditor";
+import { CodePlayground, type CodePlaygroundHandle } from "./CodePlayground";
 import { LessonMarkdown } from "./LessonMarkdown";
 import {
   buildPracticeDraftKey,
@@ -77,6 +77,7 @@ export function AiLessonContent({
     lesson.version,
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  const practicePlaygroundRef = useRef<CodePlaygroundHandle>(null);
   const saveTimeoutRef = useRef<number | undefined>(undefined);
   const initialPracticeDraft = reconcilePracticeDraft(
     track,
@@ -281,20 +282,19 @@ export function AiLessonContent({
         ))}
         {runner ? (
           <div className="ai-practice-runner">
-            <Textarea
-              aria-label={`Решение: ${lesson.practice.title}`}
-              className="task-solution"
+            <CodeEditor
+              ariaLabel={`Решение: ${lesson.practice.title}`}
               label="Решение"
-              minRows={10}
               value={practiceDraft.solution}
-              onChange={(event) => {
+              onChange={(solution) => {
                 const next = markPracticeDraftEdited(
                   draftRef.current,
-                  event.currentTarget.value,
+                  solution,
                 );
                 setCurrentDraft(next);
                 schedulePracticeSave(next);
               }}
+              onRun={() => practicePlaygroundRef.current?.run()}
             />
             <div className="ai-practice-sync-status">
               {practiceDraft.dirty
@@ -328,6 +328,7 @@ export function AiLessonContent({
               </div>
             ) : null}
             <CodePlayground
+              ref={practicePlaygroundRef}
               attemptTarget={{
                 track,
                 itemId: lesson.itemId,

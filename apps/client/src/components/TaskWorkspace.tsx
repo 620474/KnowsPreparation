@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Button, Textarea } from "@mantine/core";
 import { Save } from "lucide-react";
 
@@ -8,7 +8,8 @@ import type {
   TaskUpdateHandler,
   TrackKey,
 } from "../types";
-import { CodePlayground } from "./CodePlayground";
+import { CodeEditor } from "./CodeEditor";
+import { CodePlayground, type CodePlaygroundHandle } from "./CodePlayground";
 
 interface TaskWorkspaceProps {
   taskId: string;
@@ -29,6 +30,7 @@ export function TaskWorkspace({
   track,
   onUpdateTask,
 }: TaskWorkspaceProps) {
+  const playgroundRef = useRef<CodePlaygroundHandle>(null);
   const [customTask, setCustomTask] = useState(progress.customTask);
   const [solution, setSolution] = useState(progress.solution || runner?.starterCode || "");
   const [saving, setSaving] = useState(false);
@@ -72,22 +74,20 @@ export function TaskWorkspace({
             }}
           />
         ) : null}
-        <Textarea
-          className="task-workspace-field solution-editor"
+        <CodeEditor
           label="Моё решение"
-          aria-label={`Решение: ${taskTitle}`}
+          ariaLabel={`Решение: ${taskTitle}`}
           value={solution}
           placeholder="Вставь или напиши решение на JavaScript…"
-          minRows={10}
-          maxLength={50000}
-          autosize
-          onChange={(event) => {
-            setSolution(event.currentTarget.value);
+          onChange={(nextSolution) => {
+            setSolution(nextSolution);
             setSaveStatus("idle");
           }}
+          onRun={runner ? () => playgroundRef.current?.run() : undefined}
         />
         {runner ? (
           <CodePlayground
+            ref={playgroundRef}
             attemptTarget={{ track, itemId: taskId, source: "task" }}
             code={solution}
             runner={runner}

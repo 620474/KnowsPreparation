@@ -1298,6 +1298,150 @@ p {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
+.ide-code-editor {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface-input);
+}
+
+.ide-editor-heading {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px 8px 14px;
+  background: var(--surface-overlay);
+}
+
+.ide-editor-heading > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ide-editor-heading strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.ide-editor-heading small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.64rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-editor-toolbar,
+.ide-editor-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ide-editor-toolbar {
+  justify-content: space-between;
+}
+
+.ide-editor-toolbar .mantine-ActionIcon-root {
+  color: var(--text-secondary);
+}
+
+.ide-editor-font-size {
+  min-width: 34px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.ide-code-mirror .cm-editor {
+  min-width: 0;
+}
+
+.ide-code-mirror .cm-scroller {
+  overscroll-behavior: contain;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.ide-code-mirror .cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+}
+
+.ide-code-mirror .cm-search input,
+.ide-code-mirror .cm-search button {
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--surface-input);
+  font: inherit;
+}
+
+.ide-editor-mobile-keys {
+  display: none;
+  overflow-x: auto;
+  align-items: center;
+  gap: 7px;
+  border-top: 1px solid var(--line);
+  padding: 8px;
+  background: var(--surface-overlay);
+  scrollbar-width: none;
+}
+
+.ide-editor-mobile-keys::-webkit-scrollbar {
+  display: none;
+}
+
+.ide-editor-mobile-keys .mantine-Button-root {
+  min-width: 42px;
+  flex: 0 0 auto;
+  border-color: var(--line-strong);
+  color: var(--text);
+  background: var(--surface-input);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.ide-editor-modal {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  background: var(--panel);
+}
+
+.ide-editor-modal .mantine-Modal-header {
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel);
+}
+
+.ide-editor-modal-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: var(--panel);
+}
+
+.ide-editor-modal-body > .ide-editor-toolbar {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 6px;
+  background: var(--surface-overlay);
+}
+
+.ide-editor-modal-body > .ide-code-mirror {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+}
+
 .task-workspace-actions {
   display: flex;
   align-items: center;
@@ -5121,6 +5265,30 @@ p {
 
   .today-primary-action {
     width: 100%;
+  }
+
+  .ide-editor-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ide-editor-heading > div:first-child,
+  .ide-editor-toolbar {
+    width: 100%;
+  }
+
+  .ide-editor-heading small {
+    white-space: normal;
+  }
+
+  .ide-editor-mobile-keys {
+    display: flex;
+  }
+
+  .ide-editor-modal-body {
+    height: calc(100dvh - 62px);
+    align-content: start;
+    padding: 8px;
   }
 
   .sprint-hero-actions,
