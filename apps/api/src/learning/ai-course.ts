@@ -54,6 +54,15 @@ export interface GeneratedLesson {
       output: string;
       explanation: string;
     }>;
+    runner: {
+      starterCode: string;
+      testCases: Array<{
+        title: string;
+        expression: string;
+        expected: unknown;
+      }>;
+    };
+    referenceSolution: string;
   };
   quiz: Array<{
     id: string;
@@ -180,13 +189,18 @@ export function normalizeGeneratedCourse(value: unknown, lessonCount: number): G
 export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
   const lesson = asRecord(value, "lesson");
   const practice = asRecord(lesson.practice, "lesson.practice");
+  const runner = asRecord(practice.runner, "lesson.practice.runner");
   if (
     !Array.isArray(lesson.codeExamples) ||
     !Array.isArray(lesson.diagrams) ||
     !Array.isArray(practice.examples) ||
+    !Array.isArray(runner.testCases) ||
     !Array.isArray(lesson.quiz)
   ) {
     throw new Error("lesson examples must be arrays");
+  }
+  if (runner.testCases.length < 3 || runner.testCases.length > 6) {
+    throw new Error("lesson.practice.runner.testCases must contain between 3 and 6 items");
   }
   if (lesson.quiz.length !== 10) {
     throw new Error("lesson.quiz must contain exactly 10 questions");
@@ -241,6 +255,50 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
           ),
         };
       }),
+      runner: {
+        starterCode: asText(
+          runner.starterCode,
+          "lesson.practice.runner.starterCode",
+          12_000,
+        ),
+        testCases: runner.testCases.map((value, index) => {
+          const testCase = asRecord(
+            value,
+            `lesson.practice.runner.testCases.${index}`,
+          );
+          const expectedSource = asText(
+            testCase.expected,
+            `lesson.practice.runner.testCases.${index}.expected`,
+            4_000,
+          );
+          let expected: unknown;
+          try {
+            expected = JSON.parse(expectedSource);
+          } catch {
+            throw new Error(
+              `lesson.practice.runner.testCases.${index}.expected must be valid JSON`,
+            );
+          }
+          return {
+            title: asText(
+              testCase.title,
+              `lesson.practice.runner.testCases.${index}.title`,
+              200,
+            ),
+            expression: asText(
+              testCase.expression,
+              `lesson.practice.runner.testCases.${index}.expression`,
+              2_000,
+            ),
+            expected,
+          };
+        }),
+      },
+      referenceSolution: asText(
+        practice.referenceSolution,
+        "lesson.practice.referenceSolution",
+        16_000,
+      ),
     },
     quiz: lesson.quiz.map((value, index) => {
       const question = asRecord(value, `lesson.quiz.${index}`);

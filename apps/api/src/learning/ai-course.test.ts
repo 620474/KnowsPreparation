@@ -86,6 +86,15 @@ describe("AI course helpers", () => {
         statement: "Определи порядок логов",
         constraints: ["Не запускай код"],
         examples: [{ input: "Promise.resolve()", output: "microtask", explanation: "Очередь" }],
+        runner: {
+          starterCode: "function executionOrder() {}",
+          testCases: [
+            { title: "Синхронный код", expression: "executionOrder('sync')", expected: '"sync"' },
+            { title: "Микрозадача", expression: "executionOrder('microtask')", expected: '"microtask"' },
+            { title: "Задача", expression: "executionOrder('task')", expected: '"task"' },
+          ],
+        },
+        referenceSolution: "function executionOrder(value) { return value; }",
       },
       quiz: Array.from({ length: 10 }, (_, index) => ({
         prompt: `Вопрос ${index + 1}`,
@@ -98,11 +107,45 @@ describe("AI course helpers", () => {
     });
 
     expect(lesson.practice.examples).toHaveLength(1);
+    expect(lesson.practice.runner.testCases[0]?.expected).toBe("sync");
+    expect(lesson.practice.referenceSolution).toContain("return value");
     expect(lesson.codeExamples[0]?.title).toBe("Очереди");
     expect(lesson.diagrams).toHaveLength(1);
     expect(lesson.diagrams[0]?.nodes[1]?.row).toBe(4);
     expect(lesson.quiz).toHaveLength(10);
     expect(lesson.quiz[0]?.id).toBe("quiz-01");
+  });
+
+  it("rejects a lesson runner with fewer than three tests", () => {
+    expect(() => normalizeGeneratedLesson({
+      goals: [],
+      explanation: "Объяснение",
+      codeExamples: [],
+      diagrams: [],
+      commonMistakes: [],
+      interviewQuestions: [],
+      practice: {
+        title: "Задача",
+        statement: "Условие",
+        constraints: [],
+        examples: [],
+        runner: {
+          starterCode: "function solve() {}",
+          testCases: [
+            { title: "Один тест", expression: "solve()", expected: "null" },
+          ],
+        },
+        referenceSolution: "function solve() { return null; }",
+      },
+      quiz: Array.from({ length: 10 }, (_, index) => ({
+        prompt: `Вопрос ${index}`,
+        options: ["A", "B", "C", `D${index}`],
+        correctOptionIndex: 0,
+        explanation: "Объяснение",
+        topic: "Тема",
+      })),
+      summary: "Итог",
+    })).toThrow("testCases must contain between 3 and 6 items");
   });
 
   it("links generated topics to the existing resource catalog", () => {

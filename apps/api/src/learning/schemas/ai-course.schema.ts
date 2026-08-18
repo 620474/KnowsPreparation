@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import type { HydratedDocument } from "mongoose";
+import { Schema as MongooseSchema, type HydratedDocument } from "mongoose";
 
 export const AI_LEVELS = ["middle", "middle-plus", "senior"] as const;
 export type AiLevel = (typeof AI_LEVELS)[number];
@@ -147,6 +147,31 @@ export class AiPracticeExample {
 export const AiPracticeExampleSchema = SchemaFactory.createForClass(AiPracticeExample);
 
 @Schema({ _id: false, versionKey: false })
+export class AiRunnerTestCase {
+  @Prop({ required: true })
+  title!: string;
+
+  @Prop({ required: true })
+  expression!: string;
+
+  @Prop({ type: MongooseSchema.Types.Mixed })
+  expected!: unknown;
+}
+
+export const AiRunnerTestCaseSchema = SchemaFactory.createForClass(AiRunnerTestCase);
+
+@Schema({ _id: false, versionKey: false })
+export class AiPracticeRunner {
+  @Prop({ required: true })
+  starterCode!: string;
+
+  @Prop({ type: [AiRunnerTestCaseSchema], required: true, default: [] })
+  testCases!: AiRunnerTestCase[];
+}
+
+export const AiPracticeRunnerSchema = SchemaFactory.createForClass(AiPracticeRunner);
+
+@Schema({ _id: false, versionKey: false })
 export class AiPractice {
   @Prop({ required: true })
   title!: string;
@@ -159,6 +184,9 @@ export class AiPractice {
 
   @Prop({ type: [AiPracticeExampleSchema], required: true, default: [] })
   examples!: AiPracticeExample[];
+
+  @Prop({ type: AiPracticeRunnerSchema, required: false })
+  runner?: AiPracticeRunner;
 }
 
 export const AiPracticeSchema = SchemaFactory.createForClass(AiPractice);

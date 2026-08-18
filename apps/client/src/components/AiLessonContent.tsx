@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { Textarea } from "@mantine/core";
 import { Code2, MessageCircle } from "lucide-react";
 
 import { AiLessonDiagram } from "./AiLessonDiagram";
+import { CodePlayground } from "./CodePlayground";
 import { LessonMarkdown } from "./LessonMarkdown";
 import type { AiLesson, AiLessonQuestionContext } from "../types";
 
@@ -41,8 +43,18 @@ function AskButton({ section, excerpt, onAsk }: AskButtonProps) {
 
 export function AiLessonContent({ lesson, onAsk }: AiLessonContentProps) {
   const diagrams = lesson.diagrams ?? [];
+  const runner = lesson.practice.runner;
+  const practiceKey = `${lesson.itemId}:${lesson.version}`;
   const rootRef = useRef<HTMLDivElement>(null);
+  const [practiceDraft, setPracticeDraft] = useState({
+    key: practiceKey,
+    code: runner?.starterCode ?? "",
+  });
   const [selectedContext, setSelectedContext] = useState<AiLessonQuestionContext | null>(null);
+  const practiceCode =
+    practiceDraft.key === practiceKey
+      ? practiceDraft.code
+      : runner?.starterCode ?? "";
 
   useEffect(() => {
     if (!onAsk) return;
@@ -179,6 +191,22 @@ export function AiLessonContent({ lesson, onAsk }: AiLessonContentProps) {
             <p>{example.explanation}</p>
           </div>
         ))}
+        {runner ? (
+          <div className="ai-practice-runner">
+            <Textarea
+              aria-label={`Решение: ${lesson.practice.title}`}
+              className="task-solution"
+              label="Решение"
+              minRows={10}
+              value={practiceCode}
+              onChange={(event) => setPracticeDraft({
+                key: practiceKey,
+                code: event.currentTarget.value,
+              })}
+            />
+            <CodePlayground code={practiceCode} runner={runner} />
+          </div>
+        ) : null}
       </section>
 
       <section className="ai-lesson-summary" data-ai-section="Короткий итог">

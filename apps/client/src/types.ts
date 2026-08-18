@@ -210,6 +210,7 @@ export interface AiLesson {
       output: string;
       explanation: string;
     }>;
+    runner?: StudyExerciseRunner;
   };
   quiz: AiQuizQuestion[];
   summary: string;

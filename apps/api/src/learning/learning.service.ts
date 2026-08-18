@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
   InternalServerErrorException,
@@ -13,7 +14,7 @@ import {
   buildAiChatContext,
   buildInterviewSprintAiChatContext,
 } from "./ai-chat";
-import { selectResourcesForCourseItem } from "./ai-course";
+import { selectResourcesForCourseItem, type GeneratedLesson } from "./ai-course";
 import {
   QUESTION_BANK,
   QUESTION_IDS,
@@ -32,6 +33,10 @@ import {
   UpdateTaskDto,
 } from "./dto/learning.dto";
 import { selectMockInterviewQuestions } from "./mock-interview";
+import {
+  generateValidatedLesson,
+  GeneratedRunnerValidationError,
+} from "./generated-runner";
 import {
   serializeAiCourse,
   serializeAiLesson,
@@ -156,19 +161,23 @@ export class LearningService {
       const resource = resourceMap.get(resourceId);
       return resource ? [resource] : [];
     });
-    const generated = await this.aiContent.generateLesson(
-      {
-        goal: course.goal,
-        level: course.level,
-        deadline: course.deadline,
-        dailyMinutes: course.dailyMinutes,
-        targetCompanies: course.targetCompanies,
-        weakTopics: course.weakTopics,
-      },
-      item,
-      resources,
-      onDelta,
-      signal,
+    const progressHandler = this.createSafeLessonProgressHandler(onDelta);
+    const generated = await this.generateRunnableLesson(
+      "course",
+      () => this.aiContent.generateLesson(
+        {
+          goal: course.goal,
+          level: course.level,
+          deadline: course.deadline,
+          dailyMinutes: course.dailyMinutes,
+          targetCompanies: course.targetCompanies,
+          weakTopics: course.weakTopics,
+        },
+        item,
+        resources,
+        progressHandler,
+        signal,
+      ),
     );
     const current = await this.aiLessonModel
       .findOne({ courseKey: course.key, courseVersion: course.version, itemId })
@@ -230,13 +239,17 @@ export class LearningService {
       const resource = resourceMap.get(resourceId);
       return resource ? [resource] : [];
     });
-    const generated = await this.aiContent.generateSprintLesson(
-      track.company,
-      day,
-      block,
-      resources,
-      onDelta,
-      signal,
+    const progressHandler = this.createSafeLessonProgressHandler(onDelta);
+    const generated = await this.generateRunnableLesson(
+      track.scope,
+      () => this.aiContent.generateSprintLesson(
+        track.company,
+        day,
+        block,
+        resources,
+        progressHandler,
+        signal,
+      ),
     );
     const scope = {
       courseKey: track.courseKey,
@@ -265,6 +278,32 @@ export class LearningService {
       throw new InternalServerErrorException(track.saveLessonError);
     }
     return serializeAiLesson(lesson);
+  }
+
+  private async generateRunnableLesson(
+    scope: string,
+    generate: (attempt: number) => Promise<GeneratedLesson>,
+  ) {
+    try {
+      return await generateValidatedLesson(generate, (validation, attempt) => {
+        this.logger.warn({
+          event: "generated_runner_validation_failed",
+          scope,
+          attempt,
+          failureCount: validation.failures.length,
+        });
+      });
+    } catch (error) {
+      if (!(error instanceof GeneratedRunnerValidationError)) throw error;
+      throw new BadGatewayException(
+        "AI не смог создать корректно запускаемую задачу после трёх попыток.",
+      );
+    }
+  }
+
+  private createSafeLessonProgressHandler(onDelta?: AiDeltaHandler) {
+    if (!onDelta) return undefined;
+    return (delta: string) => onDelta(" ".repeat(delta.length));
   }
 
   async getAiChat(itemId: string) {

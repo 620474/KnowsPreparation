@@ -2902,6 +2902,18 @@ p {
   background: rgba(0, 0, 0, 0.16);
 }
 
+.ai-practice-runner {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.ai-practice-runner textarea {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .ai-practice-example code {
   color: var(--orange-code);
   overflow-wrap: anywhere;
