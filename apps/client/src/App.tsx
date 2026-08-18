@@ -39,6 +39,11 @@ const MockInterviewView = lazy(() =>
     default: module.MockInterviewView,
   })),
 );
+const InterviewSimulatorView = lazy(() =>
+  import("./views/InterviewSimulatorView").then((module) => ({
+    default: module.InterviewSimulatorView,
+  })),
+);
 const OzonSprintView = lazy(() =>
   import("./views/OzonSprintView").then((module) => ({
     default: module.OzonSprintView,
@@ -274,13 +279,13 @@ export default function App() {
           onOpenAnalytics={() => navigateToView("analytics")}
           onOpenChat={(blockId) => openChat(blockId)}
           onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
-          onOpenMock={() => navigateToView("mock-interview")}
+          onOpenMock={() => navigateToView("interview")}
           onOpenReview={() => navigateToView("review")}
           onOpenAdaptiveItem={(item) => {
             if (item.kind === "review") {
               navigateToView("review");
             } else if (item.kind === "mock") {
-              navigateToView("mock-interview");
+              navigateToView("interview");
             } else if (
               item.track &&
               item.itemId &&
@@ -375,7 +380,7 @@ export default function App() {
         <QuestionsView
           data={data}
           onOpenAnalytics={() => navigateToView("analytics")}
-          onOpenMock={() => navigateToView("mock-interview")}
+          onOpenMock={() => navigateToView("interview")}
           onOpenReview={() => navigateToView("review")}
           onUpdateQuestion={updateQuestion}
         />
@@ -397,11 +402,12 @@ export default function App() {
           onTranscribe={transcribeMockAnswer}
         />
       ) : null}
+      {activeView === "interview" ? <InterviewSimulatorView /> : null}
       {activeView === "analytics" ? (
         <AnalyticsView
           data={data}
           onBack={() => navigateToView("questions")}
-          onOpenMock={() => navigateToView("mock-interview")}
+          onOpenMock={() => navigateToView("interview")}
           onOpenReview={() => navigateToView("review")}
         />
       ) : null}
@@ -419,6 +425,7 @@ export default function App() {
           data={data}
           onExportBackup={exportBackup}
           onImportBackup={importBackup}
+          onOpenAiCourse={() => navigateToView("ai-course")}
           onOpenOzon={() => navigateToView("ozon")}
           onUpdateSettings={updateSettings}
           onLogout={logout}

@@ -359,6 +359,93 @@ export const mockInterviewSchema = z.object({
   evaluation: mockInterviewEvaluationSchema.nullable(),
 });
 
+export const interviewSessionModeSchema = z.enum(["express", "full"]);
+export const interviewSessionCompanySchema = z.enum(["general", "yandex", "ozon"]);
+export const interviewSessionStatusSchema = z.enum([
+  "in_progress",
+  "evaluating",
+  "completed",
+]);
+export const interviewSessionStageSchema = z.enum([
+  "platform",
+  "coding",
+  "ai",
+  "defense",
+  "completed",
+]);
+export const interviewReadinessConfidenceSchema = z.enum(["low", "medium", "high"]);
+
+export const interviewSessionQuestionSchema = z.object({
+  question: interviewQuestionSchema,
+  answer: z.string(),
+  followUpQuestion: z.string().nullable(),
+  followUpAnswer: z.string(),
+});
+
+export const interviewExerciseResultSchema = z.object({
+  passed: z.boolean(),
+  passedCount: z.number(),
+  totalCount: z.number(),
+  durationMs: z.number(),
+  error: z.string().nullable(),
+  tests: z.array(practiceAttemptTestResultSchema),
+});
+
+export const interviewExerciseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  statement: z.string(),
+  runner: studyExerciseRunnerSchema,
+  solution: z.string(),
+  result: interviewExerciseResultSchema.nullable(),
+  attempts: z.number(),
+});
+
+export const interviewSessionMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+  createdAt: z.string(),
+});
+
+export const interviewSectionEvaluationSchema = z.object({
+  score: z.number(),
+  feedback: z.string(),
+});
+
+export const interviewSessionEvaluationSchema = z.object({
+  overallScore: z.number(),
+  readinessConfidence: interviewReadinessConfidenceSchema,
+  summary: z.string(),
+  strengths: z.array(z.string()),
+  weakTopics: z.array(z.string()),
+  recommendations: z.array(z.string()),
+  sections: z.object({
+    platform: interviewSectionEvaluationSchema,
+    coding: interviewSectionEvaluationSchema,
+    ai: interviewSectionEvaluationSchema,
+    communication: interviewSectionEvaluationSchema,
+  }),
+});
+
+export const interviewSessionSchema = z.object({
+  id: z.string(),
+  status: interviewSessionStatusSchema,
+  mode: interviewSessionModeSchema,
+  company: interviewSessionCompanySchema,
+  currentStage: interviewSessionStageSchema,
+  durationMinutes: z.number(),
+  startedAt: z.string(),
+  completedAt: z.string().nullable(),
+  platformItems: z.array(interviewSessionQuestionSchema),
+  codingExercise: interviewExerciseSchema,
+  aiExercise: interviewExerciseSchema,
+  aiMessages: z.array(interviewSessionMessageSchema),
+  defenseQuestions: z.array(z.string()),
+  defenseAnswers: z.array(z.string()),
+  evaluation: interviewSessionEvaluationSchema.nullable(),
+});
+
 export const appSettingsSchema = z.object({
   startDate: z.string(),
   dailyMinutes: z.number(),
@@ -542,6 +629,24 @@ export type AiLessonQuestionContext = z.infer<typeof aiLessonQuestionContextSche
 export type MockQuestionEvaluation = z.infer<typeof mockQuestionEvaluationSchema>;
 export type MockInterviewEvaluation = z.infer<typeof mockInterviewEvaluationSchema>;
 export type MockInterview = z.infer<typeof mockInterviewSchema>;
+export type InterviewSessionMode = z.infer<typeof interviewSessionModeSchema>;
+export type InterviewSessionCompany = z.infer<typeof interviewSessionCompanySchema>;
+export type InterviewSessionStatus = z.infer<typeof interviewSessionStatusSchema>;
+export type InterviewSessionStage = z.infer<typeof interviewSessionStageSchema>;
+export type InterviewReadinessConfidence = z.infer<
+  typeof interviewReadinessConfidenceSchema
+>;
+export type InterviewSessionQuestion = z.infer<typeof interviewSessionQuestionSchema>;
+export type InterviewExerciseResult = z.infer<typeof interviewExerciseResultSchema>;
+export type InterviewExercise = z.infer<typeof interviewExerciseSchema>;
+export type InterviewSessionMessage = z.infer<typeof interviewSessionMessageSchema>;
+export type InterviewSectionEvaluation = z.infer<
+  typeof interviewSectionEvaluationSchema
+>;
+export type InterviewSessionEvaluation = z.infer<
+  typeof interviewSessionEvaluationSchema
+>;
+export type InterviewSession = z.infer<typeof interviewSessionSchema>;
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 export type SettingsPatch = Partial<
   Pick<

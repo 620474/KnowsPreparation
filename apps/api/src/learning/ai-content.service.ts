@@ -11,6 +11,11 @@ import {
   normalizeGeneratedCourse,
   normalizeGeneratedLesson,
 } from "./ai-course";
+import {
+  normalizeInterviewDefenseQuestions,
+  normalizeInterviewEvaluation,
+  normalizeInterviewFollowUp,
+} from "./interview-session-ai";
 import type { InterviewQuestion, StudyBlock, StudyDay } from "./curriculum";
 import type { GenerateAiCourseDto } from "./dto/learning.dto";
 import { normalizeMockEvaluation } from "./mock-interview";
@@ -236,6 +241,56 @@ const mockEvaluationSchema = {
     },
   },
   required: ["overallScore", "summary", "strengths", "weakTopics", "questions"],
+} as const;
+
+const interviewFollowUpSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: { question: { type: "string" } },
+  required: ["question"],
+} as const;
+
+const interviewDefenseSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    questions: {
+      type: "array",
+      minItems: 2,
+      maxItems: 2,
+      items: { type: "string" },
+    },
+  },
+  required: ["questions"],
+} as const;
+
+const interviewEvaluationSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    platformScore: { type: "integer", minimum: 0, maximum: 100 },
+    aiScore: { type: "integer", minimum: 0, maximum: 100 },
+    communicationScore: { type: "integer", minimum: 0, maximum: 100 },
+    summary: { type: "string" },
+    strengths: { type: "array", items: { type: "string" } },
+    weakTopics: { type: "array", items: { type: "string" } },
+    recommendations: { type: "array", items: { type: "string" } },
+    platformFeedback: { type: "string" },
+    aiFeedback: { type: "string" },
+    communicationFeedback: { type: "string" },
+  },
+  required: [
+    "platformScore",
+    "aiScore",
+    "communicationScore",
+    "summary",
+    "strengths",
+    "weakTopics",
+    "recommendations",
+    "platformFeedback",
+    "aiFeedback",
+    "communicationFeedback",
+  ],
 } as const;
 
 @Injectable()
@@ -496,6 +551,85 @@ export class AiContentService {
       this.logNormalizationError("frontend_mock_interview_evaluation", error);
       throw new BadGatewayException("OpenAI вернул неполную оценку интервью. Попробуй ещё раз.");
     }
+  }
+
+  async generateInterviewFollowUp(input: {
+    company: string;
+    question: string;
+    answer: string;
+  }) {
+    const result = await this.request<unknown>(
+      "interview_follow_up",
+      interviewFollowUpSchema,
+      [
+        "Ты технический интервьюер frontend Middle+/Senior.",
+        "Задай один короткий уточняющий вопрос по ответу кандидата.",
+        "Проверь глубину понимания, практический опыт или осознанный компромисс.",
+        "Не подсказывай правильный ответ и пиши по-русски.",
+      ].join(" "),
+      JSON.stringify(input),
+      500,
+    );
+    return normalizeInterviewFollowUp(result);
+  }
+
+  async generateInterviewAssistantReply(
+    context: string,
+    history: AiChatHistoryMessage[],
+    content: string,
+    onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
+  ) {
+    return this.requestText(
+      [
+        "Ты AI-помощник кандидата на экспериментальной секции frontend-интервью.",
+        "Помогай решать задачу, но не скрывай предположения и не выдавай непроверенный код за рабочий.",
+        "Отвечай кратко по-русски: предложи подход, проверку или небольшой фрагмент.",
+        "Интервьюер позже спросит кандидата, почему он принял каждое решение.",
+        `\n\nЗадача и текущий код:\n${context}`,
+      ].join(" "),
+      [...history, { role: "user", content }],
+      2_000,
+      onDelta,
+      signal,
+    );
+  }
+
+  async generateInterviewDefenseQuestions(input: {
+    task: string;
+    solution: string;
+    messages: AiChatHistoryMessage[];
+  }) {
+    const result = await this.request<unknown>(
+      "interview_defense_questions",
+      interviewDefenseSchema,
+      [
+        "Ты технический интервьюер frontend Middle+/Senior.",
+        "Верни ровно два вопроса для защиты решения, созданного с AI.",
+        "Один вопрос должен проверять понимание кода, второй — проверку и границы совета AI.",
+        "Пиши по-русски и не давай ответов.",
+      ].join(" "),
+      JSON.stringify(input),
+      700,
+    );
+    return normalizeInterviewDefenseQuestions(result);
+  }
+
+  async evaluateInterviewSession(input: Record<string, unknown>) {
+    const result = await this.request<unknown>(
+      "interview_session_evaluation",
+      interviewEvaluationSchema,
+      [
+        "Ты оцениваешь полное frontend-интервью Middle+/Senior.",
+        "Оцени платформенные ответы, использование AI и ясность защиты отдельно по шкале 0–100.",
+        "Учитывай follow-up ответы, фактические результаты тестов кода и способность проверить совет AI.",
+        "Не завышай оценки за общие слова. Дай конкретные сильные стороны, слабые темы и следующие шаги.",
+        "Пиши кратко и конструктивно по-русски.",
+      ].join(" "),
+      JSON.stringify(input),
+      4_000,
+    );
+    return normalizeInterviewEvaluation(result);
   }
 
   private async request<T>(

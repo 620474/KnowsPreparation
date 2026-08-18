@@ -17,7 +17,16 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import type { PracticeAttemptSource } from "@prep/contracts";
+import type {
+  InterviewSessionCompany,
+  InterviewSessionMode,
+  PracticeAttemptSource,
+} from "@prep/contracts";
+
+import {
+  INTERVIEW_SESSION_COMPANIES,
+  INTERVIEW_SESSION_MODES,
+} from "../schemas/interview-session.schema";
 
 import { DIFFICULTIES, type Difficulty } from "../schemas/algorithm-entry.schema";
 import { AI_LEVELS, type AiLevel } from "../schemas/ai-course.schema";
@@ -237,6 +246,62 @@ export class UpdateMockAnswerDto {
   @MinLength(1)
   @MaxLength(12_000)
   content!: string;
+}
+
+export class StartInterviewSessionDto {
+  @IsIn(INTERVIEW_SESSION_MODES)
+  mode!: InterviewSessionMode;
+
+  @IsIn(INTERVIEW_SESSION_COMPANIES)
+  company!: InterviewSessionCompany;
+}
+
+export class ListInterviewSessionsDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit = 10;
+}
+
+export class UpdateInterviewPlatformAnswerDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  answer!: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  followUpAnswer?: string;
+}
+
+export class SubmitInterviewExerciseDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50_000)
+  solution!: string;
+}
+
+export class SendInterviewAiMessageDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  content!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50_000)
+  solution?: string;
+}
+
+export class UpdateInterviewDefenseAnswerDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  answer!: string;
 }
 
 export class CreateAlgorithmDto {

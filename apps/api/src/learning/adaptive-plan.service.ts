@@ -98,6 +98,7 @@ export class AdaptivePlanService {
       lessons,
       aiCourse,
       latestMock,
+      latestMockSignal,
       skippedSignals,
     ] = await Promise.all([
       this.settingsModel.findOne({ key: "main" }).lean().exec(),
@@ -108,6 +109,11 @@ export class AdaptivePlanService {
       this.lessonModel.find().lean().exec(),
       this.courseModel.findOne({ key: "main" }).lean().exec(),
       this.mockModel.findOne({ status: "completed" }).sort({ completedAt: -1 }).lean().exec(),
+      this.signalModel
+        .findOne({ type: "mock_completed" })
+        .sort({ occurredAt: -1 })
+        .lean()
+        .exec(),
       this.signalModel
         .find({ type: "recommendation_skipped", occurredAt: { $gte: startOfDay } })
         .lean()
@@ -224,7 +230,10 @@ export class AdaptivePlanService {
       });
     }
 
-    const lastMockAt = latestMock?.completedAt?.getTime() ?? 0;
+    const lastMockAt = Math.max(
+      latestMock?.completedAt?.getTime() ?? 0,
+      latestMockSignal?.occurredAt?.getTime() ?? 0,
+    );
     if (!lastMockAt || now.getTime() - lastMockAt >= 7 * DAY_MS) {
       candidates.push({
         id: recommendationId(date, "mock", null, null, null),
@@ -235,9 +244,11 @@ export class AdaptivePlanService {
           : "Нужна первая контрольная точка",
         minutes: 20,
         score: 45,
-        skillKeys: latestMock?.evaluation
-          ? inferSkillKeys(...latestMock.evaluation.weakTopics)
-          : ["javascript", "react"],
+        skillKeys: latestMockSignal?.skillKeys.length
+          ? latestMockSignal.skillKeys
+          : latestMock?.evaluation
+            ? inferSkillKeys(...latestMock.evaluation.weakTopics)
+            : ["javascript", "react"],
         track: null,
         itemId: null,
         source: null,

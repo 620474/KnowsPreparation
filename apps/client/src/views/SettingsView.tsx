@@ -9,6 +9,7 @@ import {
   LogOut,
   Server,
   ShieldCheck,
+  Sparkles,
   Upload,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ import type { BootstrapData, LearningBackup, SettingsPatch } from "../types";
 interface SettingsViewProps {
   data: BootstrapData;
   onOpenOzon: () => void;
+  onOpenAiCourse: () => void;
   onUpdateSettings: (settings: SettingsPatch) => Promise<boolean>;
   onExportBackup: () => Promise<boolean>;
   onImportBackup: (backup: LearningBackup) => Promise<number | null>;
@@ -29,6 +31,7 @@ interface SettingsViewProps {
 export function SettingsView({
   data,
   onOpenOzon,
+  onOpenAiCourse,
   onUpdateSettings,
   onExportBackup,
   onImportBackup,
@@ -124,6 +127,17 @@ export function SettingsView({
           <p>14 дней: JavaScript, асинхронность, браузер, сеть, React и мок-интервью.</p>
           <Button className="primary-button" type="button" onClick={onOpenOzon}>
             Открыть Ozon-спринт
+          </Button>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-icon"><Sparkles /></div>
+        <div>
+          <h2>Персональный AI-курс</h2>
+          <p>Сгенерированный план, статьи, квизы, практика и чат по выбранной цели.</p>
+          <Button className="primary-button" type="button" onClick={onOpenAiCourse}>
+            Открыть AI-курс
           </Button>
         </div>
       </section>

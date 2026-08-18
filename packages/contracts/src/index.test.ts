@@ -6,6 +6,7 @@ import {
   bootstrapDataSchema,
   bootstrapProgressSchema,
   learningAnalyticsSchema,
+  interviewSessionSchema,
   practiceSolutionSaveResultSchema,
   practiceAttemptSchema,
   studyExerciseRunnerSchema,
@@ -111,5 +112,42 @@ describe("shared API contracts", () => {
       days: [],
       skills: [],
     }).windowDays).toBe(7);
+  });
+
+  it("validates complete interview simulator sessions", () => {
+    const exercise = {
+      id: "exercise-1",
+      title: "Задача",
+      statement: "Реши задачу",
+      runner: {
+        starterCode: "function solve() {}",
+        testCases: [{ title: "case", expression: "solve()", expected: 1 }],
+      },
+      solution: "function solve() { return 1; }",
+      result: null,
+      attempts: 0,
+    };
+    expect(interviewSessionSchema.parse({
+      id: "session-1",
+      status: "in_progress",
+      mode: "express",
+      company: "yandex",
+      currentStage: "platform",
+      durationMinutes: 35,
+      startedAt: "2026-08-18T10:00:00.000Z",
+      completedAt: null,
+      platformItems: [{
+        question: { id: "q1", number: 1, category: "JS", prompt: "Что такое JS?" },
+        answer: "",
+        followUpQuestion: null,
+        followUpAnswer: "",
+      }],
+      codingExercise: exercise,
+      aiExercise: { ...exercise, id: "exercise-2" },
+      aiMessages: [],
+      defenseQuestions: [],
+      defenseAnswers: [],
+      evaluation: null,
+    }).currentStage).toBe("platform");
   });
 });

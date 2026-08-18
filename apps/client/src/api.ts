@@ -1,9 +1,13 @@
 import {
   adaptivePlanSchema,
+  aiLessonSchema,
+  interviewSessionSchema,
   learningAnalyticsSchema,
   practiceAttemptHistorySchema,
   practiceAttemptSchema,
+  practiceSolutionSaveResultSchema,
 } from "@prep/contracts";
+import { z } from "zod";
 import {
   mergeBootstrapPayloads,
   parseBootstrapContent,
@@ -21,6 +25,9 @@ import type {
   LessonQuizProgress,
   LearningAnalytics,
   LearningBackup,
+  InterviewSession,
+  InterviewSessionCompany,
+  InterviewSessionMode,
   MockInterview,
   PracticeSolutionSaveResult,
   PracticeAttempt,
@@ -39,6 +46,9 @@ import { SseParser } from "./lib/sse";
 /** Все ресурсы трека живут под одним префиксом, поэтому путь один для всех. */
 const trackItemPath = (track: TrackKey, itemId: string) =>
   `/learning/tracks/${track}/items/${encodeURIComponent(itemId)}`;
+
+const interviewSessionPath = (interviewId: string) =>
+  `/learning/interview-sessions/${encodeURIComponent(interviewId)}`;
 
 const API_URL_KEY = "prep-api-url";
 const TOKEN_KEY = "prep-auth-token";
@@ -345,6 +355,89 @@ export const learningApi = {
       { method: "POST", body: form },
     );
   },
+  getCurrentInterviewSession: () =>
+    request<unknown>("/learning/interview-sessions/current").then((result) =>
+      result === null ? null : interviewSessionSchema.parse(result),
+    ),
+  listInterviewSessions: (limit = 10) =>
+    request<unknown>(`/learning/interview-sessions?limit=${limit}`).then((result) =>
+      z.array(interviewSessionSchema).parse(result),
+    ),
+  startInterviewSession: (
+    mode: InterviewSessionMode,
+    company: InterviewSessionCompany,
+  ) =>
+    request<InterviewSession>("/learning/interview-sessions", {
+      method: "POST",
+      body: JSON.stringify({ mode, company }),
+    }).then((result) => interviewSessionSchema.parse(result)),
+  updateInterviewPlatformAnswer: (
+    interviewId: string,
+    questionId: string,
+    answer: string,
+    followUpAnswer?: string,
+  ) =>
+    request<InterviewSession>(
+      `${interviewSessionPath(interviewId)}/platform/${encodeURIComponent(questionId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ answer, followUpAnswer }),
+      },
+    ).then((result) => interviewSessionSchema.parse(result)),
+  submitInterviewCodingAttempt: (interviewId: string, solution: string) =>
+    request<InterviewSession>(`${interviewSessionPath(interviewId)}/coding/attempt`, {
+      method: "POST",
+      body: JSON.stringify({ solution }),
+    }).then((result) => interviewSessionSchema.parse(result)),
+  completeInterviewCoding: (interviewId: string) =>
+    request<InterviewSession>(`${interviewSessionPath(interviewId)}/coding/complete`, {
+      method: "POST",
+    }).then((result) => interviewSessionSchema.parse(result)),
+  sendInterviewAiMessageStream: (
+    interviewId: string,
+    content: string,
+    solution: string,
+    onDelta: (delta: string) => void,
+  ) =>
+    streamRequest<InterviewSession>(
+      `${interviewSessionPath(interviewId)}/ai/messages/stream`,
+      { method: "POST", body: JSON.stringify({ content, solution }) },
+      onDelta,
+    ).then((result) => interviewSessionSchema.parse(result)),
+  submitInterviewAiAttempt: (interviewId: string, solution: string) =>
+    request<InterviewSession>(`${interviewSessionPath(interviewId)}/ai/attempt`, {
+      method: "POST",
+      body: JSON.stringify({ solution }),
+    }).then((result) => interviewSessionSchema.parse(result)),
+  completeInterviewAi: (interviewId: string) =>
+    request<InterviewSession>(`${interviewSessionPath(interviewId)}/ai/complete`, {
+      method: "POST",
+    }).then((result) => interviewSessionSchema.parse(result)),
+  updateInterviewDefenseAnswer: (
+    interviewId: string,
+    index: number,
+    answer: string,
+  ) =>
+    request<InterviewSession>(`${interviewSessionPath(interviewId)}/defense/${index}`, {
+      method: "PUT",
+      body: JSON.stringify({ answer }),
+    }).then((result) => interviewSessionSchema.parse(result)),
+  completeInterviewSession: (interviewId: string) =>
+    request<InterviewSession>(`${interviewSessionPath(interviewId)}/complete`, {
+      method: "POST",
+    }).then((result) => interviewSessionSchema.parse(result)),
+  transcribeInterviewAnswer: (interviewId: string, audio: Blob) => {
+    const form = new FormData();
+    form.append(
+      "audio",
+      audio,
+      `interview-answer.${audio.type.includes("ogg") ? "ogg" : "webm"}`,
+    );
+    return request<{ text: string }>(
+      `${interviewSessionPath(interviewId)}/transcribe`,
+      { method: "POST", body: form },
+    );
+  },
   addAlgorithm: (entry: Omit<AlgorithmEntry, "id">) =>
     request<AlgorithmEntry>("/learning/algorithms", {
       method: "POST",
@@ -359,4 +452,3 @@ export const difficultyLabels: Record<Difficulty, string> = {
   medium: "Medium",
   hard: "Hard",
 };
-import { aiLessonSchema, practiceSolutionSaveResultSchema } from "@prep/contracts";

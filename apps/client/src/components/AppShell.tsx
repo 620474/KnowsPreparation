@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { UnstyledButton, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
   BookOpenCheck,
+  BriefcaseBusiness,
   CalendarDays,
   CircleUserRound,
   Code2,
@@ -10,7 +11,6 @@ import {
   ListChecks,
   Moon,
   Settings,
-  Sparkles,
   Sun,
 } from "lucide-react";
 
@@ -31,7 +31,7 @@ const navigation: Array<{
 }> = [
   { id: "today", label: "Сегодня", shortLabel: "Сегодня", icon: Gauge },
   { id: "yandex", label: "Яндекс-спринт", shortLabel: "Яндекс", icon: ListChecks },
-  { id: "ai-course", label: "AI-курс", shortLabel: "AI", icon: Sparkles },
+  { id: "interview", label: "Интервью", shortLabel: "Собес", icon: BriefcaseBusiness },
   { id: "plan", label: "Учебный план", shortLabel: "План", icon: CalendarDays },
   { id: "resources", label: "Библиотека", shortLabel: "База", icon: LibraryBig },
   { id: "questions", label: "Банк вопросов", shortLabel: "Вопр.", icon: BookOpenCheck },
@@ -41,7 +41,7 @@ const navigation: Array<{
 
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
   navigationId === activeView ||
-  (navigationId === "settings" && activeView === "ozon") ||
+  (navigationId === "settings" && ["ozon", "ai-course"].includes(activeView)) ||
   (navigationId === "questions" &&
     ["review", "mock-interview", "analytics"].includes(activeView));
 

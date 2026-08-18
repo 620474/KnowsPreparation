@@ -9,6 +9,7 @@ import type { LearningAnalyticsService } from "./learning-analytics.service";
 import type { LearningBackupService } from "./learning-backup.service";
 import type { LearningBootstrapService } from "./learning-bootstrap.service";
 import type { LearningService } from "./learning.service";
+import type { InterviewSessionService } from "./interview-session.service";
 
 type StreamResponse = (
   response: Response,
@@ -40,6 +41,7 @@ describe("LearningController SSE", () => {
       {} as LearningAnalyticsService,
       {} as LearningBootstrapService,
       {} as LearningBackupService,
+      {} as InterviewSessionService,
     );
     const streamResponse = Reflect.get(controller, "streamResponse") as StreamResponse;
     const response = createResponseMock();

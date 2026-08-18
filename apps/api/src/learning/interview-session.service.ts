@@ -1,0 +1,476 @@
+import { randomUUID } from "node:crypto";
+
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import type {
+  InterviewExercise,
+  InterviewSessionEvaluation,
+  InterviewSessionStage,
+} from "@prep/contracts";
+import { isValidObjectId, type Model } from "mongoose";
+
+import { AiContentService, type AiDeltaHandler } from "./ai-content.service";
+import type {
+  SendInterviewAiMessageDto,
+  StartInterviewSessionDto,
+  SubmitInterviewExerciseDto,
+  UpdateInterviewDefenseAnswerDto,
+  UpdateInterviewPlatformAnswerDto,
+} from "./dto/learning.dto";
+import { runPracticeSolution } from "./generated-runner";
+import {
+  getReadinessConfidence,
+  interviewCompanyLabel,
+  interviewDurationMinutes,
+  selectInterviewExercises,
+  selectInterviewQuestions,
+} from "./interview-session";
+import { serializeInterviewSession } from "./learning-serialization";
+import { LearningSignalService } from "./learning-signal.service";
+import {
+  InterviewSession,
+  type InterviewSessionDocument,
+} from "./schemas/interview-session.schema";
+import { inferSkillKeys } from "./skills";
+
+const FOLLOW_UP_FALLBACK =
+  "Приведи практический пример и назови главный компромисс этого решения.";
+const DEFENSE_FALLBACK = [
+  "Объясни решение по шагам и оцени его временную и пространственную сложность.",
+  "Как ты проверил совет AI и в каком случае предложенный подход даст неверный результат?",
+];
+
+const scoreExercise = (exercise: InterviewExercise) =>
+  exercise.result && exercise.result.totalCount > 0
+    ? Math.round((exercise.result.passedCount / exercise.result.totalCount) * 100)
+    : 0;
+
+const clampScore = (score: number) => Math.min(100, Math.max(0, Math.round(score)));
+
+@Injectable()
+export class InterviewSessionService {
+  private readonly logger = new Logger(InterviewSessionService.name);
+
+  constructor(
+    @InjectModel(InterviewSession.name)
+    private readonly interviewModel: Model<InterviewSession>,
+    private readonly aiContent: AiContentService,
+    private readonly signals: LearningSignalService,
+  ) {}
+
+  async getCurrent() {
+    const interview = await this.interviewModel
+      .findOne({ status: { $in: ["in_progress", "evaluating"] } })
+      .sort({ updatedAt: -1 })
+      .lean()
+      .exec();
+    return interview ? serializeInterviewSession(interview) : null;
+  }
+
+  async list(limit = 10) {
+    const interviews = await this.interviewModel
+      .find({ status: "completed" })
+      .sort({ completedAt: -1 })
+      .limit(limit)
+      .lean()
+      .exec();
+    return interviews.map(serializeInterviewSession);
+  }
+
+  async start(dto: StartInterviewSessionDto) {
+    const current = await this.getCurrent();
+    if (current) return current;
+    const completedCount = await this.interviewModel.countDocuments({
+      status: "completed",
+    });
+    const questions = selectInterviewQuestions(dto.mode, completedCount);
+    const [codingExercise, aiExercise] = selectInterviewExercises(
+      dto.company,
+      completedCount,
+    );
+    const interview = await this.interviewModel.create({
+      status: "in_progress",
+      mode: dto.mode,
+      company: dto.company,
+      currentStage: "platform",
+      durationMinutes: interviewDurationMinutes(dto.mode),
+      startedAt: new Date(),
+      completedAt: null,
+      platformItems: questions.map((question) => ({
+        question,
+        answer: "",
+        followUpQuestion: null,
+        followUpAnswer: "",
+      })),
+      codingExercise,
+      aiExercise,
+      aiMessages: [],
+      defenseQuestions: [],
+      defenseAnswers: [],
+      evaluation: null,
+    });
+    return serializeInterviewSession(interview);
+  }
+
+  async updatePlatformAnswer(
+    interviewId: string,
+    questionId: string,
+    dto: UpdateInterviewPlatformAnswerDto,
+  ) {
+    const interview = await this.getDocument(interviewId);
+    this.assertStage(interview, "platform");
+    const item = interview.platformItems.find(
+      (candidate) => candidate.question.id === questionId,
+    );
+    if (!item) throw new NotFoundException("Вопрос не входит в эту сессию");
+    item.answer = dto.answer.trim();
+    if (!item.followUpQuestion) {
+      item.followUpQuestion = await this.followUpOrFallback(
+        interviewCompanyLabel(interview.company),
+        item.question.prompt,
+        item.answer,
+      );
+    }
+    if (dto.followUpAnswer) item.followUpAnswer = dto.followUpAnswer.trim();
+    if (
+      interview.platformItems.every(
+        (candidate) =>
+          candidate.answer.trim() &&
+          candidate.followUpQuestion &&
+          candidate.followUpAnswer.trim(),
+      )
+    ) {
+      interview.currentStage = "coding";
+    }
+    interview.markModified("platformItems");
+    await interview.save();
+    return serializeInterviewSession(interview);
+  }
+
+  async submitCodingAttempt(
+    interviewId: string,
+    dto: SubmitInterviewExerciseDto,
+  ) {
+    const interview = await this.getDocument(interviewId);
+    this.assertStage(interview, "coding");
+    interview.codingExercise = await this.runExercise(
+      interview.codingExercise,
+      dto.solution,
+    );
+    interview.markModified("codingExercise");
+    await interview.save();
+    return serializeInterviewSession(interview);
+  }
+
+  async completeCoding(interviewId: string) {
+    const interview = await this.getDocument(interviewId);
+    this.assertStage(interview, "coding");
+    if (interview.codingExercise.attempts < 1) {
+      throw new BadRequestException("Сначала запусти решение по тестам");
+    }
+    interview.currentStage = "ai";
+    await interview.save();
+    return serializeInterviewSession(interview);
+  }
+
+  async sendAiMessage(
+    interviewId: string,
+    dto: SendInterviewAiMessageDto,
+    onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
+  ) {
+    const interview = await this.getDocument(interviewId);
+    this.assertStage(interview, "ai");
+    if (dto.solution !== undefined) {
+      interview.aiExercise.solution = dto.solution;
+      interview.markModified("aiExercise");
+    }
+    const content = dto.content.trim();
+    interview.aiMessages.push({
+      id: randomUUID(),
+      role: "user",
+      content,
+      createdAt: new Date().toISOString(),
+    });
+    interview.markModified("aiMessages");
+    await interview.save();
+    const history = interview.aiMessages.slice(0, -1).map(({ role, content }) => ({
+      role,
+      content,
+    }));
+    const reply = await this.aiContent.generateInterviewAssistantReply(
+      [
+        interview.aiExercise.statement,
+        `\nТекущий код:\n${interview.aiExercise.solution}`,
+      ].join(""),
+      history,
+      content,
+      onDelta,
+      signal,
+    );
+    interview.aiMessages.push({
+      id: randomUUID(),
+      role: "assistant",
+      content: reply,
+      createdAt: new Date().toISOString(),
+    });
+    interview.markModified("aiMessages");
+    await interview.save();
+    return serializeInterviewSession(interview);
+  }
+
+  async submitAiAttempt(
+    interviewId: string,
+    dto: SubmitInterviewExerciseDto,
+  ) {
+    const interview = await this.getDocument(interviewId);
+    this.assertStage(interview, "ai");
+    interview.aiExercise = await this.runExercise(interview.aiExercise, dto.solution);
+    interview.markModified("aiExercise");
+    await interview.save();
+    return serializeInterviewSession(interview);
+  }
+
+  async completeAi(interviewId: string) {
+    const interview = await this.getDocument(interviewId);
+    this.assertStage(interview, "ai");
+    if (interview.aiExercise.attempts < 1) {
+      throw new BadRequestException("Сначала запусти решение по тестам");
+    }
+    if (!interview.aiMessages.some((message) => message.role === "user")) {
+      throw new BadRequestException("Задай AI хотя бы один вопрос по решению");
+    }
+    interview.defenseQuestions = await this.defenseOrFallback(interview);
+    interview.defenseAnswers = interview.defenseQuestions.map(() => "");
+    interview.currentStage = "defense";
+    interview.markModified("defenseQuestions");
+    interview.markModified("defenseAnswers");
+    await interview.save();
+    return serializeInterviewSession(interview);
+  }
+
+  async updateDefenseAnswer(
+    interviewId: string,
+    index: number,
+    dto: UpdateInterviewDefenseAnswerDto,
+  ) {
+    const interview = await this.getDocument(interviewId);
+    this.assertStage(interview, "defense");
+    if (!Number.isInteger(index) || index < 0 || index >= interview.defenseQuestions.length) {
+      throw new NotFoundException("Вопрос защиты не найден");
+    }
+    interview.defenseAnswers[index] = dto.answer.trim();
+    interview.markModified("defenseAnswers");
+    await interview.save();
+    return serializeInterviewSession(interview);
+  }
+
+  async complete(interviewId: string) {
+    const interview = await this.getDocument(interviewId);
+    if (interview.status === "completed") {
+      await this.recordSignal(interview);
+      return serializeInterviewSession(interview);
+    }
+    this.assertStage(interview, "defense");
+    if (interview.defenseAnswers.some((answer) => !answer.trim())) {
+      throw new BadRequestException("Ответь на все вопросы защиты");
+    }
+    interview.status = "evaluating";
+    await interview.save();
+    try {
+      const completedCount = await this.interviewModel.countDocuments({
+        status: "completed",
+      });
+      const generated = await this.evaluationOrFallback(interview);
+      const codingScore = scoreExercise(interview.codingExercise);
+      const aiTaskScore = scoreExercise(interview.aiExercise);
+      const aiScore = clampScore((generated.aiScore + aiTaskScore) / 2);
+      const overallScore = clampScore(
+        generated.platformScore * 0.3 +
+          codingScore * 0.3 +
+          aiScore * 0.25 +
+          generated.communicationScore * 0.15,
+      );
+      interview.evaluation = {
+        overallScore,
+        readinessConfidence: getReadinessConfidence(completedCount),
+        summary: generated.summary,
+        strengths: generated.strengths,
+        weakTopics: generated.weakTopics,
+        recommendations: generated.recommendations,
+        sections: {
+          platform: {
+            score: generated.platformScore,
+            feedback: generated.platformFeedback,
+          },
+          coding: {
+            score: codingScore,
+            feedback: interview.codingExercise.result?.passed
+              ? "Решение прошло все серверные тесты."
+              : `Пройдено ${interview.codingExercise.result?.passedCount ?? 0} из ${interview.codingExercise.result?.totalCount ?? 0} тестов.`,
+          },
+          ai: { score: aiScore, feedback: generated.aiFeedback },
+          communication: {
+            score: generated.communicationScore,
+            feedback: generated.communicationFeedback,
+          },
+        },
+      } satisfies InterviewSessionEvaluation;
+      interview.status = "completed";
+      interview.currentStage = "completed";
+      interview.completedAt = new Date();
+      interview.markModified("evaluation");
+      await interview.save();
+      await this.recordSignal(interview);
+      return serializeInterviewSession(interview);
+    } catch (error) {
+      interview.status = "in_progress";
+      await interview.save();
+      throw error;
+    }
+  }
+
+  async transcribe(
+    interviewId: string,
+    audio: { buffer: Buffer; originalname: string; mimetype: string },
+  ) {
+    const interview = await this.getDocument(interviewId);
+    if (interview.status === "completed") {
+      throw new BadRequestException("Интервью уже завершено");
+    }
+    const text = await this.aiContent.transcribeAudio(
+      audio.buffer,
+      audio.originalname || "interview-answer.webm",
+      audio.mimetype || "audio/webm",
+    );
+    return { text };
+  }
+
+  private async runExercise(exercise: InterviewExercise, solution: string) {
+    const result = await runPracticeSolution(exercise.runner, solution.trim());
+    return {
+      ...exercise,
+      solution,
+      result,
+      attempts: exercise.attempts + 1,
+    };
+  }
+
+  private async followUpOrFallback(company: string, question: string, answer: string) {
+    if (!this.aiContent.enabled) return FOLLOW_UP_FALLBACK;
+    try {
+      return await this.aiContent.generateInterviewFollowUp({
+        company,
+        question,
+        answer,
+      });
+    } catch (error) {
+      this.logFallback("follow_up", error);
+      return FOLLOW_UP_FALLBACK;
+    }
+  }
+
+  private async defenseOrFallback(interview: InterviewSessionDocument) {
+    if (!this.aiContent.enabled) return DEFENSE_FALLBACK;
+    try {
+      return await this.aiContent.generateInterviewDefenseQuestions({
+        task: interview.aiExercise.statement,
+        solution: interview.aiExercise.solution,
+        messages: interview.aiMessages.map(({ role, content }) => ({ role, content })),
+      });
+    } catch (error) {
+      this.logFallback("defense", error);
+      return DEFENSE_FALLBACK;
+    }
+  }
+
+  private async evaluationOrFallback(interview: InterviewSessionDocument) {
+    const fallback = {
+      platformScore: 55,
+      aiScore: 55,
+      communicationScore: 55,
+      summary: "Сессия завершена. Для точной AI-оценки повтори её при доступном AI.",
+      strengths: ["Сессия пройдена до конца", "Код проверен серверными тестами"],
+      weakTopics: interview.platformItems.map((item) => item.question.category).slice(0, 4),
+      recommendations: [
+        "Повтори слабые темы и сформулируй ответы вслух",
+        "Разбери непройденные тесты обеих задач",
+      ],
+      platformFeedback: "Автоматическая содержательная оценка временно недоступна.",
+      aiFeedback: "Проверь, какие советы AI были приняты и как они валидировались.",
+      communicationFeedback: "Повтори защиту решения с таймером и структурой тезис → пример → вывод.",
+    };
+    if (!this.aiContent.enabled) return fallback;
+    try {
+      return await this.aiContent.evaluateInterviewSession({
+        company: interviewCompanyLabel(interview.company),
+        mode: interview.mode,
+        platform: interview.platformItems,
+        coding: {
+          statement: interview.codingExercise.statement,
+          solution: interview.codingExercise.solution,
+          result: interview.codingExercise.result,
+        },
+        aiSection: {
+          statement: interview.aiExercise.statement,
+          solution: interview.aiExercise.solution,
+          result: interview.aiExercise.result,
+          messages: interview.aiMessages,
+        },
+        defense: interview.defenseQuestions.map((question, index) => ({
+          question,
+          answer: interview.defenseAnswers[index],
+        })),
+      });
+    } catch (error) {
+      this.logFallback("evaluation", error);
+      return fallback;
+    }
+  }
+
+  private async recordSignal(interview: InterviewSessionDocument) {
+    if (!interview.evaluation) return;
+    await this.signals.record({
+      type: "mock_completed",
+      skillKeys: inferSkillKeys(...interview.evaluation.weakTopics),
+      payload: {
+        score: interview.evaluation.overallScore,
+        weakTopics: interview.evaluation.weakTopics,
+        interviewSession: true,
+      },
+      operationId: `interview:${String(interview._id)}`,
+      occurredAt: interview.completedAt ?? new Date(),
+    });
+  }
+
+  private assertStage(
+    interview: InterviewSessionDocument,
+    stage: InterviewSessionStage,
+  ) {
+    if (interview.status !== "in_progress" || interview.currentStage !== stage) {
+      throw new BadRequestException("Этот этап интервью уже завершён");
+    }
+  }
+
+  private async getDocument(interviewId: string) {
+    if (!isValidObjectId(interviewId)) {
+      throw new NotFoundException("Интервью не найдено");
+    }
+    const interview = await this.interviewModel.findById(interviewId).exec();
+    if (!interview) throw new NotFoundException("Интервью не найдено");
+    return interview;
+  }
+
+  private logFallback(operation: string, error: unknown) {
+    this.logger.warn({
+      event: "interview_ai_fallback",
+      operation,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}

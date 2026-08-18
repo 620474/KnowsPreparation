@@ -15,6 +15,7 @@ import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { LearningSignal } from "./schemas/learning-signal.schema";
+import { InterviewSession } from "./schemas/interview-session.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
 import { PracticeAttempt } from "./schemas/practice-attempt.schema";
@@ -44,6 +45,8 @@ export class LearningBackupService {
     private readonly learningSignalModel: Model<LearningSignal>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
+    @InjectModel(InterviewSession.name)
+    private readonly interviewSessionModel: Model<InterviewSession>,
   ) {}
 
   async exportBackup() {
@@ -60,6 +63,7 @@ export class LearningBackupService {
       learningSignals,
       aiQuizProgresses,
       mockInterviews,
+      interviewSessions,
     ] = await Promise.all([
       this.settingsModel.find().lean().exec(),
       this.taskModel.find().lean().exec(),
@@ -73,6 +77,7 @@ export class LearningBackupService {
       this.learningSignalModel.find().lean().exec(),
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
+      this.interviewSessionModel.find().lean().exec(),
     ]);
 
     return {
@@ -92,6 +97,7 @@ export class LearningBackupService {
         learningSignals,
         aiQuizProgresses,
         mockInterviews,
+        interviewSessions,
       },
     };
   }
@@ -137,6 +143,10 @@ export class LearningBackupService {
       mockInterviews: await this.validateRecords(
         this.mockInterviewModel,
         backup.data.mockInterviews,
+      ),
+      interviewSessions: await this.validateRecords(
+        this.interviewSessionModel,
+        backup.data.interviewSessions,
       ),
     };
 
@@ -197,6 +207,11 @@ export class LearningBackupService {
       this.mergeRecords(
         this.mockInterviewModel,
         prepared.mockInterviews,
+        (record) => ({ _id: record._id }),
+      ),
+      this.mergeRecords(
+        this.interviewSessionModel,
+        prepared.interviewSessions,
         (record) => ({ _id: record._id }),
       ),
     ]);

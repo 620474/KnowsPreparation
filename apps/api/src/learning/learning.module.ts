@@ -11,6 +11,7 @@ import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
+import { InterviewSessionService } from "./interview-session.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
 import {
   AiChatMessage,
@@ -34,6 +35,10 @@ import {
   MockInterview,
   MockInterviewSchema,
 } from "./schemas/mock-interview.schema";
+import {
+  InterviewSession,
+  InterviewSessionSchema,
+} from "./schemas/interview-session.schema";
 import {
   QuestionProgress,
   QuestionProgressSchema,
@@ -65,6 +70,7 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
       { name: LearningSignal.name, schema: LearningSignalSchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
+      { name: InterviewSession.name, schema: InterviewSessionSchema },
     ]),
   ],
   controllers: [LearningController],
@@ -77,6 +83,7 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
     LearningCleanupService,
     LearningService,
     LearningSignalService,
+    InterviewSessionService,
   ],
 })
 export class LearningModule {}

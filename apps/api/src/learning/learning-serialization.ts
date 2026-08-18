@@ -1,5 +1,6 @@
 import {
   aiLessonSchema,
+  interviewSessionSchema,
   practiceAttemptSchema,
   practiceSolutionProgressSchema,
   TRACK_KEYS,
@@ -13,6 +14,7 @@ import type { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import type { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import type { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import type { MockInterview } from "./schemas/mock-interview.schema";
+import type { InterviewSession } from "./schemas/interview-session.schema";
 import type { QuestionProgress } from "./schemas/question-progress.schema";
 import type { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { findStaticTrackByCourse } from "./track-registry";
@@ -220,4 +222,26 @@ export function serializeMockInterview(interview: MockInterview & { _id: unknown
         }
       : null,
   };
+}
+
+export function serializeInterviewSession(
+  interview: InterviewSession & { _id: unknown },
+) {
+  return interviewSessionSchema.parse({
+    id: String(interview._id),
+    status: interview.status,
+    mode: interview.mode,
+    company: interview.company,
+    currentStage: interview.currentStage,
+    durationMinutes: interview.durationMinutes,
+    startedAt: interview.startedAt.toISOString(),
+    completedAt: interview.completedAt?.toISOString() ?? null,
+    platformItems: interview.platformItems,
+    codingExercise: interview.codingExercise,
+    aiExercise: interview.aiExercise,
+    aiMessages: interview.aiMessages,
+    defenseQuestions: interview.defenseQuestions,
+    defenseAnswers: interview.defenseAnswers,
+    evaluation: interview.evaluation,
+  });
 }

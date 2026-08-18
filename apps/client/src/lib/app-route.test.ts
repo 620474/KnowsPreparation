@@ -19,6 +19,7 @@ describe("app routes", () => {
     ["questions", "#/questions"],
     ["review", "#/review"],
     ["mock-interview", "#/mock-interview"],
+    ["interview", "#/interview"],
     ["analytics", "#/analytics"],
     ["algorithms", "#/algorithms"],
     ["settings", "#/settings"],

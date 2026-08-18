@@ -25,6 +25,7 @@ const createBackup = (): LearningBackupV1 => ({
     learningSignals: [],
     aiQuizProgresses: [],
     mockInterviews: [],
+    interviewSessions: [],
   },
 });
 
@@ -72,6 +73,15 @@ describe("parseLearningBackup", () => {
     delete legacyData.learningSignals;
 
     expect(parseLearningBackup({ ...backup, data: legacyData }).data.learningSignals)
+      .toEqual([]);
+  });
+
+  it("accepts backups created before interview sessions were added", () => {
+    const backup = createBackup();
+    const legacyData: Partial<LearningBackupV1["data"]> = { ...backup.data };
+    delete legacyData.interviewSessions;
+
+    expect(parseLearningBackup({ ...backup, data: legacyData }).data.interviewSessions)
       .toEqual([]);
   });
 });

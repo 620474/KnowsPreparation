@@ -27,18 +27,25 @@ import {
   GenerateAiCourseDto,
   GetLearningAnalyticsDto,
   ImportBackupDto,
+  ListInterviewSessionsDto,
   ListPracticeAttemptsDto,
   ReviewQuestionDto,
   SendAiChatMessageDto,
   SkipAdaptiveRecommendationDto,
+  StartInterviewSessionDto,
+  SubmitInterviewExerciseDto,
   SubmitLessonQuizDto,
   SubmitPracticeAttemptDto,
   UpdateMockAnswerDto,
+  UpdateInterviewDefenseAnswerDto,
+  UpdateInterviewPlatformAnswerDto,
   UpdatePracticeSolutionDto,
   UpdateQuestionDto,
   UpdateSettingsDto,
   UpdateTaskDto,
+  SendInterviewAiMessageDto,
 } from "./dto/learning.dto";
+import { InterviewSessionService } from "./interview-session.service";
 import { LearningService } from "./learning.service";
 import { AdaptivePlanService } from "./adaptive-plan.service";
 import { LearningAnalyticsService } from "./learning-analytics.service";
@@ -58,6 +65,7 @@ export class LearningController {
     private readonly analyticsService: LearningAnalyticsService,
     private readonly bootstrapService: LearningBootstrapService,
     private readonly backupService: LearningBackupService,
+    private readonly interviewSessionService: InterviewSessionService,
   ) {}
 
   @Get("adaptive/today")
@@ -274,6 +282,124 @@ export class LearningController {
   ) {
     if (!audio) throw new BadRequestException("Добавь аудиозапись ответа");
     return this.learningService.transcribeMockAnswer(interviewId, audio);
+  }
+
+  @Get("interview-sessions/current")
+  @Header("Cache-Control", "private, no-store")
+  getCurrentInterviewSession() {
+    return this.interviewSessionService.getCurrent();
+  }
+
+  @Get("interview-sessions")
+  @Header("Cache-Control", "private, no-store")
+  listInterviewSessions(@Query() dto: ListInterviewSessionsDto) {
+    return this.interviewSessionService.list(dto.limit);
+  }
+
+  @Post("interview-sessions")
+  startInterviewSession(@Body() dto: StartInterviewSessionDto) {
+    return this.interviewSessionService.start(dto);
+  }
+
+  @Put("interview-sessions/:interviewId/platform/:questionId")
+  updateInterviewPlatformAnswer(
+    @Param("interviewId") interviewId: string,
+    @Param("questionId") questionId: string,
+    @Body() dto: UpdateInterviewPlatformAnswerDto,
+  ) {
+    return this.interviewSessionService.updatePlatformAnswer(
+      interviewId,
+      questionId,
+      dto,
+    );
+  }
+
+  @Post("interview-sessions/:interviewId/coding/attempt")
+  submitInterviewCodingAttempt(
+    @Param("interviewId") interviewId: string,
+    @Body() dto: SubmitInterviewExerciseDto,
+  ) {
+    return this.interviewSessionService.submitCodingAttempt(interviewId, dto);
+  }
+
+  @Post("interview-sessions/:interviewId/coding/complete")
+  completeInterviewCoding(@Param("interviewId") interviewId: string) {
+    return this.interviewSessionService.completeCoding(interviewId);
+  }
+
+  @Post("interview-sessions/:interviewId/ai/messages")
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  sendInterviewAiMessage(
+    @Param("interviewId") interviewId: string,
+    @Body() dto: SendInterviewAiMessageDto,
+  ) {
+    return this.interviewSessionService.sendAiMessage(interviewId, dto);
+  }
+
+  @Post("interview-sessions/:interviewId/ai/messages/stream")
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  streamInterviewAiMessage(
+    @Param("interviewId") interviewId: string,
+    @Body() dto: SendInterviewAiMessageDto,
+    @Res() response: Response,
+  ) {
+    return this.streamResponse(response, (onDelta, signal) =>
+      this.interviewSessionService.sendAiMessage(
+        interviewId,
+        dto,
+        onDelta,
+        signal,
+      ),
+    );
+  }
+
+  @Post("interview-sessions/:interviewId/ai/attempt")
+  submitInterviewAiAttempt(
+    @Param("interviewId") interviewId: string,
+    @Body() dto: SubmitInterviewExerciseDto,
+  ) {
+    return this.interviewSessionService.submitAiAttempt(interviewId, dto);
+  }
+
+  @Post("interview-sessions/:interviewId/ai/complete")
+  completeInterviewAi(@Param("interviewId") interviewId: string) {
+    return this.interviewSessionService.completeAi(interviewId);
+  }
+
+  @Put("interview-sessions/:interviewId/defense/:index")
+  updateInterviewDefenseAnswer(
+    @Param("interviewId") interviewId: string,
+    @Param("index") index: string,
+    @Body() dto: UpdateInterviewDefenseAnswerDto,
+  ) {
+    return this.interviewSessionService.updateDefenseAnswer(
+      interviewId,
+      Number(index),
+      dto,
+    );
+  }
+
+  @Post("interview-sessions/:interviewId/complete")
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  completeInterviewSession(@Param("interviewId") interviewId: string) {
+    return this.interviewSessionService.complete(interviewId);
+  }
+
+  @Post("interview-sessions/:interviewId/transcribe")
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @UseInterceptors(
+    FileInterceptor("audio", {
+      limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+      fileFilter: (_request, file, callback) =>
+        callback(null, file.mimetype.startsWith("audio/")),
+    }),
+  )
+  transcribeInterviewAnswer(
+    @Param("interviewId") interviewId: string,
+    @UploadedFile() audio?: Express.Multer.File,
+  ) {
+    if (!audio) throw new BadRequestException("Добавь аудиозапись ответа");
+    return this.interviewSessionService.transcribe(interviewId, audio);
   }
 
   @Post("algorithms")

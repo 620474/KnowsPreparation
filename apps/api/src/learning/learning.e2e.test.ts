@@ -11,6 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { AppController } from "../app.controller";
 import { AuthModule } from "../auth/auth.module";
 import { QUESTION_BANK, TASK_IDS } from "./curriculum";
+import { AiContentService } from "./ai-content.service";
 import { getStaticRunnerValidationCases } from "./exercise-runners";
 import { LearningModule } from "./learning.module";
 import { AiLesson } from "./schemas/ai-course.schema";
@@ -584,6 +585,162 @@ describe("Learning API", () => {
       fetchSpy.mockRestore();
     }
   });
+
+  it("runs and restores a complete interview simulator session", async () => {
+    const aiContent = app.get(AiContentService);
+    const followUpSpy = vi
+      .spyOn(aiContent, "generateInterviewFollowUp")
+      .mockResolvedValue("Почему этот подход уместен?");
+    const assistantSpy = vi
+      .spyOn(aiContent, "generateInterviewAssistantReply")
+      .mockResolvedValue("Проверь граничный случай и сложность.");
+    const defenseSpy = vi
+      .spyOn(aiContent, "generateInterviewDefenseQuestions")
+      .mockResolvedValue(["Объясни сложность.", "Как проверил совет AI?"]);
+    const evaluationSpy = vi
+      .spyOn(aiContent, "evaluateInterviewSession")
+      .mockResolvedValue({
+        platformScore: 80,
+        aiScore: 80,
+        communicationScore: 80,
+        summary: "Кандидат готов к следующей тренировке.",
+        strengths: ["JavaScript"],
+        weakTopics: ["React reconciliation"],
+        recommendations: ["Повторить React"],
+        platformFeedback: "Ответы по существу.",
+        aiFeedback: "Советы AI проверены тестами.",
+        communicationFeedback: "Ответы структурированы.",
+      });
+
+    try {
+      const started = await request(app.getHttpServer())
+        .post("/api/v1/learning/interview-sessions")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ mode: "express", company: "yandex" })
+        .expect(201);
+      expect(started.body).toMatchObject({
+        status: "in_progress",
+        currentStage: "platform",
+        durationMinutes: 35,
+      });
+      expect(started.body.platformItems).toHaveLength(2);
+
+      const restored = await request(app.getHttpServer())
+        .get("/api/v1/learning/interview-sessions/current")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+      expect(restored.body.id).toBe(started.body.id);
+
+      let session = started.body;
+      for (const item of session.platformItems) {
+        session = (
+          await request(app.getHttpServer())
+            .put(`/api/v1/learning/interview-sessions/${session.id}/platform/${item.question.id}`)
+            .set("Authorization", `Bearer ${token}`)
+            .send({ answer: "Основной ответ с практическим примером." })
+            .expect(200)
+        ).body;
+        session = (
+          await request(app.getHttpServer())
+            .put(`/api/v1/learning/interview-sessions/${session.id}/platform/${item.question.id}`)
+            .set("Authorization", `Bearer ${token}`)
+            .send({
+              answer: "Основной ответ с практическим примером.",
+              followUpAnswer: "Потому что это снижает сложность и сохраняет читаемость.",
+            })
+            .expect(200)
+        ).body;
+      }
+      expect(session.currentStage).toBe("coding");
+
+      const runners = new Map(
+        getStaticRunnerValidationCases().map((item) => [item.id, item]),
+      );
+      const codingSolution = runners.get(session.codingExercise.id)?.referenceSolution;
+      if (!codingSolution) throw new Error("Coding reference solution is missing");
+      session = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${session.id}/coding/attempt`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ solution: codingSolution })
+          .expect(201)
+      ).body;
+      expect(session.codingExercise.result.passed).toBe(true);
+      session = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${session.id}/coding/complete`)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(201)
+      ).body;
+      expect(session.currentStage).toBe("ai");
+
+      session = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${session.id}/ai/messages`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ content: "Как проверить крайние случаи?", solution: session.aiExercise.solution })
+          .expect(201)
+      ).body;
+      expect(session.aiMessages).toHaveLength(2);
+      const aiSolution = runners.get(session.aiExercise.id)?.referenceSolution;
+      if (!aiSolution) throw new Error("AI reference solution is missing");
+      session = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${session.id}/ai/attempt`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ solution: aiSolution })
+          .expect(201)
+      ).body;
+      session = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${session.id}/ai/complete`)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(201)
+      ).body;
+      expect(session.currentStage).toBe("defense");
+
+      for (let index = 0; index < session.defenseQuestions.length; index += 1) {
+        session = (
+          await request(app.getHttpServer())
+            .put(`/api/v1/learning/interview-sessions/${session.id}/defense/${index}`)
+            .set("Authorization", `Bearer ${token}`)
+            .send({ answer: "Объясняю решение, компромиссы и способ проверки." })
+            .expect(200)
+        ).body;
+      }
+      const completed = await request(app.getHttpServer())
+        .post(`/api/v1/learning/interview-sessions/${session.id}/complete`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201);
+      expect(completed.body).toMatchObject({
+        status: "completed",
+        currentStage: "completed",
+        evaluation: {
+          overallScore: 89,
+          readinessConfidence: "low",
+          sections: { coding: { score: 100 }, ai: { score: 90 } },
+        },
+      });
+
+      const history = await request(app.getHttpServer())
+        .get("/api/v1/learning/interview-sessions?limit=5")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+      expect(history.body).toHaveLength(1);
+      expect(history.body[0].id).toBe(session.id);
+
+      const backup = await request(app.getHttpServer())
+        .get("/api/v1/learning/backup")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+      expect(backup.body.data.interviewSessions).toHaveLength(1);
+    } finally {
+      followUpSpy.mockRestore();
+      assistantSpy.mockRestore();
+      defenseSpy.mockRestore();
+      evaluationSpy.mockRestore();
+    }
+  }, 30_000);
 
   it("saves an empty practice solution instead of failing validation", async () => {
     const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;
