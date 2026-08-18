@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button } from "@mantine/core";
 import { ArrowLeft, MessageCircle, RefreshCw } from "lucide-react";
 
@@ -24,6 +25,7 @@ interface AiLessonReaderProps {
   resourceIds: string[];
   resources: LearningResource[];
   isRegenerating: boolean;
+  focusQuiz?: boolean;
   quizProgress?: LessonQuizProgress;
   practiceProgress?: PracticeSolutionProgress;
   onAsk: (context: AiLessonQuestionContext) => void;
@@ -47,6 +49,7 @@ export function AiLessonReader({
   resourceIds,
   resources,
   isRegenerating,
+  focusQuiz = false,
   quizProgress,
   practiceProgress,
   onAsk,
@@ -56,6 +59,16 @@ export function AiLessonReader({
   onSavePractice,
   onSubmitQuiz,
 }: AiLessonReaderProps) {
+  const quizRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!focusQuiz) return;
+    const animationFrame = window.requestAnimationFrame(() => {
+      quizRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [focusQuiz, lesson.version]);
+
   return (
     <div aria-label={`Урок: ${title}`} aria-modal="true" className="ai-lesson-reader" role="dialog">
       <header className="ai-lesson-reader-toolbar">
@@ -110,7 +123,9 @@ export function AiLessonReader({
             onSavePractice={onSavePractice}
           />
 
-          <LessonQuiz lesson={lesson} progress={quizProgress} onSubmit={onSubmitQuiz} />
+          <div className="ai-lesson-quiz-anchor" ref={quizRef}>
+            <LessonQuiz lesson={lesson} progress={quizProgress} onSubmit={onSubmitQuiz} />
+          </div>
 
           <section className="ai-lesson-reader-sources">
             <strong>Дополнительные источники</strong>

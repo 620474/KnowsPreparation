@@ -30,6 +30,7 @@ export function useAppNavigation() {
     id: number;
     content: string;
   } | null>(null);
+  const [quizFocusItemId, setQuizFocusItemId] = useState<string | null>(null);
   const chatRequestIdRef = useRef(0);
   const readingScrollRef = useRef(0);
 
@@ -42,6 +43,7 @@ export function useAppNavigation() {
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
+      setQuizFocusItemId(null);
     };
 
     const initialRoute = parseAppRoute(window.location.hash);
@@ -79,6 +81,7 @@ export function useAppNavigation() {
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
+      setQuizFocusItemId(null);
     },
     [],
   );
@@ -90,12 +93,14 @@ export function useAppNavigation() {
   );
 
   const navigateToLesson = useCallback(
-    (track: TrackKey, itemId: string) =>
+    (track: TrackKey, itemId: string, focusQuiz = false) => {
+      setQuizFocusItemId(focusQuiz ? `${track}:${itemId}` : null);
       navigateToRoute({
         view: viewForTrack(track),
         lessonReader: { track, itemId },
         ...(dayReader?.track === track ? { dayReader } : {}),
-      }),
+      });
+    },
     [dayReader, navigateToRoute],
   );
 
@@ -143,6 +148,14 @@ export function useAppNavigation() {
     [],
   );
 
+  const openChatWithDraft = useCallback((itemId: string, content: string) => {
+    readingScrollRef.current = window.scrollY;
+    chatRequestIdRef.current += 1;
+    setChatItemId(itemId);
+    setChatDraftRequest({ id: chatRequestIdRef.current, content });
+    setChatOpen(true);
+  }, []);
+
   const closeChat = useCallback(() => {
     const scrollTop = readingScrollRef.current;
     setChatOpen(false);
@@ -157,6 +170,7 @@ export function useAppNavigation() {
   return {
     activeView,
     lessonReader,
+    quizFocusItemId,
     dayReader,
     chatOpen,
     chatItemId,
@@ -168,6 +182,7 @@ export function useAppNavigation() {
     openLessonReader: navigateToLesson,
     closeLessonReader,
     openChat,
+    openChatWithDraft,
     closeChat,
     resetChat,
   };

@@ -1257,6 +1257,11 @@ p {
   text-transform: uppercase;
 }
 
+.task-workspace summary > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 .task-workspace summary small {
   color: var(--muted);
   font-size: 0.62rem;
@@ -3667,6 +3672,10 @@ p {
   gap: 22px;
   margin-top: 28px;
   padding: clamp(20px, 4vw, 34px);
+}
+
+.ai-lesson-quiz-anchor {
+  scroll-margin-top: 24px;
 }
 
 .lesson-quiz-intro {

@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ListChecks,
   MessageCircle,
   Sparkles,
 } from "lucide-react";
@@ -31,7 +32,9 @@ interface TrackDayViewProps {
   onOpenDay: (dayId: string) => void;
   onGenerateLesson: (blockId: string) => void;
   onOpenLesson: (blockId: string) => void;
+  onOpenQuiz: (blockId: string) => void;
   onOpenChat: (blockId: string) => void;
+  onReviewSolution: (blockId: string, draft: string) => void;
   onUpdateTask: TaskUpdateHandler;
 }
 
@@ -54,7 +57,9 @@ export function TrackDayView({
   onOpenDay,
   onGenerateLesson,
   onOpenLesson,
+  onOpenQuiz,
   onOpenChat,
+  onReviewSolution,
   onUpdateTask,
 }: TrackDayViewProps) {
   const dayIndex = days.findIndex((candidate) => candidate.id === dayId);
@@ -165,6 +170,12 @@ export function TrackDayView({
             ...data.progress.tasks[block.id],
           };
           const lesson = data.ai.lessons[track][block.id];
+          const quizProgress = data.ai.quizProgress[track][block.id];
+          const latestQuizAttempt =
+            lesson && quizProgress?.lessonVersion === lesson.version
+              ? quizProgress.attempts.at(-1)
+              : undefined;
+          const hasQuiz = lesson?.quiz.length === 10;
           const supportsLesson = block.kind !== "review";
           const isGenerating = generatingLessonId === block.id;
 
@@ -221,6 +232,32 @@ export function TrackDayView({
                         >
                           Спросить
                         </Button>
+                        {hasQuiz ? (
+                          <Button
+                            className="secondary-button"
+                            leftSection={<ListChecks size={15} />}
+                            size="xs"
+                            type="button"
+                            variant="default"
+                            onClick={() => onOpenQuiz(block.id)}
+                          >
+                            {latestQuizAttempt
+                              ? `Тест: ${latestQuizAttempt.score}/10`
+                              : "Пройти тест · 10 вопросов"}
+                          </Button>
+                        ) : (
+                          <Button
+                            className="secondary-button"
+                            disabled={isGenerating}
+                            leftSection={isGenerating ? <Loader size={14} /> : <Sparkles size={15} />}
+                            size="xs"
+                            type="button"
+                            variant="default"
+                            onClick={() => onGenerateLesson(block.id)}
+                          >
+                            Добавить тест
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <Button
@@ -285,6 +322,11 @@ export function TrackDayView({
                     taskId={block.id}
                     taskTitle={block.title}
                     track={track}
+                    onReviewWithAi={
+                      block.kind === "ai"
+                        ? (draft) => onReviewSolution(block.id, draft)
+                        : undefined
+                    }
                   />
                 ) : null}
 

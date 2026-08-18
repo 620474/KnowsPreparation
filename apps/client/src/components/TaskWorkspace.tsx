@@ -8,6 +8,7 @@ import type {
   TaskUpdateHandler,
   TrackKey,
 } from "../types";
+import { buildSolutionReviewDraft } from "../lib/ai-chat-draft";
 import { CodeEditor } from "./CodeEditor";
 import { CodePlayground, type CodePlaygroundHandle } from "./CodePlayground";
 
@@ -19,6 +20,7 @@ interface TaskWorkspaceProps {
   runner?: StudyExerciseRunner;
   track: TrackKey;
   onUpdateTask: TaskUpdateHandler;
+  onReviewWithAi?: (draft: string) => void;
 }
 
 export function TaskWorkspace({
@@ -29,6 +31,7 @@ export function TaskWorkspace({
   runner,
   track,
   onUpdateTask,
+  onReviewWithAi,
 }: TaskWorkspaceProps) {
   const playgroundRef = useRef<CodePlaygroundHandle>(null);
   const [customTask, setCustomTask] = useState(progress.customTask);
@@ -38,6 +41,7 @@ export function TaskWorkspace({
   const dirty =
     solution !== progress.solution ||
     (includeCustomTask && customTask !== progress.customTask);
+  const canReviewWithAi = Boolean(onReviewWithAi && solution.trim());
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,7 +58,7 @@ export function TaskWorkspace({
   return (
     <details className="task-workspace">
       <summary>
-        <span>{includeCustomTask ? "AI-задача и решение" : "Моё решение"}</span>
+        <span>{onReviewWithAi ? "Проверить решение через AI" : includeCustomTask ? "AI-задача и решение" : "Моё решение"}</span>
         {progress.solution ? <small>Есть сохранённое решение</small> : null}
       </summary>
       <form className="task-workspace-form" onSubmit={handleSubmit}>
@@ -94,6 +98,25 @@ export function TaskWorkspace({
           />
         ) : null}
         <div className="task-workspace-actions">
+          {onReviewWithAi ? (
+            <Button
+              className="secondary-button"
+              type="button"
+              variant="default"
+              disabled={!canReviewWithAi}
+              onClick={() =>
+                onReviewWithAi(
+                  buildSolutionReviewDraft({
+                    title: taskTitle,
+                    task: customTask,
+                    solution,
+                  }),
+                )
+              }
+            >
+              Проверить через AI
+            </Button>
+          ) : null}
           <Button
             className="primary-button"
             type="submit"

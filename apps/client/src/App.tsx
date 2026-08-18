@@ -93,6 +93,7 @@ export default function App() {
   const {
     activeView,
     lessonReader,
+    quizFocusItemId,
     dayReader,
     chatOpen,
     chatItemId,
@@ -104,6 +105,7 @@ export default function App() {
     openLessonReader,
     closeLessonReader,
     openChat,
+    openChatWithDraft,
     closeChat,
     resetChat,
   } = useAppNavigation();
@@ -314,6 +316,8 @@ export default function App() {
           onOpenChat={(blockId) => openChat(blockId)}
           onOpenDay={(dayId) => navigateToTrackDay("yandex", dayId)}
           onOpenLesson={(blockId) => openLessonReader("yandex", blockId)}
+          onOpenQuiz={(blockId) => openLessonReader("yandex", blockId, true)}
+          onReviewSolution={(blockId, draft) => openChatWithDraft(blockId, draft)}
           onUpdateTask={updateTask}
         />
       ) : null}
@@ -345,6 +349,8 @@ export default function App() {
           onOpenChat={(blockId) => openChat(blockId)}
           onOpenDay={(dayId) => navigateToTrackDay("ozon", dayId)}
           onOpenLesson={(blockId) => openLessonReader("ozon", blockId)}
+          onOpenQuiz={(blockId) => openLessonReader("ozon", blockId, true)}
+          onReviewSolution={(blockId, draft) => openChatWithDraft(blockId, draft)}
           onUpdateTask={updateTask}
         />
       ) : null}
@@ -398,6 +404,8 @@ export default function App() {
           onOpenChat={(blockId) => openChat(blockId)}
           onOpenDay={(dayId) => navigateToTrackDay("curriculum", dayId)}
           onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
+          onOpenQuiz={(blockId) => openLessonReader("curriculum", blockId, true)}
+          onReviewSolution={(blockId, draft) => openChatWithDraft(blockId, draft)}
           onUpdateTask={updateTask}
         />
       ) : null}
@@ -471,6 +479,7 @@ export default function App() {
         <AiLessonReader
           description={readerMetadata.description}
           eyebrow={readerMetadata.eyebrow}
+          focusQuiz={quizFocusItemId === `${lessonReader.track}:${lessonReader.itemId}`}
           isRegenerating={
             generatingLesson?.track === lessonReader.track &&
             generatingLesson.itemId === lessonReader.itemId
