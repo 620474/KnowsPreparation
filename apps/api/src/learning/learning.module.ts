@@ -3,6 +3,8 @@ import { MongooseModule } from "@nestjs/mongoose";
 
 import { AuthModule } from "../auth/auth.module";
 import { AiContentService } from "./ai-content.service";
+import { LearningBackupService } from "./learning-backup.service";
+import { LearningBootstrapService } from "./learning-bootstrap.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
@@ -47,6 +49,11 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
     ]),
   ],
   controllers: [LearningController],
-  providers: [AiContentService, LearningService],
+  providers: [
+    AiContentService,
+    LearningBackupService,
+    LearningBootstrapService,
+    LearningService,
+  ],
 })
 export class LearningModule {}

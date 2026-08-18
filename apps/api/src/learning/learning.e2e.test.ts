@@ -6,7 +6,7 @@ import { Test } from "@nestjs/testing";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import type { Connection, Model } from "mongoose";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthModule } from "../auth/auth.module";
 import { QUESTION_BANK, TASK_IDS } from "./curriculum";
@@ -34,7 +34,7 @@ describe("Learning API", () => {
             () => ({
               APP_PASSWORD: TEST_PASSWORD,
               JWT_SECRET: "integration-test-secret-with-enough-entropy",
-              OPENAI_API_KEY: "",
+              OPENAI_API_KEY: "integration-openai-key",
             }),
           ],
         }),
@@ -102,6 +102,34 @@ describe("Learning API", () => {
       completed: true,
       note: "Проверено интеграционным тестом",
     });
+  });
+
+  it("serves cacheable content and dynamic progress separately", async () => {
+    const contentResponse = await request(app.getHttpServer())
+      .get("/api/learning/bootstrap/content")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(contentResponse.headers.etag).toMatch(/^"[\w-]+"$/);
+    expect(contentResponse.headers["cache-control"]).toContain("max-age=300");
+    expect(contentResponse.body).toHaveProperty("contentVersion");
+    expect(contentResponse.body).toHaveProperty("curriculum");
+    expect(contentResponse.body).not.toHaveProperty("progress");
+
+    const progressResponse = await request(app.getHttpServer())
+      .get("/api/learning/bootstrap/progress")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(progressResponse.headers["cache-control"]).toContain("no-store");
+    expect(progressResponse.body).toHaveProperty("progress");
+    expect(progressResponse.body).toHaveProperty("settings");
+    expect(progressResponse.body).not.toHaveProperty("curriculum");
+
+    const legacyResponse = await request(app.getHttpServer())
+      .get("/api/learning/bootstrap")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(legacyResponse.body).toHaveProperty("curriculum");
+    expect(legacyResponse.body).toHaveProperty("progress");
   });
 
   it("applies a repeated review operation only once", async () => {
@@ -189,5 +217,96 @@ describe("Learning API", () => {
 
     expect(firstResponse.body.attempts).toHaveLength(1);
     expect(duplicateResponse.body).toEqual(firstResponse.body);
+  });
+
+  it("exports and restores all progress without deleting current data", async () => {
+    const taskId = [...TASK_IDS][0];
+    const secondTaskId = [...TASK_IDS][1];
+    if (!taskId || !secondTaskId) throw new Error("Curriculum must contain two tasks");
+
+    await request(app.getHttpServer())
+      .put(`/api/learning/tasks/${taskId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ completed: true, solution: "const answer = 42;" })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch("/api/learning/settings")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ reminderEnabled: true, reminderTime: "20:15" })
+      .expect(200);
+
+    const exportResponse = await request(app.getHttpServer())
+      .get("/api/learning/backup")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(exportResponse.body).toMatchObject({
+      format: "knows-preparation-backup",
+      version: 1,
+    });
+    expect(JSON.stringify(exportResponse.body)).not.toContain(TEST_PASSWORD);
+
+    const collections = await connection.db?.collections();
+    await Promise.all((collections ?? []).map((collection) => collection.deleteMany({})));
+    await request(app.getHttpServer())
+      .put(`/api/learning/tasks/${secondTaskId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ completed: true })
+      .expect(200);
+
+    const importResponse = await request(app.getHttpServer())
+      .post("/api/learning/backup/import")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ backup: exportResponse.body })
+      .expect(201);
+    expect(importResponse.body.total).toBeGreaterThanOrEqual(2);
+
+    const bootstrapResponse = await request(app.getHttpServer())
+      .get("/api/learning/bootstrap")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(bootstrapResponse.body.progress.tasks[taskId]).toMatchObject({
+      completed: true,
+      solution: "const answer = 42;",
+    });
+    expect(bootstrapResponse.body.progress.tasks[secondTaskId]).toMatchObject({ completed: true });
+    expect(bootstrapResponse.body.settings).toMatchObject({
+      reminderEnabled: true,
+      reminderTime: "20:15",
+    });
+  });
+
+  it("transcribes a mock answer without storing the audio", async () => {
+    const interviewResponse = await request(app.getHttpServer())
+      .post("/api/learning/mock-interviews")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(201);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ text: "Расшифрованный ответ" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    try {
+      const transcriptionResponse = await request(app.getHttpServer())
+        .post(`/api/learning/mock-interviews/${interviewResponse.body.id}/transcribe`)
+        .set("Authorization", `Bearer ${token}`)
+        .attach("audio", Buffer.from("test-audio"), {
+          filename: "answer.webm",
+          contentType: "audio/webm",
+        })
+        .expect(201);
+
+      expect(transcriptionResponse.body).toEqual({ text: "Расшифрованный ответ" });
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "https://api.openai.com/v1/audio/transcriptions",
+        expect.objectContaining({ method: "POST" }),
+      );
+      const mockCollection = connection.db?.collection("mockinterviews");
+      const stored = await mockCollection?.findOne({});
+      expect(JSON.stringify(stored)).not.toContain("test-audio");
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

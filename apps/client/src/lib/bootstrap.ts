@@ -3,8 +3,10 @@ import { normalizeQuestionProgress } from "./question-progress";
 
 export type BootstrapPayload = Omit<
   BootstrapData,
-  "ai" | "ozonSprint" | "mockInterviews" | "progress"
+  "ai" | "ozonSprint" | "mockInterviews" | "progress" | "settings"
 > & {
+  settings: Omit<BootstrapData["settings"], "reminderEnabled" | "reminderTime"> &
+    Partial<Pick<BootstrapData["settings"], "reminderEnabled" | "reminderTime">>;
   ozonSprint?: BootstrapData["ozonSprint"];
   mockInterviews?: BootstrapData["mockInterviews"];
   ai?: Partial<BootstrapData["ai"]>;
@@ -14,9 +16,36 @@ export type BootstrapPayload = Omit<
   };
 };
 
+export type BootstrapContentPayload = Pick<
+  BootstrapPayload,
+  | "curriculum"
+  | "yandexSprint"
+  | "ozonSprint"
+  | "resources"
+  | "questions"
+  | "algorithmPatterns"
+> & { contentVersion: string };
+
+export type BootstrapProgressPayload = Pick<
+  BootstrapPayload,
+  "settings" | "progress" | "algorithms" | "mockInterviews" | "ai"
+>;
+
+export function mergeBootstrapPayloads(
+  content: BootstrapContentPayload,
+  progress: BootstrapProgressPayload,
+) {
+  return normalizeBootstrapData({ ...content, ...progress });
+}
+
 export function normalizeBootstrapData(data: BootstrapPayload): BootstrapData {
   return {
     ...data,
+    settings: {
+      ...data.settings,
+      reminderEnabled: data.settings.reminderEnabled ?? false,
+      reminderTime: data.settings.reminderTime ?? "19:00",
+    },
     ozonSprint: data.ozonSprint ?? [],
     mockInterviews: data.mockInterviews ?? [],
     progress: {

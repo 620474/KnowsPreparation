@@ -8,11 +8,24 @@ export interface StudyExerciseExample {
   explanation?: string;
 }
 
+export interface StudyExerciseTestCase {
+  title: string;
+  expression: string;
+  expected?: unknown;
+  expectedError?: string;
+}
+
+export interface StudyExerciseRunner {
+  starterCode: string;
+  testCases: StudyExerciseTestCase[];
+}
+
 export interface StudyExercise {
   statement: string;
   signature?: string;
   constraints: string[];
   examples: StudyExerciseExample[];
+  runner?: StudyExerciseRunner;
 }
 
 export interface StudyBlock {
@@ -258,7 +271,7 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "Поведенческая секция",
       "Разбор ошибок первого мока",
       "Стратегия параллельных откликов",
-      "Финальная карта слабых мест",
+      "Стратегия тестирования frontend-приложения",
     ],
     practice: [
       "Мок JS + TypeScript",
@@ -267,7 +280,7 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "Мок System Design",
       "Повторный мок слабой секции",
       "Подготовить список компаний и отклики",
-      "Полное пробное интервью",
+      "Написать unit, integration и E2E-тесты одного сценария",
     ],
   },
   {
@@ -688,6 +701,21 @@ const questionGroups: Array<[string, string[]]> = [
       "Как встроить AI code review, не заменяя ответственность инженера?",
       "Какие ограничения AI-инструментов особенно важны для российского бигтеха?",
       "Какие российские AI-ассистенты для разработки ты знаешь и как их сравнивать?",
+    ],
+  ],
+  [
+    "Тестирование",
+    [
+      "Чем unit-, integration- и E2E-тесты отличаются по цели, скорости и цене поддержки?",
+      "Почему Testing Library рекомендует проверять поведение через доступные пользователю запросы?",
+      "Как выбирать между getBy, queryBy и findBy в Testing Library?",
+      "Как корректно тестировать асинхронный UI с userEvent, findBy и waitFor?",
+      "Что стоит мокать в frontend-тестах, а что лучше оставить реальной интеграцией?",
+      "Как протестировать React-компонент с server state, не привязываясь к деталям реализации?",
+      "Как тестировать debounce, интервалы и таймауты с fake timers без нестабильных ожиданий?",
+      "Зачем нужен MSW и чем перехват сетевого запроса лучше прямого мока fetch?",
+      "Как писать устойчивые Playwright-тесты: локаторы, auto-waiting и изоляция данных?",
+      "Из-за чего появляются flaky-тесты и как локализовать проблему в CI?",
     ],
   ],
 ];

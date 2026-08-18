@@ -1,145 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Loader } from "@mantine/core";
-import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
-import {
-  clearSession,
-  getToken,
-  learningApi,
-  UNAUTHORIZED_EVENT,
-} from "./api";
-import { AppShell } from "./components/AppShell";
+import { clearSession, getToken, learningApi, UNAUTHORIZED_EVENT } from "./api";
 import { AiChatWidget } from "./components/AiChatWidget";
 import { AiLessonReader } from "./components/AiLessonReader";
+import { AppShell } from "./components/AppShell";
 import { LoginScreen } from "./components/LoginScreen";
-import { buildAiChatDraft } from "./lib/ai-chat-draft";
-import { useOnlineStatus } from "./lib/network";
-import {
-  createOperationId,
-  OFFLINE_MUTATION_ROOT,
-  offlineMutationKeys,
-  type MockAnswerMutationVariables,
-  type QuestionMutationVariables,
-  type QuizMutationVariables,
-  type ReviewMutationVariables,
-  type TaskMutationVariables,
-} from "./lib/offline-mutation-keys";
-import { normalizeQuestionProgress } from "./lib/question-progress";
-import { clearPersistedQueryCache } from "./lib/query-cache";
-import { scheduleQuestionReview } from "./lib/spaced-repetition";
-import {
-  formatAppRoute,
-  parseAppRoute,
-  viewForLessonScope,
-  type AppRoute,
-  type AppView,
-  type LessonRouteTarget,
-} from "./lib/app-route";
+import { useAiActions } from "./hooks/use-ai-actions";
+import { useAppNavigation } from "./hooks/use-app-navigation";
+import { useDataActions } from "./hooks/use-data-actions";
+import { buildLessonWorkspace } from "./hooks/use-lesson-workspace";
+import { useMockActions } from "./hooks/use-mock-actions";
+import { useProgressActions } from "./hooks/use-progress-actions";
+import { BOOTSTRAP_QUERY_KEY } from "./lib/bootstrap-cache";
 import { getStudyPosition } from "./lib/date";
-import type {
-  AlgorithmEntry,
-  AiChatScope,
-  AiCourse,
-  AiCourseProfile,
-  AiLesson,
-  AiLessonQuestionContext,
-  BootstrapData,
-  LessonQuizProgress,
-  MockInterview,
-  QuestionProgress,
-  ReviewRating,
-  TaskProgress,
-  TaskProgressPatch,
-} from "./types";
-import { AlgorithmsView } from "./views/AlgorithmsView";
+import { useOnlineStatus } from "./lib/network";
+import { synchronizeDailyReminder } from "./lib/notifications";
+import { OFFLINE_MUTATION_ROOT } from "./lib/offline-mutation-keys";
+import { clearPersistedQueryCache } from "./lib/query-cache";
 import { AiCourseView } from "./views/AiCourseView";
+import { AlgorithmsView } from "./views/AlgorithmsView";
 import { AnalyticsView } from "./views/AnalyticsView";
 import { MockInterviewView } from "./views/MockInterviewView";
-import { PlanView } from "./views/PlanView";
 import { OzonSprintView } from "./views/OzonSprintView";
+import { PlanView } from "./views/PlanView";
 import { QuestionsView } from "./views/QuestionsView";
-import { ReviewView } from "./views/ReviewView";
 import { ResourcesView } from "./views/ResourcesView";
+import { ReviewView } from "./views/ReviewView";
 import { SettingsView } from "./views/SettingsView";
 import { TodayView } from "./views/TodayView";
 import { YandexSprintView } from "./views/YandexSprintView";
-
-const BOOTSTRAP_KEY = ["bootstrap"] as const;
-type MutationContext = { previous?: BootstrapData };
-type NavigationMode = "push" | "replace";
-
-const updateMockInterviews = (
-  current: BootstrapData,
-  interview: MockInterview,
-): BootstrapData => ({
-  ...current,
-  mockInterviews: [
-    interview,
-    ...current.mockInterviews.filter((item) => item.id !== interview.id),
-  ].slice(0, 20),
-});
-
-const updateQuizProgress = (
-  current: BootstrapData,
-  scope: AiChatScope,
-  itemId: string,
-  progress: LessonQuizProgress,
-): BootstrapData => ({
-  ...current,
-  ai: {
-    ...current.ai,
-    quizProgress: {
-      ...current.ai.quizProgress,
-      [scope]: {
-        ...current.ai.quizProgress[scope],
-        [itemId]: progress,
-      },
-    },
-  },
-});
-
-const buildOptimisticQuizProgress = (
-  current: BootstrapData,
-  variables: QuizMutationVariables,
-): LessonQuizProgress | null => {
-  const lesson =
-    variables.scope === "course"
-      ? current.ai.lessons[variables.itemId]
-      : variables.scope === "yandex"
-        ? current.ai.yandexLessons[variables.itemId]
-        : current.ai.ozonLessons[variables.itemId];
-  if (!lesson || lesson.quiz.length !== 10) return null;
-  const submitted = new Map(
-    variables.answers.map((answer) => [answer.questionId, answer.selectedOptionIndex]),
-  );
-  if (submitted.size !== lesson.quiz.length) return null;
-  const answers = lesson.quiz.map((question) => {
-    const selectedOptionIndex = submitted.get(question.id);
-    if (selectedOptionIndex === undefined) return null;
-    return {
-      questionId: question.id,
-      selectedOptionIndex,
-      correct: selectedOptionIndex === question.correctOptionIndex,
-      topic: question.topic,
-    };
-  });
-  if (answers.some((answer) => answer === null)) return null;
-  const previous = current.ai.quizProgress[variables.scope][variables.itemId];
-  const previousAttempts = previous?.lessonVersion === lesson.version ? previous.attempts : [];
-  return {
-    itemId: variables.itemId,
-    lessonVersion: lesson.version,
-    attempts: [
-      ...previousAttempts,
-      {
-        score: answers.filter((answer) => answer?.correct).length,
-        answers: answers.filter((answer) => answer !== null),
-        completedAt: new Date().toISOString(),
-      },
-    ],
-  };
-};
 
 export default function App() {
   const queryClient = useQueryClient();
@@ -152,26 +44,22 @@ export default function App() {
     },
   }).length;
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
-  const [activeView, setActiveView] = useState<AppView>(
-    () => parseAppRoute(window.location.hash).view,
-  );
   const [syncError, setSyncError] = useState("");
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatItemId, setChatItemId] = useState<string | null>(null);
-  const [lessonReader, setLessonReader] = useState<LessonRouteTarget | null>(
-    () => parseAppRoute(window.location.hash).lessonReader,
-  );
-  const [chatDraftRequest, setChatDraftRequest] = useState<{
-    id: number;
-    content: string;
-  } | null>(null);
-  const chatRequestIdRef = useRef(0);
-  const readingScrollRef = useRef(0);
-  const [generationProgress, setGenerationProgress] = useState<{
-    scope: AiChatScope;
-    itemId: string;
-    characters: number;
-  } | null>(null);
+  const {
+    activeView,
+    lessonReader,
+    chatOpen,
+    chatItemId,
+    chatDraftRequest,
+    setChatItemId,
+    navigateToView,
+    navigateToLesson,
+    openLessonReader,
+    closeLessonReader,
+    openChat,
+    closeChat,
+    resetChat,
+  } = useAppNavigation();
 
   useEffect(() => {
     const handleUnauthorized = () => setAuthenticated(false);
@@ -179,429 +67,50 @@ export default function App() {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
 
-  useEffect(() => {
-    const syncRoute = () => {
-      const route = parseAppRoute(window.location.hash);
-      setActiveView(route.view);
-      setLessonReader(route.lessonReader);
-      setChatOpen(false);
-      setChatItemId(route.lessonReader?.itemId ?? null);
-      setChatDraftRequest(null);
-    };
-
-    const initialRoute = parseAppRoute(window.location.hash);
-    const canonicalHash = formatAppRoute(initialRoute);
-    if (window.location.hash !== canonicalHash) {
-      window.history.replaceState(window.history.state, "", canonicalHash);
-    }
-
-    window.addEventListener("popstate", syncRoute);
-    window.addEventListener("hashchange", syncRoute);
-    return () => {
-      window.removeEventListener("popstate", syncRoute);
-      window.removeEventListener("hashchange", syncRoute);
-    };
-  }, []);
-
   const bootstrapQuery = useQuery({
-    queryKey: BOOTSTRAP_KEY,
+    queryKey: BOOTSTRAP_QUERY_KEY,
     queryFn: learningApi.bootstrap,
     enabled: authenticated,
     refetchInterval: online ? 60_000 : false,
     refetchOnWindowFocus: true,
   });
+  const reminderEnabled = bootstrapQuery.data?.settings.reminderEnabled;
+  const reminderTime = bootstrapQuery.data?.settings.reminderTime;
 
-  const taskMutation = useMutation<
-    TaskProgress & { taskId: string },
-    Error,
-    TaskMutationVariables,
-    MutationContext
-  >({
-    mutationKey: offlineMutationKeys.task,
-    mutationFn: ({ taskId, progress }) =>
-      learningApi.updateTask(taskId, progress),
-    onMutate: async ({ taskId, progress }) => {
-      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
-      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
-        current
-          ? {
-              ...current,
-              progress: {
-                ...current.progress,
-                tasks: {
-                  ...current.progress.tasks,
-                  [taskId]: {
-                    completed: false,
-                    note: "",
-                    customTask: "",
-                    solution: "",
-                    ...current.progress.tasks[taskId],
-                    ...progress,
-                  },
-                },
-              },
-            }
-          : current,
-      );
-      return { previous };
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
-      setSyncError(error instanceof Error ? error.message : "Не удалось сохранить задание");
-    },
-  });
+  useEffect(() => {
+    if (reminderEnabled === undefined || reminderTime === undefined) return;
+    void synchronizeDailyReminder({ reminderEnabled, reminderTime }, false).catch(
+      () => undefined,
+    );
+  }, [reminderEnabled, reminderTime]);
 
-  const generateAiCourseMutation = useMutation<AiCourse, Error, AiCourseProfile>({
-    mutationFn: learningApi.generateAiCourse,
-    onSuccess: (course) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current
-          ? { ...current, ai: { ...current.ai, course, lessons: {} } }
-          : current,
-      );
-      queryClient.removeQueries({ queryKey: ["ai-chat", "course"] });
-      setChatItemId(null);
-      setChatOpen(false);
-      navigateToView("ai-course", "replace");
-    },
-    onError: (error) => setSyncError(error.message),
+  const {
+    generateCourse,
+    generateLesson,
+    generatingCourse,
+    generatingLesson,
+    generationProgress,
+  } = useAiActions({
+    onError: setSyncError,
+    navigateToView,
+    navigateToLesson,
+    resetChat,
   });
-
-  const generateAiLessonMutation = useMutation<AiLesson, Error, string>({
-    mutationFn: (itemId) => {
-      setGenerationProgress({ scope: "course", itemId, characters: 0 });
-      return learningApi.generateAiLessonStream("course", itemId, (delta) =>
-        setGenerationProgress((current) =>
-          current?.scope === "course" && current.itemId === itemId
-            ? { ...current, characters: current.characters + delta.length }
-            : current,
-        ),
-      );
-    },
-    onSuccess: (lesson) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current
-          ? {
-              ...current,
-              ai: {
-                ...current.ai,
-                lessons: { ...current.ai.lessons, [lesson.itemId]: lesson },
-              },
-            }
-          : current,
-      );
-      navigateToLesson("course", lesson.itemId);
-    },
-    onError: (error) => setSyncError(error.message),
-    onSettled: () => setGenerationProgress(null),
-  });
-
-  const generateYandexLessonMutation = useMutation<AiLesson, Error, string>({
-    mutationFn: (itemId) => {
-      setGenerationProgress({ scope: "yandex", itemId, characters: 0 });
-      return learningApi.generateAiLessonStream("yandex", itemId, (delta) =>
-        setGenerationProgress((current) =>
-          current?.scope === "yandex" && current.itemId === itemId
-            ? { ...current, characters: current.characters + delta.length }
-            : current,
-        ),
-      );
-    },
-    onSuccess: (lesson) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current
-          ? {
-              ...current,
-              ai: {
-                ...current.ai,
-                yandexLessons: {
-                  ...current.ai.yandexLessons,
-                  [lesson.itemId]: lesson,
-                },
-              },
-            }
-          : current,
-      );
-      navigateToLesson("yandex", lesson.itemId);
-    },
-    onError: (error) => setSyncError(error.message),
-    onSettled: () => setGenerationProgress(null),
-  });
-
-  const generateOzonLessonMutation = useMutation<AiLesson, Error, string>({
-    mutationFn: (itemId) => {
-      setGenerationProgress({ scope: "ozon", itemId, characters: 0 });
-      return learningApi.generateAiLessonStream("ozon", itemId, (delta) =>
-        setGenerationProgress((current) =>
-          current?.scope === "ozon" && current.itemId === itemId
-            ? { ...current, characters: current.characters + delta.length }
-            : current,
-        ),
-      );
-    },
-    onSuccess: (lesson) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current
-          ? {
-              ...current,
-              ai: {
-                ...current.ai,
-                ozonLessons: {
-                  ...current.ai.ozonLessons,
-                  [lesson.itemId]: lesson,
-                },
-              },
-            }
-          : current,
-      );
-      navigateToLesson("ozon", lesson.itemId);
-    },
-    onError: (error) => setSyncError(error.message),
-    onSettled: () => setGenerationProgress(null),
-  });
-
-  const questionMutation = useMutation<
-    QuestionProgress & { questionId: string },
-    Error,
-    QuestionMutationVariables,
-    MutationContext
-  >({
-    mutationKey: offlineMutationKeys.question,
-    mutationFn: ({ questionId, progress }) => learningApi.updateQuestion(questionId, progress),
-    onMutate: async ({ questionId, progress }) => {
-      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
-      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
-        current
-          ? {
-              ...current,
-              progress: {
-                ...current.progress,
-                questions: { ...current.progress.questions, [questionId]: progress },
-              },
-            }
-          : current,
-      );
-      return { previous };
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
-      setSyncError(error instanceof Error ? error.message : "Не удалось сохранить вопрос");
-    },
-  });
-
-  const reviewMutation = useMutation<
-    QuestionProgress & { questionId: string },
-    Error,
-    ReviewMutationVariables,
-    MutationContext
-  >({
-    mutationKey: offlineMutationKeys.review,
-    mutationFn: ({ questionId, rating, note, operationId }) =>
-      learningApi.reviewQuestion(questionId, rating, note, operationId),
-    onMutate: async ({ questionId, rating, note }) => {
-      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
-      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) => {
-        if (!current) return current;
-        const progress = scheduleQuestionReview(
-          normalizeQuestionProgress(current.progress.questions[questionId]),
-          rating,
-        );
-        return {
-          ...current,
-          progress: {
-            ...current.progress,
-            questions: {
-              ...current.progress.questions,
-              [questionId]: { ...progress, note },
-            },
-          },
-        };
-      });
-      return { previous };
-    },
-    onSuccess: ({ questionId, ...progress }) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current
-          ? {
-              ...current,
-              progress: {
-                ...current.progress,
-                questions: { ...current.progress.questions, [questionId]: progress },
-              },
-            }
-          : current,
-      );
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
-      setSyncError(error.message);
-    },
-  });
-
-  const quizMutation = useMutation<
-    LessonQuizProgress,
-    Error,
-    QuizMutationVariables,
-    MutationContext
-  >({
-    mutationKey: offlineMutationKeys.quiz,
-    mutationFn: ({ scope, itemId, answers, operationId }) =>
-      learningApi.submitLessonQuiz(scope, itemId, answers, operationId),
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
-      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) => {
-        if (!current) return current;
-        const progress = buildOptimisticQuizProgress(current, variables);
-        return progress
-          ? updateQuizProgress(current, variables.scope, variables.itemId, progress)
-          : current;
-      });
-      return { previous };
-    },
-    onSuccess: (progress, { scope, itemId }) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current ? updateQuizProgress(current, scope, itemId, progress) : current,
-      );
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
-      setSyncError(error.message);
-    },
-  });
-
-  const startMockMutation = useMutation<MockInterview, Error>({
-    mutationFn: learningApi.startMockInterview,
-    onSuccess: (interview) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current ? updateMockInterviews(current, interview) : current,
-      );
-    },
-    onError: (error) => setSyncError(error.message),
-  });
-
-  const saveMockAnswerMutation = useMutation<
-    MockInterview,
-    Error,
-    MockAnswerMutationVariables,
-    MutationContext
-  >({
-    mutationKey: offlineMutationKeys.mockAnswer,
-    mutationFn: ({ interviewId, questionId, content }) =>
-      learningApi.updateMockAnswer(interviewId, questionId, content),
-    onMutate: async ({ interviewId, questionId, content }) => {
-      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
-      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) => {
-        if (!current) return current;
-        const interview = current.mockInterviews.find((item) => item.id === interviewId);
-        return interview
-          ? updateMockInterviews(current, {
-              ...interview,
-              answers: { ...interview.answers, [questionId]: content },
-            })
-          : current;
-      });
-      return { previous };
-    },
-    onSuccess: (interview) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current ? updateMockInterviews(current, interview) : current,
-      );
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
-      setSyncError(error.message);
-    },
-  });
-
-  const completeMockMutation = useMutation<MockInterview, Error, string>({
-    mutationFn: learningApi.completeMockInterview,
-    onSuccess: (interview) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current ? updateMockInterviews(current, interview) : current,
-      );
-    },
-    onError: (error) => setSyncError(error.message),
-  });
-
-  const settingsMutation = useMutation<
-    { startDate: string },
-    Error,
-    string,
-    MutationContext
-  >({
-    mutationKey: offlineMutationKeys.settings,
-    mutationFn: learningApi.updateSettings,
-    onMutate: async (startDate) => {
-      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
-      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current ? { ...current, settings: { ...current.settings, startDate } } : current,
-      );
-      navigateToView("today");
-      return { previous };
-    },
-    onSuccess: ({ startDate }) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
-        current ? { ...current, settings: { ...current.settings, startDate } } : current,
-      );
-      navigateToView("today");
-    },
-    onError: (error, _startDate, context) => {
-      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
-      setSyncError(error instanceof Error ? error.message : "Не удалось сохранить дату");
-    },
-  });
-
-  const addAlgorithmMutation = useMutation<
-    AlgorithmEntry,
-    Error,
-    Omit<AlgorithmEntry, "id">
-  >({
-    mutationFn: learningApi.addAlgorithm,
-    onSuccess: (entry) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
-        current ? { ...current, algorithms: [entry, ...current.algorithms] } : current,
-      );
-    },
-    onError: (error) =>
-      setSyncError(error instanceof Error ? error.message : "Не удалось добавить задачу"),
-  });
-
-  const deleteAlgorithmMutation = useMutation<
-    { deleted: boolean },
-    Error,
-    string,
-    MutationContext
-  >({
-    mutationKey: offlineMutationKeys.deleteAlgorithm,
-    mutationFn: learningApi.deleteAlgorithm,
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: BOOTSTRAP_KEY });
-      const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current) =>
-        current
-          ? { ...current, algorithms: current.algorithms.filter((entry) => entry.id !== id) }
-          : current,
-      );
-      return { previous };
-    },
-    onSuccess: (_result, id) => {
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_KEY, (current: BootstrapData | undefined) =>
-        current
-          ? { ...current, algorithms: current.algorithms.filter((entry) => entry.id !== id) }
-          : current,
-      );
-    },
-    onError: (error, _id, context) => {
-      if (context?.previous) queryClient.setQueryData(BOOTSTRAP_KEY, context.previous);
-      setSyncError(error instanceof Error ? error.message : "Не удалось удалить задачу");
-    },
-  });
+  const {
+    updateTask,
+    updateQuestion,
+    reviewQuestion,
+    submitLessonQuiz,
+    updateSettings,
+  } = useProgressActions({ online, setError: setSyncError });
+  const {
+    startMockInterview,
+    saveMockAnswer,
+    completeMockInterview,
+    transcribeMockAnswer,
+  } = useMockActions({ online, setError: setSyncError });
+  const { addAlgorithm, deleteAlgorithm, exportBackup, importBackup } =
+    useDataActions({ setError: setSyncError });
 
   function logout() {
     clearSession();
@@ -616,7 +125,7 @@ export default function App() {
         onSuccess={() => {
           setAuthenticated(true);
           void queryClient.resumePausedMutations();
-          void queryClient.invalidateQueries({ queryKey: BOOTSTRAP_KEY });
+          void queryClient.invalidateQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
         }}
       />
     );
@@ -637,7 +146,10 @@ export default function App() {
       <main className="state-page error-state">
         <AlertTriangle size={36} />
         <h1>API пока недоступен</h1>
-        <p>{bootstrapQuery.error?.message ?? "Проверь адрес API и подключение к интернету."}</p>
+        <p>
+          {bootstrapQuery.error?.message ??
+            "Проверь адрес API и подключение к интернету."}
+        </p>
         <div className="state-actions">
           <Button
             className="primary-button"
@@ -647,7 +159,12 @@ export default function App() {
           >
             Повторить
           </Button>
-          <Button className="secondary-button" type="button" variant="default" onClick={logout}>
+          <Button
+            className="secondary-button"
+            type="button"
+            variant="default"
+            onClick={logout}
+          >
             Сменить подключение
           </Button>
         </div>
@@ -656,264 +173,17 @@ export default function App() {
   }
 
   const data = bootstrapQuery.data;
-  const courseChatTopics =
-    data.ai.course?.items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      objective: item.objective,
-    })) ?? [];
-  const yandexChatTopics = data.yandexSprint.flatMap((day) =>
-    day.blocks
-      .filter((block) => block.kind !== "review")
-      .map((block) => ({
-        id: block.id,
-        title: block.title,
-        objective: `${day.title}. ${block.description}`,
-      })),
-  );
-  const ozonChatTopics = data.ozonSprint.flatMap((day) =>
-    day.blocks
-      .filter((block) => block.kind !== "review")
-      .map((block) => ({
-        id: block.id,
-        title: block.title,
-        objective: `${day.title}. ${block.description}`,
-      })),
-  );
-  const readerCourseItem =
-    lessonReader?.scope === "course"
-      ? data.ai.course?.items.find((item) => item.id === lessonReader.itemId)
-      : undefined;
-  const readerYandexEntry =
-    lessonReader?.scope === "yandex"
-      ? data.yandexSprint
-          .flatMap((day) => day.blocks.map((block) => ({ day, block })))
-          .find(({ block }) => block.id === lessonReader.itemId)
-      : undefined;
-  const readerOzonEntry =
-    lessonReader?.scope === "ozon"
-      ? data.ozonSprint
-          .flatMap((day) => day.blocks.map((block) => ({ day, block })))
-          .find(({ block }) => block.id === lessonReader.itemId)
-      : undefined;
-  const readerLesson = lessonReader
-    ? lessonReader.scope === "yandex"
-      ? data.ai.yandexLessons[lessonReader.itemId]
-      : lessonReader.scope === "ozon"
-        ? data.ai.ozonLessons[lessonReader.itemId]
-        : data.ai.lessons[lessonReader.itemId]
-    : undefined;
-  const readerQuizProgress = lessonReader
-    ? data.ai.quizProgress[lessonReader.scope]?.[lessonReader.itemId]
-    : undefined;
-  const readerMetadata = readerCourseItem
-    ? {
-        eyebrow: "Персональный AI-курс",
-        title: readerCourseItem.title,
-        description: readerCourseItem.objective,
-        resourceIds: readerCourseItem.resourceIds,
-      }
-    : readerYandexEntry
-      ? {
-          eyebrow: `Яндекс · день ${readerYandexEntry.day.dayNumber}`,
-          title: readerYandexEntry.block.title,
-          description: readerYandexEntry.block.description,
-          resourceIds: readerYandexEntry.block.resourceIds,
-        }
-      : readerOzonEntry
-        ? {
-            eyebrow: `Ozon · день ${readerOzonEntry.day.dayNumber}`,
-            title: readerOzonEntry.block.title,
-            description: readerOzonEntry.block.description,
-            resourceIds: readerOzonEntry.block.resourceIds,
-          }
-      : undefined;
-  const chatScope =
-    lessonReader?.scope ??
-    (activeView === "yandex" ? "yandex" : activeView === "ozon" ? "ozon" : "course");
-  const chatTopics = lessonReader
-    ? lessonReader.scope === "yandex"
-      ? yandexChatTopics
-      : lessonReader.scope === "ozon"
-        ? ozonChatTopics
-        : courseChatTopics
-    : activeView === "yandex"
-      ? yandexChatTopics
-      : activeView === "ozon"
-        ? ozonChatTopics
-        : activeView === "ai-course"
-          ? courseChatTopics
-          : [];
-  const generatedChatLessons =
-    chatScope === "yandex"
-      ? data.ai.yandexLessons
-      : chatScope === "ozon"
-        ? data.ai.ozonLessons
-        : data.ai.lessons;
-  const fallbackChatItemId =
-    chatTopics.find((item) => generatedChatLessons[item.id])?.id ?? chatTopics[0]?.id ?? null;
-  const activeChatItemId =
-    chatItemId && chatTopics.some((item) => item.id === chatItemId)
-      ? chatItemId
-      : fallbackChatItemId;
+  const {
+    readerLesson,
+    readerQuizProgress,
+    readerMetadata,
+    chatScope,
+    chatTopics,
+    activeChatItemId,
+  } = buildLessonWorkspace(data, activeView, lessonReader, chatItemId);
   const position = getStudyPosition(data.settings.startDate);
   const safeWeek = Math.min(Math.max(position.weekNumber, 1), data.curriculum.length);
   const weekLabel = `Неделя ${safeWeek} из ${data.curriculum.length}`;
-  const updateTask = async (taskId: string, progress: TaskProgressPatch) => {
-    setSyncError("");
-    if (!online) {
-      taskMutation.mutate({ taskId, progress });
-      return true;
-    }
-    try {
-      await taskMutation.mutateAsync({ taskId, progress });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  const updateQuestion = (questionId: string, progress: QuestionProgress) => {
-    setSyncError("");
-    questionMutation.mutate({ questionId, progress });
-  };
-  const reviewQuestion = async (questionId: string, rating: ReviewRating, note: string) => {
-    setSyncError("");
-    const variables = { questionId, rating, note, operationId: createOperationId() };
-    if (!online) {
-      reviewMutation.mutate(variables);
-      return true;
-    }
-    try {
-      await reviewMutation.mutateAsync(variables);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  const submitLessonQuiz = async (
-    scope: AiChatScope,
-    itemId: string,
-    answers: QuizMutationVariables["answers"],
-  ) => {
-    setSyncError("");
-    const variables = { scope, itemId, answers, operationId: createOperationId() };
-    if (!online) {
-      const current = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_KEY);
-      const optimisticProgress = current
-        ? buildOptimisticQuizProgress(current, variables)
-        : null;
-      quizMutation.mutate(variables);
-      return optimisticProgress;
-    }
-    try {
-      return await quizMutation.mutateAsync(variables);
-    } catch {
-      return null;
-    }
-  };
-  const startMockInterview = async () => {
-    setSyncError("");
-    try {
-      return await startMockMutation.mutateAsync();
-    } catch {
-      return null;
-    }
-  };
-  const saveMockAnswer = async (
-    interviewId: string,
-    questionId: string,
-    content: string,
-  ) => {
-    setSyncError("");
-    const variables = { interviewId, questionId, content };
-    if (!online) {
-      const interview = queryClient
-        .getQueryData<BootstrapData>(BOOTSTRAP_KEY)
-        ?.mockInterviews.find((item) => item.id === interviewId);
-      const optimisticInterview = interview
-        ? { ...interview, answers: { ...interview.answers, [questionId]: content } }
-        : null;
-      saveMockAnswerMutation.mutate(variables);
-      return optimisticInterview;
-    }
-    try {
-      return await saveMockAnswerMutation.mutateAsync(variables);
-    } catch {
-      return null;
-    }
-  };
-  const completeMockInterview = async (interviewId: string) => {
-    setSyncError("");
-    try {
-      return await completeMockMutation.mutateAsync(interviewId);
-    } catch {
-      return null;
-    }
-  };
-  const addAlgorithm = (entry: Omit<AlgorithmEntry, "id">) => {
-    setSyncError("");
-    addAlgorithmMutation.mutate(entry);
-  };
-  function navigateToRoute(route: AppRoute, mode: NavigationMode = "push") {
-    const lessonMarker = route.lessonReader
-      ? `${route.lessonReader.scope}:${route.lessonReader.itemId}`
-      : undefined;
-    const historyState = { ...(window.history.state ?? {}), lessonReader: lessonMarker };
-    const hash = formatAppRoute(route);
-    const navigationMode = window.location.hash === hash ? "replace" : mode;
-
-    if (navigationMode === "replace") {
-      window.history.replaceState(historyState, "", hash);
-    } else {
-      window.history.pushState(historyState, "", hash);
-    }
-
-    setActiveView(route.view);
-    setLessonReader(route.lessonReader);
-    setChatOpen(false);
-    setChatItemId(route.lessonReader?.itemId ?? null);
-    setChatDraftRequest(null);
-  }
-
-  function navigateToView(view: AppView, mode: NavigationMode = "push") {
-    navigateToRoute({ view, lessonReader: null }, mode);
-  }
-
-  function navigateToLesson(scope: AiChatScope, itemId: string) {
-    navigateToRoute({
-      view: viewForLessonScope(scope),
-      lessonReader: { scope, itemId },
-    });
-  }
-
-  const openLessonReader = (scope: AiChatScope, itemId: string) => {
-    navigateToLesson(scope, itemId);
-  };
-  const closeLessonReader = () => {
-    const marker = lessonReader ? `${lessonReader.scope}:${lessonReader.itemId}` : undefined;
-    if (marker && window.history.state?.lessonReader === marker) {
-      window.history.back();
-      return;
-    }
-    navigateToView(activeView, "replace");
-  };
-  const openChat = (itemId: string | null, context?: AiLessonQuestionContext) => {
-    readingScrollRef.current = window.scrollY;
-    if (itemId) setChatItemId(itemId);
-    if (context) {
-      chatRequestIdRef.current += 1;
-      setChatDraftRequest({
-        id: chatRequestIdRef.current,
-        content: buildAiChatDraft(context),
-      });
-    }
-    setChatOpen(true);
-  };
-  const closeChat = () => {
-    const scrollTop = readingScrollRef.current;
-    setChatOpen(false);
-    window.setTimeout(() => window.scrollTo(0, scrollTop), 250);
-  };
 
   return (
     <AppShell
@@ -922,7 +192,12 @@ export default function App() {
       weekLabel={weekLabel}
     >
       {!online || bootstrapQuery.isError || queuedOfflineMutationCount > 0 ? (
-        <Alert className="offline-alert" color="yellow" icon={<WifiOff size={17} />} variant="light">
+        <Alert
+          className="offline-alert"
+          color="yellow"
+          icon={<WifiOff size={17} />}
+          variant="light"
+        >
           {!online
             ? `Офлайн-режим: изменения сохраняются на устройстве${queuedOfflineMutationCount > 0 ? ` · в очереди ${queuedOfflineMutationCount}` : ""}. AI требует интернет.`
             : queuedOfflineMutationCount > 0
@@ -956,16 +231,14 @@ export default function App() {
         <YandexSprintView
           data={data}
           generatingLessonId={
-            generateYandexLessonMutation.isPending
-              ? (generateYandexLessonMutation.variables ?? null)
-              : null
+            generatingLesson?.scope === "yandex" ? generatingLesson.itemId : null
           }
           generationCharacters={
             generationProgress?.scope === "yandex" ? generationProgress.characters : 0
           }
           onGenerateLesson={(blockId) => {
             setSyncError("");
-            generateYandexLessonMutation.mutate(blockId);
+            generateLesson("yandex", blockId);
           }}
           onOpenLesson={(blockId) => openLessonReader("yandex", blockId)}
           onOpenChat={(blockId, context) => openChat(blockId, context)}
@@ -976,16 +249,14 @@ export default function App() {
         <OzonSprintView
           data={data}
           generatingLessonId={
-            generateOzonLessonMutation.isPending
-              ? (generateOzonLessonMutation.variables ?? null)
-              : null
+            generatingLesson?.scope === "ozon" ? generatingLesson.itemId : null
           }
           generationCharacters={
             generationProgress?.scope === "ozon" ? generationProgress.characters : 0
           }
           onGenerateLesson={(blockId) => {
             setSyncError("");
-            generateOzonLessonMutation.mutate(blockId);
+            generateLesson("ozon", blockId);
           }}
           onOpenLesson={(blockId) => openLessonReader("ozon", blockId)}
           onOpenChat={(blockId, context) => openChat(blockId, context)}
@@ -995,28 +266,28 @@ export default function App() {
       {activeView === "ai-course" ? (
         <AiCourseView
           data={data}
-          generatingCourse={generateAiCourseMutation.isPending}
+          generatingCourse={generatingCourse}
           generatingLessonId={
-            generateAiLessonMutation.isPending
-              ? (generateAiLessonMutation.variables ?? null)
-              : null
+            generatingLesson?.scope === "course" ? generatingLesson.itemId : null
           }
           generationCharacters={
             generationProgress?.scope === "course" ? generationProgress.characters : 0
           }
           onGenerateCourse={(profile) => {
             setSyncError("");
-            generateAiCourseMutation.mutate(profile);
+            generateCourse(profile);
           }}
           onGenerateLesson={(itemId) => {
             setSyncError("");
-            generateAiLessonMutation.mutate(itemId);
+            generateLesson("course", itemId);
           }}
           onOpenLesson={(itemId) => openLessonReader("course", itemId)}
           onOpenChat={(itemId, context) => openChat(itemId, context)}
         />
       ) : null}
-      {activeView === "plan" ? <PlanView data={data} onUpdateTask={updateTask} /> : null}
+      {activeView === "plan" ? (
+        <PlanView data={data} onUpdateTask={updateTask} />
+      ) : null}
       {activeView === "resources" ? <ResourcesView data={data} /> : null}
       {activeView === "questions" ? (
         <QuestionsView
@@ -1041,6 +312,7 @@ export default function App() {
           onComplete={completeMockInterview}
           onSaveAnswer={saveMockAnswer}
           onStart={startMockInterview}
+          onTranscribe={transcribeMockAnswer}
         />
       ) : null}
       {activeView === "analytics" ? (
@@ -1055,15 +327,18 @@ export default function App() {
         <AlgorithmsView
           data={data}
           onAdd={addAlgorithm}
-          onDelete={(id) => deleteAlgorithmMutation.mutate(id)}
+          onDelete={deleteAlgorithm}
           onUpdateTask={updateTask}
         />
       ) : null}
       {activeView === "settings" ? (
         <SettingsView
+          key={`${data.settings.startDate}:${data.settings.reminderEnabled}:${data.settings.reminderTime}`}
           data={data}
+          onExportBackup={exportBackup}
+          onImportBackup={importBackup}
           onOpenOzon={() => navigateToView("ozon")}
-          onUpdateStartDate={(startDate) => settingsMutation.mutate(startDate)}
+          onUpdateSettings={updateSettings}
           onLogout={logout}
         />
       ) : null}
@@ -1072,11 +347,8 @@ export default function App() {
           description={readerMetadata.description}
           eyebrow={readerMetadata.eyebrow}
           isRegenerating={
-            lessonReader.scope === "yandex"
-              ? generateYandexLessonMutation.isPending
-              : lessonReader.scope === "ozon"
-                ? generateOzonLessonMutation.isPending
-                : generateAiLessonMutation.isPending
+            generatingLesson?.scope === lessonReader.scope &&
+            generatingLesson.itemId === lessonReader.itemId
           }
           lesson={readerLesson}
           quizProgress={readerQuizProgress}
@@ -1088,13 +360,7 @@ export default function App() {
           onOpenChat={() => openChat(lessonReader.itemId)}
           onRegenerate={() => {
             setSyncError("");
-            if (lessonReader.scope === "yandex") {
-              generateYandexLessonMutation.mutate(lessonReader.itemId);
-            } else if (lessonReader.scope === "ozon") {
-              generateOzonLessonMutation.mutate(lessonReader.itemId);
-            } else {
-              generateAiLessonMutation.mutate(lessonReader.itemId);
-            }
+            generateLesson(lessonReader.scope, lessonReader.itemId);
           }}
           onSubmitQuiz={(answers) =>
             submitLessonQuiz(lessonReader.scope, lessonReader.itemId, answers)

@@ -134,6 +134,7 @@ export function TodayView({
                       includeCustomTask={block.kind === "ai"}
                       onUpdateTask={onUpdateTask}
                       progress={progress}
+                      runner={block.exercise?.runner}
                       taskId={block.id}
                       taskTitle={block.title}
                     />

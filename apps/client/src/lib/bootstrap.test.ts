@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeBootstrapData, type BootstrapPayload } from "./bootstrap";
+import {
+  mergeBootstrapPayloads,
+  normalizeBootstrapData,
+  type BootstrapContentPayload,
+  type BootstrapPayload,
+  type BootstrapProgressPayload,
+} from "./bootstrap";
 
 const legacyBootstrap: BootstrapPayload = {
   settings: {
@@ -45,5 +51,38 @@ describe("normalizeBootstrapData", () => {
     };
 
     expect(normalizeBootstrapData({ ...legacyBootstrap, ai }).ai).toEqual(ai);
+  });
+
+  it("combines cacheable content with dynamic progress", () => {
+    const content: BootstrapContentPayload = {
+      contentVersion: "content-v1",
+      curriculum: [],
+      yandexSprint: [],
+      ozonSprint: [],
+      resources: [],
+      questions: [],
+      algorithmPatterns: [],
+    };
+    const progress: BootstrapProgressPayload = {
+      settings: legacyBootstrap.settings,
+      progress: legacyBootstrap.progress,
+      algorithms: [],
+      mockInterviews: [],
+      ai: {
+        enabled: false,
+        model: "",
+        course: null,
+        lessons: {},
+        yandexLessons: {},
+        ozonLessons: {},
+        quizProgress: { course: {}, yandex: {}, ozon: {} },
+      },
+    };
+
+    expect(mergeBootstrapPayloads(content, progress)).toMatchObject({
+      settings: { startDate: "2026-08-01" },
+      progress: { tasks: {}, questions: {} },
+      curriculum: [],
+    });
   });
 });

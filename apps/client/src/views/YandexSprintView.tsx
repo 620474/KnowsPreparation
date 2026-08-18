@@ -277,6 +277,7 @@ export function YandexSprintView({
                                     includeCustomTask={block.kind === "ai"}
                                     onUpdateTask={onUpdateTask}
                                     progress={task}
+                                    runner={block.exercise?.runner}
                                     taskId={block.id}
                                     taskTitle={block.title}
                                   />

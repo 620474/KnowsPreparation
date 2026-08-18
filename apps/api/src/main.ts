@@ -4,13 +4,18 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ConfigService } from "@nestjs/config";
 import helmet from "helmet";
+import { Logger } from "nestjs-pino";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+  app.useLogger(app.get(Logger));
   app.set("trust proxy", 1);
+  app.useBodyParser("json", { limit: "10mb" });
   const config = app.get(ConfigService);
   const configuredOrigins = (config.get<string>("CLIENT_ORIGINS") ?? "")
     .split(",")

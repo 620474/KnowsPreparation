@@ -1,6 +1,7 @@
 import {
   BadGatewayException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -13,6 +14,7 @@ import {
 import type { InterviewQuestion, StudyBlock, StudyDay } from "./curriculum";
 import type { GenerateAiCourseDto } from "./dto/learning.dto";
 import { normalizeMockEvaluation } from "./mock-interview";
+import { createOpenAiAbortContext, isAbortError } from "./openai-request";
 import { OpenAiSseParser } from "./openai-sse";
 import type { AiCourseItem } from "./schemas/ai-course.schema";
 import type { LearningResource } from "./resources";
@@ -206,6 +208,8 @@ const mockEvaluationSchema = {
 
 @Injectable()
 export class AiContentService {
+  private readonly logger = new Logger(AiContentService.name);
+
   constructor(private readonly config: ConfigService) {}
 
   get enabled() {
@@ -218,6 +222,65 @@ export class AiContentService {
 
   get chatModel() {
     return this.config.get<string>("OPENAI_CHAT_MODEL")?.trim() || this.model;
+  }
+
+  get transcriptionModel() {
+    return (
+      this.config.get<string>("OPENAI_TRANSCRIPTION_MODEL")?.trim() ||
+      "gpt-4o-mini-transcribe"
+    );
+  }
+
+  async transcribeAudio(audio: Buffer, filename: string, mimeType: string) {
+    const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        "Распознавание речи не настроено. Добавь OPENAI_API_KEY в переменные сервера.",
+      );
+    }
+    const form = new FormData();
+    form.append("file", new Blob([new Uint8Array(audio)], { type: mimeType }), filename);
+    form.append("model", this.transcriptionModel);
+    form.append("language", "ru");
+    form.append("response_format", "json");
+    const abortContext = createOpenAiAbortContext();
+    try {
+      const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: form,
+        signal: abortContext.signal,
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        this.logOpenAiHttpError("audio_transcription", response.status, false);
+        throw new BadGatewayException(
+          `OpenAI не смог распознать запись (HTTP ${response.status}).`,
+        );
+      }
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("text" in body) ||
+        typeof body.text !== "string" ||
+        !body.text.trim()
+      ) {
+        throw new BadGatewayException("OpenAI вернул пустую расшифровку.");
+      }
+      return body.text.trim();
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException || error instanceof BadGatewayException) {
+        throw error;
+      }
+      if (abortContext.timedOut() || isAbortError(error)) {
+        this.logOpenAiTimeout("audio_transcription", false);
+        throw new BadGatewayException("OpenAI не распознал запись за 90 секунд.");
+      }
+      this.logOpenAiUnexpectedError("audio_transcription", error, false);
+      throw new BadGatewayException("Не удалось отправить запись на распознавание.");
+    } finally {
+      abortContext.dispose();
+    }
   }
 
   async generateCourse(dto: GenerateAiCourseDto, lessonCount: number) {
@@ -236,7 +299,8 @@ export class AiContentService {
     );
     try {
       return normalizeGeneratedCourse(result, lessonCount);
-    } catch {
+    } catch (error) {
+      this.logNormalizationError("frontend_interview_course", error);
       throw new BadGatewayException("OpenAI вернул неполный план курса. Попробуй ещё раз.");
     }
   }
@@ -246,6 +310,7 @@ export class AiContentService {
     item: AiCourseItem,
     resources: LearningResource[],
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ) {
     const sourceContext = resources.map((resource) => ({
       title: resource.title,
@@ -271,10 +336,12 @@ export class AiContentService {
       JSON.stringify({ profile, lesson: item, sources: sourceContext }),
       14_000,
       onDelta,
+      signal,
     );
     try {
       return normalizeGeneratedLesson(result);
-    } catch {
+    } catch (error) {
+      this.logNormalizationError("frontend_interview_lesson", error);
       throw new BadGatewayException("OpenAI вернул неполный урок. Попробуй ещё раз.");
     }
   }
@@ -284,8 +351,16 @@ export class AiContentService {
     block: StudyBlock,
     resources: LearningResource[],
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ) {
-    return this.generateInterviewSprintLesson("Яндекс", day, block, resources, onDelta);
+    return this.generateSprintLesson(
+      "Яндекс",
+      day,
+      block,
+      resources,
+      onDelta,
+      signal,
+    );
   }
 
   async generateOzonLesson(
@@ -293,16 +368,18 @@ export class AiContentService {
     block: StudyBlock,
     resources: LearningResource[],
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ) {
-    return this.generateInterviewSprintLesson("Ozon", day, block, resources, onDelta);
+    return this.generateSprintLesson("Ozon", day, block, resources, onDelta, signal);
   }
 
-  private async generateInterviewSprintLesson(
+  async generateSprintLesson(
     company: "Яндекс" | "Ozon",
     day: StudyDay,
     block: StudyBlock,
     resources: LearningResource[],
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ) {
     const sourceContext = resources.map((resource) => ({
       title: resource.title,
@@ -339,10 +416,17 @@ export class AiContentService {
       }),
       14_000,
       onDelta,
+      signal,
     );
     try {
       return normalizeGeneratedLesson(result);
-    } catch {
+    } catch (error) {
+      this.logNormalizationError(
+        company === "Ozon"
+          ? "ozon_frontend_interview_lesson"
+          : "yandex_frontend_interview_lesson",
+        error,
+      );
       throw new BadGatewayException("OpenAI вернул неполный разбор темы. Попробуй ещё раз.");
     }
   }
@@ -352,6 +436,7 @@ export class AiContentService {
     history: AiChatHistoryMessage[],
     content: string,
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ) {
     return this.requestText(
       [
@@ -371,6 +456,7 @@ export class AiContentService {
       ],
       2_500,
       onDelta,
+      signal,
     );
   }
 
@@ -401,7 +487,8 @@ export class AiContentService {
         result,
         entries.map(({ question }) => question.id),
       );
-    } catch {
+    } catch (error) {
+      this.logNormalizationError("frontend_mock_interview_evaluation", error);
       throw new BadGatewayException("OpenAI вернул неполную оценку интервью. Попробуй ещё раз.");
     }
   }
@@ -413,6 +500,7 @@ export class AiContentService {
     input: string,
     maxOutputTokens: number,
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ) {
     const payload = {
       model: this.model,
@@ -430,12 +518,13 @@ export class AiContentService {
       },
     };
     const text = onDelta
-      ? await this.performStreamingRequest(payload, onDelta)
-      : extractResponseText(await this.performRequest(payload));
+      ? await this.performStreamingRequest(payload, onDelta, schemaName, signal)
+      : extractResponseText(await this.performRequest(payload, schemaName));
 
     try {
       return JSON.parse(text) as T;
-    } catch {
+    } catch (error) {
+      this.logNormalizationError(schemaName, error);
       throw new BadGatewayException("OpenAI вернул ответ в неожиданном формате.");
     }
   }
@@ -445,6 +534,7 @@ export class AiContentService {
     input: AiChatHistoryMessage[],
     maxOutputTokens: number,
     onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
   ) {
     const payload = {
       model: this.chatModel,
@@ -456,12 +546,17 @@ export class AiContentService {
     try {
       const text = (
         onDelta
-          ? await this.performStreamingRequest(payload, onDelta)
-          : extractResponseText(await this.performRequest(payload))
+          ? await this.performStreamingRequest(payload, onDelta, "chat_reply", signal)
+          : extractResponseText(await this.performRequest(payload, "chat_reply"))
       ).trim();
       if (!text) throw new Error("Empty response");
       return text;
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      if (error instanceof ServiceUnavailableException || error instanceof BadGatewayException) {
+        throw error;
+      }
+      this.logNormalizationError("chat_reply", error);
       throw new BadGatewayException("OpenAI вернул пустой ответ. Попробуй ещё раз.");
     }
   }
@@ -469,6 +564,8 @@ export class AiContentService {
   private async performStreamingRequest(
     payload: Record<string, unknown>,
     onDelta: AiDeltaHandler,
+    operation: string,
+    externalSignal?: AbortSignal,
   ) {
     const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
     if (!apiKey) {
@@ -476,8 +573,7 @@ export class AiContentService {
         "AI-генерация не настроена. Добавь OPENAI_API_KEY в переменные сервера.",
       );
     }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90_000);
+    const abortContext = createOpenAiAbortContext(externalSignal);
     try {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -486,9 +582,10 @@ export class AiContentService {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ ...payload, stream: true }),
-        signal: controller.signal,
+        signal: abortContext.signal,
       });
       if (!response.ok) {
+        this.logOpenAiHttpError(operation, response.status, true);
         throw new BadGatewayException(
           `OpenAI не смог сгенерировать материал (HTTP ${response.status}).`,
         );
@@ -525,19 +622,25 @@ export class AiContentService {
       if (!output.trim()) throw new BadGatewayException("OpenAI вернул пустой поток.");
       return output;
     } catch (error) {
+      if (externalSignal?.aborted) {
+        this.logger.debug({ event: "openai_request_cancelled", operation, streaming: true });
+        throw error;
+      }
       if (error instanceof ServiceUnavailableException || error instanceof BadGatewayException) {
         throw error;
       }
-      if (error instanceof Error && error.name === "AbortError") {
+      if (abortContext.timedOut() || isAbortError(error)) {
+        this.logOpenAiTimeout(operation, true);
         throw new BadGatewayException("OpenAI не ответил за 90 секунд. Попробуй ещё раз.");
       }
+      this.logOpenAiUnexpectedError(operation, error, true);
       throw new BadGatewayException("Не удалось прочитать поток OpenAI.");
     } finally {
-      clearTimeout(timeout);
+      abortContext.dispose();
     }
   }
 
-  private async performRequest(payload: Record<string, unknown>) {
+  private async performRequest(payload: Record<string, unknown>, operation: string) {
     const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
     if (!apiKey) {
       throw new ServiceUnavailableException(
@@ -545,8 +648,7 @@ export class AiContentService {
       );
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90_000);
+    const abortContext = createOpenAiAbortContext();
     try {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -555,11 +657,12 @@ export class AiContentService {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-        signal: controller.signal,
+        signal: abortContext.signal,
       });
 
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok) {
+        this.logOpenAiHttpError(operation, response.status, false);
         throw new BadGatewayException(
           `OpenAI не смог сгенерировать материал (HTTP ${response.status}).`,
         );
@@ -570,12 +673,43 @@ export class AiContentService {
       if (error instanceof ServiceUnavailableException || error instanceof BadGatewayException) {
         throw error;
       }
-      if (error instanceof Error && error.name === "AbortError") {
+      if (abortContext.timedOut() || isAbortError(error)) {
+        this.logOpenAiTimeout(operation, false);
         throw new BadGatewayException("OpenAI не ответил за 90 секунд. Попробуй ещё раз.");
       }
+      this.logOpenAiUnexpectedError(operation, error, false);
       throw new BadGatewayException("Не удалось получить корректный ответ от OpenAI.");
     } finally {
-      clearTimeout(timeout);
+      abortContext.dispose();
     }
+  }
+
+  private logNormalizationError(operation: string, error: unknown) {
+    this.logger.warn({
+      event: "openai_response_normalization_failed",
+      operation,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+
+  private logOpenAiHttpError(operation: string, status: number, streaming: boolean) {
+    this.logger.warn({ event: "openai_http_error", operation, status, streaming });
+  }
+
+  private logOpenAiTimeout(operation: string, streaming: boolean) {
+    this.logger.warn({ event: "openai_request_timeout", operation, streaming });
+  }
+
+  private logOpenAiUnexpectedError(
+    operation: string,
+    error: unknown,
+    streaming: boolean,
+  ) {
+    this.logger.error({
+      event: "openai_request_failed",
+      operation,
+      streaming,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    });
   }
 }

@@ -1,8 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { LoggerModule } from "nestjs-pino";
 
 import { AppController } from "./app.controller";
 import { AuthModule } from "./auth/auth.module";
@@ -33,6 +36,33 @@ function validateEnvironment(config: Record<string, unknown>) {
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        genReqId(request, response) {
+          const forwardedId = request.headers["x-request-id"];
+          const requestId =
+            typeof forwardedId === "string" && /^[\w-]{1,128}$/.test(forwardedId)
+              ? forwardedId
+              : randomUUID();
+          response.setHeader("X-Request-Id", requestId);
+          return requestId;
+        },
+        redact: {
+          paths: [
+            "req.headers.authorization",
+            "req.headers.cookie",
+            "req.headers.x-api-key",
+            "res.headers.set-cookie",
+          ],
+          censor: "[REDACTED]",
+        },
+        customLogLevel(_request, response, error) {
+          if (error || response.statusCode >= 500) return "error";
+          if (response.statusCode >= 400) return "warn";
+          return "info";
+        },
+      },
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,

@@ -11,13 +11,13 @@ export class TaskProgress {
   @Prop({ required: true, default: false })
   completed!: boolean;
 
-  @Prop({ required: true, default: "" })
+  @Prop({ default: "" })
   note!: string;
 
-  @Prop({ required: true, default: "" })
+  @Prop({ default: "" })
   customTask!: string;
 
-  @Prop({ required: true, default: "" })
+  @Prop({ default: "" })
   solution!: string;
 }
 

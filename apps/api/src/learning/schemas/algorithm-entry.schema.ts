@@ -19,7 +19,7 @@ export class AlgorithmEntry {
   @Prop({ required: true })
   solvedAt!: string;
 
-  @Prop({ required: true, default: "" })
+  @Prop({ default: "" })
   note!: string;
 }
 

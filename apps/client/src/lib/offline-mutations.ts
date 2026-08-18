@@ -7,6 +7,7 @@ import type {
   QuestionMutationVariables,
   QuizMutationVariables,
   ReviewMutationVariables,
+  SettingsMutationVariables,
   TaskMutationVariables,
 } from "./offline-mutation-keys";
 
@@ -53,7 +54,7 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
   });
   queryClient.setMutationDefaults(offlineMutationKeys.settings, {
     ...offlineOptions,
-    mutationFn: (startDate: string) => learningApi.updateSettings(startDate),
+    mutationFn: (settings: SettingsMutationVariables) => learningApi.updateSettings(settings),
     onSettled: refreshBootstrap,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.deleteAlgorithm, {

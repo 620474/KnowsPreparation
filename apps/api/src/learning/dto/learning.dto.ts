@@ -7,7 +7,9 @@ import {
   IsIn,
   IsInt,
   IsOptional,
+  IsObject,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -26,8 +28,23 @@ import {
 } from "../schemas/question-progress.schema";
 
 export class UpdateSettingsDto {
+  @IsOptional()
   @IsDateString({ strict: true })
-  startDate!: string;
+  startDate?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  reminderEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  reminderTime?: string;
+}
+
+export class ImportBackupDto {
+  @IsObject()
+  backup!: Record<string, unknown>;
 }
 
 export class GenerateAiCourseDto {

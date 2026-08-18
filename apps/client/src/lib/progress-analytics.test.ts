@@ -5,7 +5,14 @@ import { normalizeQuestionProgress } from "./question-progress";
 import type { BootstrapData } from "../types";
 
 const data: BootstrapData = {
-  settings: { startDate: "2026-08-01", dailyMinutes: 120, coreWeeks: 12, bufferWeeks: 0 },
+  settings: {
+    startDate: "2026-08-01",
+    dailyMinutes: 120,
+    coreWeeks: 12,
+    bufferWeeks: 0,
+    reminderEnabled: false,
+    reminderTime: "19:00",
+  },
   curriculum: [],
   yandexSprint: [],
   ozonSprint: [],

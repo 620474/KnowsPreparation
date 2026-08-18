@@ -1,17 +1,22 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Header,
   HttpException,
+  Logger,
   Param,
   Patch,
   Post,
   Put,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
 
@@ -19,6 +24,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import {
   CreateAlgorithmDto,
   GenerateAiCourseDto,
+  ImportBackupDto,
   ReviewQuestionDto,
   SendAiChatMessageDto,
   SubmitLessonQuizDto,
@@ -28,16 +34,49 @@ import {
   UpdateTaskDto,
 } from "./dto/learning.dto";
 import { LearningService } from "./learning.service";
+import { LearningBackupService } from "./learning-backup.service";
+import { LearningBootstrapService } from "./learning-bootstrap.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning")
 export class LearningController {
-  constructor(private readonly learningService: LearningService) {}
+  private readonly logger = new Logger(LearningController.name);
+
+  constructor(
+    private readonly learningService: LearningService,
+    private readonly bootstrapService: LearningBootstrapService,
+    private readonly backupService: LearningBackupService,
+  ) {}
 
   @Get("bootstrap")
   @Header("Cache-Control", "private, no-store")
   bootstrap() {
-    return this.learningService.getBootstrap();
+    return this.bootstrapService.getLegacyBootstrap();
+  }
+
+  @Get("bootstrap/content")
+  bootstrapContent(@Res({ passthrough: true }) response: Response) {
+    response.setHeader("Cache-Control", "private, max-age=300, stale-while-revalidate=86400");
+    response.setHeader("ETag", this.bootstrapService.contentEtag);
+    return this.bootstrapService.getContent();
+  }
+
+  @Get("bootstrap/progress")
+  @Header("Cache-Control", "private, no-store")
+  bootstrapProgress() {
+    return this.bootstrapService.getProgress();
+  }
+
+  @Get("backup")
+  @Header("Cache-Control", "private, no-store")
+  exportBackup() {
+    return this.backupService.exportBackup();
+  }
+
+  @Post("backup/import")
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  importBackup(@Body() dto: ImportBackupDto) {
+    return this.backupService.importBackup(dto);
   }
 
   @Post("ai-course/generate")
@@ -55,8 +94,8 @@ export class LearningController {
   @Post("ai-course/lessons/:itemId/generate/stream")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   streamAiLesson(@Param("itemId") itemId: string, @Res() response: Response) {
-    return this.streamResponse(response, (onDelta) =>
-      this.learningService.generateAiLesson(itemId, onDelta),
+    return this.streamResponse(response, (onDelta, signal) =>
+      this.learningService.generateAiLesson(itemId, onDelta, signal),
     );
   }
 
@@ -69,8 +108,8 @@ export class LearningController {
   @Post("yandex-sprint/blocks/:blockId/lesson/generate/stream")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   streamYandexLesson(@Param("blockId") blockId: string, @Res() response: Response) {
-    return this.streamResponse(response, (onDelta) =>
-      this.learningService.generateYandexLesson(blockId, onDelta),
+    return this.streamResponse(response, (onDelta, signal) =>
+      this.learningService.generateYandexLesson(blockId, onDelta, signal),
     );
   }
 
@@ -83,8 +122,8 @@ export class LearningController {
   @Post("ozon-sprint/blocks/:blockId/lesson/generate/stream")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   streamOzonLesson(@Param("blockId") blockId: string, @Res() response: Response) {
-    return this.streamResponse(response, (onDelta) =>
-      this.learningService.generateOzonLesson(blockId, onDelta),
+    return this.streamResponse(response, (onDelta, signal) =>
+      this.learningService.generateOzonLesson(blockId, onDelta, signal),
     );
   }
 
@@ -133,8 +172,8 @@ export class LearningController {
     @Body() dto: SendAiChatMessageDto,
     @Res() response: Response,
   ) {
-    return this.streamResponse(response, (onDelta) =>
-      this.learningService.sendAiChatMessage(itemId, dto, onDelta),
+    return this.streamResponse(response, (onDelta, signal) =>
+      this.learningService.sendAiChatMessage(itemId, dto, onDelta, signal),
     );
   }
 
@@ -164,8 +203,8 @@ export class LearningController {
     @Body() dto: SendAiChatMessageDto,
     @Res() response: Response,
   ) {
-    return this.streamResponse(response, (onDelta) =>
-      this.learningService.sendYandexAiChatMessage(blockId, dto, onDelta),
+    return this.streamResponse(response, (onDelta, signal) =>
+      this.learningService.sendYandexAiChatMessage(blockId, dto, onDelta, signal),
     );
   }
 
@@ -195,8 +234,8 @@ export class LearningController {
     @Body() dto: SendAiChatMessageDto,
     @Res() response: Response,
   ) {
-    return this.streamResponse(response, (onDelta) =>
-      this.learningService.sendOzonAiChatMessage(blockId, dto, onDelta),
+    return this.streamResponse(response, (onDelta, signal) =>
+      this.learningService.sendOzonAiChatMessage(blockId, dto, onDelta, signal),
     );
   }
 
@@ -257,6 +296,23 @@ export class LearningController {
     return this.learningService.completeMockInterview(interviewId);
   }
 
+  @Post("mock-interviews/:interviewId/transcribe")
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @UseInterceptors(
+    FileInterceptor("audio", {
+      limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+      fileFilter: (_request, file, callback) =>
+        callback(null, file.mimetype.startsWith("audio/")),
+    }),
+  )
+  transcribeMockAnswer(
+    @Param("interviewId") interviewId: string,
+    @UploadedFile() audio?: Express.Multer.File,
+  ) {
+    if (!audio) throw new BadRequestException("Добавь аудиозапись ответа");
+    return this.learningService.transcribeMockAnswer(interviewId, audio);
+  }
+
   @Post("algorithms")
   addAlgorithm(@Body() dto: CreateAlgorithmDto) {
     return this.learningService.addAlgorithm(dto);
@@ -269,8 +325,18 @@ export class LearningController {
 
   private async streamResponse<T>(
     response: Response,
-    run: (onDelta: (delta: string) => void) => Promise<T>,
+    run: (onDelta: (delta: string) => void, signal: AbortSignal) => Promise<T>,
   ) {
+    const controller = new AbortController();
+    const handleClose = () => {
+      if (response.writableEnded || controller.signal.aborted) return;
+      controller.abort();
+      this.logger.debug({
+        event: "sse_client_disconnected",
+        path: response.req.originalUrl,
+      });
+    };
+    response.once("close", handleClose);
     response.status(200);
     response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     response.setHeader("Cache-Control", "no-cache, no-transform");
@@ -278,13 +344,19 @@ export class LearningController {
     response.setHeader("X-Accel-Buffering", "no");
     response.flushHeaders();
     const send = (event: string, data: unknown) => {
+      if (response.destroyed || response.writableEnded || controller.signal.aborted) return;
       response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
-    const heartbeat = setInterval(() => response.write(": keep-alive\n\n"), 15_000);
+    const heartbeat = setInterval(() => {
+      if (!response.destroyed && !response.writableEnded && !controller.signal.aborted) {
+        response.write(": keep-alive\n\n");
+      }
+    }, 15_000);
     try {
-      const result = await run((delta) => send("delta", { delta }));
+      const result = await run((delta) => send("delta", { delta }), controller.signal);
       send("result", result);
     } catch (error) {
+      if (controller.signal.aborted) return;
       const responseBody = error instanceof HttpException ? error.getResponse() : null;
       const message =
         typeof responseBody === "string"
@@ -299,7 +371,8 @@ export class LearningController {
       send("error", { message });
     } finally {
       clearInterval(heartbeat);
-      response.end();
+      response.removeListener("close", handleClose);
+      if (!response.destroyed && !response.writableEnded) response.end();
     }
   }
 }

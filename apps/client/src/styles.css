@@ -1494,6 +1494,72 @@ p {
   font-size: 0.72rem;
 }
 
+.code-playground {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 13px;
+  background: var(--surface-subtle);
+}
+
+.code-playground-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.code-playground-heading > div,
+.code-test-results > div > div {
+  display: grid;
+  gap: 3px;
+}
+
+.code-playground-heading small,
+.code-test-results small,
+.audio-answer-recorder small,
+.voice-unavailable {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.code-test-results {
+  display: grid;
+  gap: 7px;
+}
+
+.code-test-results > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 9px;
+  background: var(--surface-input);
+}
+
+.code-test-results .passed > svg {
+  color: var(--accent);
+}
+
+.code-test-results .failed > svg {
+  color: var(--danger);
+}
+
+.code-console {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  border-radius: 9px;
+  padding: 10px;
+  color: var(--text-secondary);
+  background: var(--reader-bg);
+  font-size: 0.7rem;
+  white-space: pre-wrap;
+}
+
 .save-success,
 .save-error {
   font-size: 0.7rem;
@@ -3384,6 +3450,17 @@ p {
   gap: 10px;
 }
 
+.audio-answer-recorder {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px 12px;
+}
+
+.audio-answer-recorder .mantine-Alert-root {
+  flex-basis: 100%;
+}
+
 .lesson-quiz {
   display: grid;
   gap: 22px;
@@ -4073,7 +4150,20 @@ p {
     flex-direction: column;
   }
 
-  .start-date-input {
+  .code-playground-heading,
+  .settings-controls,
+  .audio-answer-recorder {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .code-playground-heading .mantine-Button-root,
+  .settings-controls .mantine-Button-root,
+  .audio-answer-recorder .mantine-Button-root {
+    width: 100%;
+  }
+
+.start-date-input {
     max-width: none;
   }
 
@@ -4085,4 +4175,25 @@ p {
     align-items: center;
     flex-direction: row;
   }
+}
+
+.settings-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.settings-status {
+  position: sticky;
+  z-index: 2;
+  top: 12px;
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text-strong);
+  background: var(--panel);
+  box-shadow: var(--shadow);
 }

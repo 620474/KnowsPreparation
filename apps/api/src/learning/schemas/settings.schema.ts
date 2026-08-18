@@ -19,6 +19,12 @@ export class Settings {
 
   @Prop({ required: true, default: 2 })
   bufferWeeks!: number;
+
+  @Prop({ required: true, default: false })
+  reminderEnabled!: boolean;
+
+  @Prop({ required: true, default: "19:00" })
+  reminderTime!: string;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(Settings);

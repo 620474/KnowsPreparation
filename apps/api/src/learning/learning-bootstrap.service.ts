@@ -1,0 +1,186 @@
+import { createHash } from "node:crypto";
+
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import type { Model } from "mongoose";
+
+import { AiContentService } from "./ai-content.service";
+import {
+  ALGORITHM_PATTERNS,
+  CURRICULUM,
+  QUESTION_BANK,
+} from "./curriculum";
+import {
+  serializeAiCourse,
+  serializeAiLesson,
+  serializeMockInterview,
+  serializeQuestionProgress,
+  serializeQuizProgressCollection,
+} from "./learning-serialization";
+import { RESOURCES } from "./resources";
+import { AlgorithmEntry } from "./schemas/algorithm-entry.schema";
+import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
+import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
+import { MockInterview } from "./schemas/mock-interview.schema";
+import { QuestionProgress } from "./schemas/question-progress.schema";
+import { Settings } from "./schemas/settings.schema";
+import { TaskProgress } from "./schemas/task-progress.schema";
+import { getSprintTrack, SPRINT_TRACK_LIST } from "./track-registry";
+
+const STATIC_CONTENT = {
+  curriculum: CURRICULUM,
+  yandexSprint: getSprintTrack("yandex").days,
+  ozonSprint: getSprintTrack("ozon").days,
+  resources: RESOURCES,
+  questions: QUESTION_BANK,
+  algorithmPatterns: ALGORITHM_PATTERNS,
+};
+
+const CONTENT_VERSION = createHash("sha256")
+  .update(JSON.stringify(STATIC_CONTENT))
+  .digest("base64url")
+  .slice(0, 16);
+
+@Injectable()
+export class LearningBootstrapService {
+  readonly contentEtag = `"${CONTENT_VERSION}"`;
+
+  constructor(
+    @InjectModel(Settings.name) private readonly settingsModel: Model<Settings>,
+    @InjectModel(TaskProgress.name) private readonly taskModel: Model<TaskProgress>,
+    @InjectModel(QuestionProgress.name)
+    private readonly questionModel: Model<QuestionProgress>,
+    @InjectModel(AlgorithmEntry.name)
+    private readonly algorithmModel: Model<AlgorithmEntry>,
+    @InjectModel(AiCourse.name) private readonly aiCourseModel: Model<AiCourse>,
+    @InjectModel(AiLesson.name) private readonly aiLessonModel: Model<AiLesson>,
+    @InjectModel(AiQuizProgress.name)
+    private readonly aiQuizProgressModel: Model<AiQuizProgress>,
+    @InjectModel(MockInterview.name)
+    private readonly mockInterviewModel: Model<MockInterview>,
+    private readonly aiContent: AiContentService,
+  ) {}
+
+  getContent() {
+    return { contentVersion: CONTENT_VERSION, ...STATIC_CONTENT };
+  }
+
+  async getProgress() {
+    const today = new Date().toISOString().slice(0, 10);
+    const settings = await this.settingsModel
+      .findOneAndUpdate(
+        { key: "main" },
+        {
+          $setOnInsert: {
+            key: "main",
+            startDate: today,
+            dailyMinutes: 120,
+            coreWeeks: 10,
+            bufferWeeks: 2,
+            reminderEnabled: false,
+            reminderTime: "19:00",
+          },
+        },
+        { upsert: true, returnDocument: "after", lean: true },
+      )
+      .exec();
+    const [tasks, questions, algorithms, aiCourse, mockInterviews] = await Promise.all([
+      this.taskModel.find().lean().exec(),
+      this.questionModel.find().lean().exec(),
+      this.algorithmModel.find().sort({ solvedAt: -1, createdAt: -1 }).lean().exec(),
+      this.aiCourseModel.findOne({ key: "main" }).lean().exec(),
+      this.mockInterviewModel.find().sort({ updatedAt: -1 }).limit(20).lean().exec(),
+    ]);
+    const [aiLessons, sprintLessonCollections, quizProgresses] = await Promise.all([
+      aiCourse
+        ? this.aiLessonModel
+            .find({ courseKey: aiCourse.key, courseVersion: aiCourse.version })
+            .lean()
+            .exec()
+        : Promise.resolve([]),
+      Promise.all(
+        SPRINT_TRACK_LIST.map((track) =>
+          this.aiLessonModel
+            .find({
+              courseKey: track.courseKey,
+              courseVersion: track.courseVersion,
+            })
+            .lean()
+            .exec(),
+        ),
+      ),
+      this.aiQuizProgressModel.find().sort({ updatedAt: -1 }).lean().exec(),
+    ]);
+
+    if (!settings) {
+      throw new InternalServerErrorException("Не удалось создать настройки плана");
+    }
+
+    const sprintLessons = Object.fromEntries(
+      SPRINT_TRACK_LIST.map((track, index) => [
+        track.scope,
+        Object.fromEntries(
+          (sprintLessonCollections[index] ?? []).map((lesson) => [
+            lesson.itemId,
+            serializeAiLesson(lesson),
+          ]),
+        ),
+      ]),
+    ) as Record<"yandex" | "ozon", Record<string, ReturnType<typeof serializeAiLesson>>>;
+
+    return {
+      settings: {
+        startDate: settings.startDate,
+        dailyMinutes: settings.dailyMinutes,
+        coreWeeks: settings.coreWeeks,
+        bufferWeeks: settings.bufferWeeks,
+        reminderEnabled: settings.reminderEnabled ?? false,
+        reminderTime: settings.reminderTime ?? "19:00",
+      },
+      progress: {
+        tasks: Object.fromEntries(
+          tasks.map((task) => [
+            task.taskId,
+            {
+              completed: task.completed,
+              note: task.note ?? "",
+              customTask: task.customTask ?? "",
+              solution: task.solution ?? "",
+            },
+          ]),
+        ),
+        questions: Object.fromEntries(
+          questions.map((question) => [
+            question.questionId,
+            serializeQuestionProgress(question),
+          ]),
+        ),
+      },
+      mockInterviews: mockInterviews.map(serializeMockInterview),
+      algorithms: algorithms.map((entry) => ({
+        id: String(entry._id),
+        title: entry.title,
+        pattern: entry.pattern,
+        difficulty: entry.difficulty,
+        solvedAt: entry.solvedAt,
+        note: entry.note ?? "",
+      })),
+      ai: {
+        enabled: this.aiContent.enabled,
+        model: this.aiContent.model,
+        course: aiCourse ? serializeAiCourse(aiCourse) : null,
+        lessons: Object.fromEntries(
+          aiLessons.map((lesson) => [lesson.itemId, serializeAiLesson(lesson)]),
+        ),
+        yandexLessons: sprintLessons.yandex,
+        ozonLessons: sprintLessons.ozon,
+        quizProgress: serializeQuizProgressCollection(quizProgresses, aiCourse),
+      },
+    };
+  }
+
+  async getLegacyBootstrap() {
+    const [content, progress] = await Promise.all([this.getContent(), this.getProgress()]);
+    return { ...content, ...progress };
+  }
+}

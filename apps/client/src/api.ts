@@ -1,6 +1,9 @@
 import {
+  mergeBootstrapPayloads,
   normalizeBootstrapData,
+  type BootstrapContentPayload,
   type BootstrapPayload,
+  type BootstrapProgressPayload,
 } from "./lib/bootstrap";
 import type {
   AlgorithmEntry,
@@ -12,11 +15,14 @@ import type {
   AiLesson,
   Difficulty,
   LessonQuizProgress,
+  LearningBackup,
   MockInterview,
   QuestionProgress,
   ReviewRating,
   TaskProgress,
   TaskProgressPatch,
+  AppSettings,
+  SettingsPatch,
 } from "./types";
 import { SseParser } from "./lib/sse";
 
@@ -69,13 +75,12 @@ function normalizeApiUrl(url: string) {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
+  const headers = new Headers(init.headers);
+  if (!(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(`${getApiUrl()}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
+    headers,
   });
 
   if (response.status === 401) {
@@ -180,7 +185,18 @@ export async function login(apiUrl: string, password: string) {
 
 export const learningApi = {
   bootstrap: () =>
+    Promise.all([
+      request<BootstrapContentPayload>("/learning/bootstrap/content"),
+      request<BootstrapProgressPayload>("/learning/bootstrap/progress"),
+    ]).then(([content, progress]) => mergeBootstrapPayloads(content, progress)),
+  legacyBootstrap: () =>
     request<BootstrapPayload>("/learning/bootstrap").then(normalizeBootstrapData),
+  exportBackup: () => request<LearningBackup>("/learning/backup"),
+  importBackup: (backup: LearningBackup) =>
+    request<{ imported: Record<string, number>; total: number }>("/learning/backup/import", {
+      method: "POST",
+      body: JSON.stringify({ backup }),
+    }),
   generateAiCourse: (profile: AiCourseProfile) =>
     request<AiCourse>("/learning/ai-course/generate", {
       method: "POST",
@@ -228,10 +244,10 @@ export const learningApi = {
     ),
   clearAiChat: (scope: AiChatScope, itemId: string) =>
     request<{ deleted: boolean }>(getAiChatPath(scope, itemId), { method: "DELETE" }),
-  updateSettings: (startDate: string) =>
-    request<{ startDate: string }>("/learning/settings", {
+  updateSettings: (settings: SettingsPatch) =>
+    request<AppSettings>("/learning/settings", {
       method: "PATCH",
-      body: JSON.stringify({ startDate }),
+      body: JSON.stringify(settings),
     }),
   updateTask: (taskId: string, progress: TaskProgressPatch) =>
     request<TaskProgress & { taskId: string }>(`/learning/tasks/${taskId}`, {
@@ -277,6 +293,14 @@ export const learningApi = {
       `/learning/mock-interviews/${encodeURIComponent(interviewId)}/complete`,
       { method: "POST" },
     ),
+  transcribeMockAnswer: (interviewId: string, audio: Blob) => {
+    const form = new FormData();
+    form.append("audio", audio, `mock-answer.${audio.type.includes("ogg") ? "ogg" : "webm"}`);
+    return request<{ text: string }>(
+      `/learning/mock-interviews/${encodeURIComponent(interviewId)}/transcribe`,
+      { method: "POST", body: form },
+    );
+  },
   addAlgorithm: (entry: Omit<AlgorithmEntry, "id">) =>
     request<AlgorithmEntry>("/learning/algorithms", {
       method: "POST",

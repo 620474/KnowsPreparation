@@ -135,8 +135,9 @@ describe("curriculum", () => {
   });
 
   it("contains the complete interview question bank", () => {
-    expect(QUESTION_BANK).toHaveLength(100);
-    expect(new Set(QUESTION_BANK.map((question) => question.id)).size).toBe(100);
+    expect(QUESTION_BANK).toHaveLength(110);
+    expect(new Set(QUESTION_BANK.map((question) => question.id)).size).toBe(110);
+    expect(QUESTION_BANK.slice(-10).every((question) => question.category === "Тестирование")).toBe(true);
   });
 
   it("contains a valid curated resource catalog", () => {

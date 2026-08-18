@@ -54,11 +54,24 @@ export interface StudyExerciseExample {
   explanation?: string;
 }
 
+export interface StudyExerciseTestCase {
+  title: string;
+  expression: string;
+  expected?: unknown;
+  expectedError?: string;
+}
+
+export interface StudyExerciseRunner {
+  starterCode: string;
+  testCases: StudyExerciseTestCase[];
+}
+
 export interface StudyExercise {
   statement: string;
   signature?: string;
   constraints: string[];
   examples: StudyExerciseExample[];
+  runner?: StudyExerciseRunner;
 }
 
 export interface StudyBlock {
@@ -277,13 +290,28 @@ export interface MockInterview {
   evaluation: MockInterviewEvaluation | null;
 }
 
+export interface AppSettings {
+  startDate: string;
+  dailyMinutes: number;
+  coreWeeks: number;
+  bufferWeeks: number;
+  reminderEnabled: boolean;
+  reminderTime: string;
+}
+
+export type SettingsPatch = Partial<
+  Pick<AppSettings, "startDate" | "reminderEnabled" | "reminderTime">
+>;
+
+export interface LearningBackup {
+  format: "knows-preparation-backup";
+  version: 1;
+  exportedAt: string;
+  data: Record<string, unknown[]>;
+}
+
 export interface BootstrapData {
-  settings: {
-    startDate: string;
-    dailyMinutes: number;
-    coreWeeks: number;
-    bufferWeeks: number;
-  };
+  settings: AppSettings;
   curriculum: StudyWeek[];
   yandexSprint: StudyDay[];
   ozonSprint: StudyDay[];

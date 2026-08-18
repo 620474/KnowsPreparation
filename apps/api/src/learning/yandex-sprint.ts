@@ -1,4 +1,5 @@
 import type { StudyBlock, StudyBlockKind, StudyDay, StudyExercise } from "./curriculum";
+import { getExerciseRunner } from "./exercise-runners";
 
 interface SprintBlockDefinition {
   title: string;
@@ -578,15 +579,18 @@ const createBlock = (
   minutes: number,
   definition: SprintBlockDefinition,
   exercise = definition.exercise,
-): StudyBlock => ({
-  id: `${dayId}-${idSuffix}`,
-  kind,
-  title: definition.title,
-  description: definition.description,
-  minutes,
-  resourceIds: [...definition.resourceIds],
-  exercise,
-});
+): StudyBlock => {
+  const id = `${dayId}-${idSuffix}`;
+  return {
+    id,
+    kind,
+    title: definition.title,
+    description: definition.description,
+    minutes,
+    resourceIds: [...definition.resourceIds],
+    exercise: exercise ? { ...exercise, runner: getExerciseRunner(id) } : undefined,
+  };
+};
 
 export const YANDEX_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => {
   const dayNumber = index + 1;

@@ -2,6 +2,7 @@ import type {
   AiChatScope,
   QuestionProgress,
   ReviewRating,
+  SettingsPatch,
   TaskProgressPatch,
 } from "../types";
 
@@ -35,6 +36,7 @@ export type MockAnswerMutationVariables = {
   questionId: string;
   content: string;
 };
+export type SettingsMutationVariables = SettingsPatch;
 
 export const createOperationId = () =>
   globalThis.crypto?.randomUUID?.() ??

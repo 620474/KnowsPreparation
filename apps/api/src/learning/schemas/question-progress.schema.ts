@@ -15,7 +15,7 @@ export class QuestionProgress {
   @Prop({ type: String, required: true, enum: QUESTION_STATUSES, default: "new" })
   status!: QuestionStatus;
 
-  @Prop({ required: true, default: "" })
+  @Prop({ default: "" })
   note!: string;
 
   @Prop({ required: true, default: 2.5, min: 1.3 })

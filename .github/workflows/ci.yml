@@ -29,6 +29,14 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Cache MongoDB test binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            mongodb-${{ runner.os }}-
+
       - name: Install dependencies
         run: npm ci
 
@@ -69,7 +77,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 22
+          java-version: 21
           cache: gradle
 
       - name: Install dependencies

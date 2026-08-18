@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Loader, Progress, Textarea } from "@mantine/core";
 import { AlertTriangle, ArrowLeft, Clock3, Play, Sparkles } from "lucide-react";
 
+import { AudioAnswerRecorder } from "../components/AudioAnswerRecorder";
 import type { BootstrapData, MockInterview } from "../types";
 
 interface MockInterviewViewProps {
@@ -14,6 +15,7 @@ interface MockInterviewViewProps {
     content: string,
   ) => Promise<MockInterview | null>;
   onComplete: (interviewId: string) => Promise<MockInterview | null>;
+  onTranscribe: (interviewId: string, audio: Blob) => Promise<string | null>;
 }
 
 const formatRemaining = (seconds: number) =>
@@ -25,6 +27,7 @@ export function MockInterviewView({
   onStart,
   onSaveAnswer,
   onComplete,
+  onTranscribe,
 }: MockInterviewViewProps) {
   const initialInterview = data.mockInterviews.find((item) => item.status === "in_progress") ?? null;
   const latestCompleted = data.mockInterviews.find((item) => item.status === "completed") ?? null;
@@ -195,6 +198,15 @@ export function MockInterviewView({
           minRows={10}
           maxLength={12_000}
           placeholder="Структурированный ответ, примеры и компромиссы…"
+        />
+        <AudioAnswerRecorder
+          onTranscribe={(audio) => onTranscribe(interview.id, audio)}
+          onTranscript={(text) =>
+            setDraftAnswers((current) => ({
+              ...current,
+              [question.id]: [current[question.id]?.trim(), text].filter(Boolean).join("\n\n"),
+            }))
+          }
         />
         {error ? <Alert color="red" icon={<AlertTriangle size={16} />}>{error}</Alert> : null}
         <div className="mock-actions">

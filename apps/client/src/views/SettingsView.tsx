@@ -1,28 +1,92 @@
-import { useState, type FormEvent } from "react";
-import { Button, TextInput } from "@mantine/core";
-import { Building2, CalendarClock, LogOut, Server, ShieldCheck } from "lucide-react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { Button, Switch, TextInput } from "@mantine/core";
+import {
+  Bell,
+  Building2,
+  CalendarClock,
+  Download,
+  LogOut,
+  Server,
+  ShieldCheck,
+  Upload,
+} from "lucide-react";
 
 import { getApiUrl } from "../api";
-import type { BootstrapData } from "../types";
+import { parseBackupJson } from "../lib/backup";
+import { remindersAvailable } from "../lib/notifications";
+import type { BootstrapData, LearningBackup, SettingsPatch } from "../types";
 
 interface SettingsViewProps {
   data: BootstrapData;
   onOpenOzon: () => void;
-  onUpdateStartDate: (startDate: string) => void;
+  onUpdateSettings: (settings: SettingsPatch) => Promise<boolean>;
+  onExportBackup: () => Promise<boolean>;
+  onImportBackup: (backup: LearningBackup) => Promise<number | null>;
   onLogout: () => void;
 }
 
 export function SettingsView({
   data,
   onOpenOzon,
-  onUpdateStartDate,
+  onUpdateSettings,
+  onExportBackup,
+  onImportBackup,
   onLogout,
 }: SettingsViewProps) {
   const [startDate, setStartDate] = useState(data.settings.startDate);
+  const [reminderEnabled, setReminderEnabled] = useState(data.settings.reminderEnabled);
+  const [reminderTime, setReminderTime] = useState(data.settings.reminderTime);
+  const [busy, setBusy] = useState<"date" | "reminder" | "export" | "import" | null>(null);
+  const [status, setStatus] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const nativeReminders = remindersAvailable();
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleDateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onUpdateStartDate(startDate);
+    setBusy("date");
+    setStatus("");
+    const saved = await onUpdateSettings({ startDate });
+    setBusy(null);
+    if (saved) setStatus("Дата старта сохранена.");
+  }
+
+  async function saveReminder(enabled = reminderEnabled) {
+    setBusy("reminder");
+    setStatus("");
+    const saved = await onUpdateSettings({ reminderEnabled: enabled, reminderTime });
+    setBusy(null);
+    if (saved) setStatus(enabled ? `Напоминание включено на ${reminderTime}.` : "Напоминание выключено.");
+    return saved;
+  }
+
+  async function handleReminderToggle(enabled: boolean) {
+    setReminderEnabled(enabled);
+    if (!(await saveReminder(enabled))) setReminderEnabled(!enabled);
+  }
+
+  async function handleExport() {
+    setBusy("export");
+    setStatus("");
+    const exported = await onExportBackup();
+    setBusy(null);
+    if (exported) setStatus("Бэкап подготовлен. Сохрани JSON в надёжное место.");
+  }
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    if (!window.confirm("Восстановить данные из этого файла? Текущие записи не удалятся.")) return;
+    setBusy("import");
+    setStatus("");
+    try {
+      const total = await onImportBackup(parseBackupJson(await file.text()));
+      if (total !== null) setStatus(`Восстановлено записей: ${total}.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Не удалось прочитать файл");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -34,6 +98,8 @@ export function SettingsView({
           <p>Дополнительные программы и настройки приложения.</p>
         </div>
       </header>
+
+      {status ? <p className="settings-status" role="status">{status}</p> : null}
 
       <section className="settings-card">
         <div className="settings-icon"><Building2 /></div>
@@ -51,7 +117,7 @@ export function SettingsView({
         <div>
           <h2>Дата старта</h2>
           <p>Сегодняшнее задание рассчитывается относительно этой даты.</p>
-          <form className="inline-form" onSubmit={handleSubmit}>
+          <form className="inline-form" onSubmit={handleDateSubmit}>
             <TextInput
               className="start-date-input"
               type="date"
@@ -61,8 +127,58 @@ export function SettingsView({
               size="md"
               required
             />
-            <Button className="primary-button" type="submit">Сохранить</Button>
+            <Button className="primary-button" type="submit" loading={busy === "date"}>Сохранить</Button>
           </form>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-icon"><Bell /></div>
+        <div>
+          <h2>Ежедневное напоминание</h2>
+          <p>{nativeReminders ? "Android напомнит выделить 120 минут на подготовку." : "Локальные напоминания доступны в APK."}</p>
+          <div className="settings-controls">
+            <Switch
+              checked={reminderEnabled}
+              disabled={!nativeReminders || busy === "reminder"}
+              label="Напоминать каждый день"
+              onChange={(event) => void handleReminderToggle(event.currentTarget.checked)}
+            />
+            <TextInput
+              type="time"
+              value={reminderTime}
+              disabled={!nativeReminders || !reminderEnabled}
+              aria-label="Время напоминания"
+              onChange={(event) => setReminderTime(event.currentTarget.value)}
+            />
+            <Button
+              className="secondary-button"
+              type="button"
+              variant="default"
+              loading={busy === "reminder"}
+              disabled={!nativeReminders || !reminderEnabled}
+              onClick={() => void saveReminder()}
+            >
+              Сохранить время
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-icon"><Download /></div>
+        <div>
+          <h2>Экспорт и восстановление</h2>
+          <p>JSON-бэкап содержит прогресс, решения, AI-статьи, чаты и мок-интервью. Пароль и адрес API не экспортируются.</p>
+          <div className="settings-controls">
+            <Button className="primary-button" type="button" leftSection={<Download size={17} />} loading={busy === "export"} onClick={() => void handleExport()}>
+              Создать бэкап
+            </Button>
+            <Button className="secondary-button" type="button" variant="default" leftSection={<Upload size={17} />} loading={busy === "import"} onClick={() => fileInputRef.current?.click()}>
+              Восстановить JSON
+            </Button>
+            <input ref={fileInputRef} hidden type="file" accept="application/json,.json" onChange={(event) => void handleImport(event)} />
+          </div>
         </div>
       </section>
 

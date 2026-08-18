@@ -151,6 +151,7 @@ export function AlgorithmsView({
                     includeCustomTask={false}
                     onUpdateTask={onUpdateTask}
                     progress={progressEntry}
+                    runner={task.block.exercise.runner}
                     taskId={task.id}
                     taskTitle={task.block.title}
                   />

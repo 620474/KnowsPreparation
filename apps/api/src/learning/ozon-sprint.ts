@@ -1,4 +1,5 @@
 import type { StudyBlock, StudyBlockKind, StudyDay, StudyExercise } from "./curriculum";
+import { getExerciseRunner } from "./exercise-runners";
 
 interface SprintBlockDefinition {
   title: string;
@@ -314,15 +315,20 @@ const createBlock = (
   kind: StudyBlockKind,
   minutes: number,
   definition: SprintBlockDefinition,
-): StudyBlock => ({
-  id: `${dayId}-${suffix}`,
-  kind,
-  title: definition.title,
-  description: definition.description,
-  minutes,
-  resourceIds: [...definition.resourceIds],
-  exercise: definition.exercise,
-});
+): StudyBlock => {
+  const id = `${dayId}-${suffix}`;
+  return {
+    id,
+    kind,
+    title: definition.title,
+    description: definition.description,
+    minutes,
+    resourceIds: [...definition.resourceIds],
+    exercise: definition.exercise
+      ? { ...definition.exercise, runner: getExerciseRunner(id) }
+      : undefined,
+  };
+};
 
 export const OZON_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => {
   const dayNumber = index + 1;

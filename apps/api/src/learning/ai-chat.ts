@@ -80,7 +80,7 @@ export function buildAiChatContext({
   return sections.join("\n\n").slice(0, 30_000);
 }
 
-function buildInterviewSprintAiChatContext(
+export function buildInterviewSprintAiChatContext(
   company: string,
   {
     day,
