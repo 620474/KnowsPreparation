@@ -216,7 +216,7 @@ export function AiCourseView({
 
           <section className="ai-course-list" aria-label="Темы AI-курса">
             {course.items.map((item, index) => {
-              const lesson = data.ai.lessons[item.id];
+              const lesson = data.ai.lessons.course[item.id];
               const isGenerating = generatingLessonId === item.id;
               return (
                 <article className={lesson ? "ai-course-item ready" : "ai-course-item"} key={item.id}>

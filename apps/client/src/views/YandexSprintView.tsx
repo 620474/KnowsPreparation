@@ -65,7 +65,7 @@ export function YandexSprintView({
   onUpdateTask,
 }: YandexSprintViewProps) {
   const sprintDays = providedSprintDays ?? data.yandexSprint ?? [];
-  const lessons = providedLessons ?? data.ai.yandexLessons;
+  const lessons = providedLessons ?? data.ai.lessons.yandex;
   const allBlocks = sprintDays.flatMap((day) => day.blocks);
   const completedBlocks = allBlocks.filter(
     (block) => data.progress.tasks[block.id]?.completed,

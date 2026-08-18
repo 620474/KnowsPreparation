@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildAiChatContext,
-  buildOzonAiChatContext,
-  buildYandexAiChatContext,
-} from "./ai-chat";
+import { buildAiChatContext, buildTrackAiChatContext } from "./ai-chat";
 import type { StudyDay } from "./curriculum";
+import { getStaticTrack } from "./track-registry";
 import type { AiCourse, AiCourseItem, AiLesson } from "./schemas/ai-course.schema";
 
 const item: AiCourseItem = {
@@ -118,14 +115,14 @@ describe("buildAiChatContext", () => {
       ],
     };
 
-    const context = buildYandexAiChatContext({
+    const context = buildTrackAiChatContext(getStaticTrack("yandex").chatGoal, {
       day,
       block: day.blocks[0]!,
       lesson: null,
       resources: [],
     });
 
-    expect(context).toContain("frontend-собеседование в Яндекс");
+    expect(context).toContain("frontend-собеседование в Яндексе");
     expect(context).toContain("Сложность Array, Object, Map и Set");
     expect(context).toContain("Найди самый частый элемент");
     expect(context).toContain("Полный текст урока ещё не сгенерирован");
@@ -155,7 +152,7 @@ describe("buildAiChatContext", () => {
       ],
     };
 
-    const context = buildOzonAiChatContext({
+    const context = buildTrackAiChatContext(getStaticTrack("ozon").chatGoal, {
       day,
       block: day.blocks[0]!,
       lesson: null,
@@ -165,5 +162,23 @@ describe("buildAiChatContext", () => {
     expect(context).toContain("frontend-собеседование в Ozon");
     expect(context).toContain("Разворот 32-битного числа");
     expect(context).toContain("Разверни цифры числа");
+  });
+
+  it("builds context for a curriculum block without an exercise", () => {
+    const track = getStaticTrack("curriculum");
+    const day = track.days[0];
+    const block = day?.blocks[0];
+    if (!day || !block) throw new Error("Curriculum must contain blocks");
+
+    const context = buildTrackAiChatContext(track.chatGoal, {
+      day,
+      block,
+      lesson: null,
+      resources: [],
+    });
+
+    expect(context).toContain("12-недельную программу подготовки");
+    expect(context).toContain(block.title);
+    expect(context).not.toContain("Исходная задача");
   });
 });

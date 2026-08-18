@@ -5,7 +5,7 @@ import { AiLessonContent } from "./AiLessonContent";
 import { LessonQuiz } from "./LessonQuiz";
 import { ResourceLinks } from "./ResourceLinks";
 import type {
-  AiChatScope,
+  TrackKey,
   AiLesson,
   AiLessonQuestionContext,
   LearningResource,
@@ -17,7 +17,7 @@ import type { LocalPracticeDraft } from "../lib/practice-drafts";
 
 interface AiLessonReaderProps {
   lesson: AiLesson;
-  scope: AiChatScope;
+  track: TrackKey;
   eyebrow: string;
   title: string;
   description: string;
@@ -40,7 +40,7 @@ interface AiLessonReaderProps {
 
 export function AiLessonReader({
   lesson,
-  scope,
+  track,
   eyebrow,
   title,
   description,
@@ -105,7 +105,7 @@ export function AiLessonReader({
           <AiLessonContent
             lesson={lesson}
             practiceProgress={practiceProgress}
-            scope={scope}
+            track={track}
             onAsk={onAsk}
             onSavePractice={onSavePractice}
           />

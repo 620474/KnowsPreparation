@@ -1,5 +1,5 @@
 import type {
-  AiChatScope,
+  TrackKey,
   QuestionProgress,
   ReviewRating,
   SettingsPatch,
@@ -26,7 +26,7 @@ export type ReviewMutationVariables = {
   operationId: string;
 };
 export type QuizMutationVariables = {
-  scope: AiChatScope;
+  track: TrackKey;
   itemId: string;
   answers: Array<{ questionId: string; selectedOptionIndex: number }>;
   operationId: string;

@@ -5,6 +5,7 @@ import { AuthModule } from "../auth/auth.module";
 import { AiContentService } from "./ai-content.service";
 import { LearningBackupService } from "./learning-backup.service";
 import { LearningBootstrapService } from "./learning-bootstrap.service";
+import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
@@ -58,6 +59,7 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
     AiContentService,
     LearningBackupService,
     LearningBootstrapService,
+    LearningCleanupService,
     LearningService,
   ],
 })

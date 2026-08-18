@@ -37,6 +37,8 @@ import {
 import { LearningService } from "./learning.service";
 import { LearningBackupService } from "./learning-backup.service";
 import { LearningBootstrapService } from "./learning-bootstrap.service";
+import { ParseTrackKeyPipe } from "./parse-track-key.pipe";
+import type { TrackKey } from "./track-registry";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning")
@@ -48,12 +50,6 @@ export class LearningController {
     private readonly bootstrapService: LearningBootstrapService,
     private readonly backupService: LearningBackupService,
   ) {}
-
-  @Get("bootstrap")
-  @Header("Cache-Control", "private, no-store")
-  bootstrap() {
-    return this.bootstrapService.getLegacyBootstrap();
-  }
 
   @Get("bootstrap/content")
   bootstrapContent(@Res({ passthrough: true }) response: Response) {
@@ -86,187 +82,82 @@ export class LearningController {
     return this.learningService.generateAiCourse(dto);
   }
 
-  @Post("ai-course/lessons/:itemId/generate")
+  @Post("tracks/:trackKey/items/:itemId/lesson")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  generateAiLesson(@Param("itemId") itemId: string) {
-    return this.learningService.generateAiLesson(itemId);
+  generateTrackLesson(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
+    @Param("itemId") itemId: string,
+  ) {
+    return this.learningService.generateTrackLesson(trackKey, itemId);
   }
 
-  @Post("ai-course/lessons/:itemId/generate/stream")
+  @Post("tracks/:trackKey/items/:itemId/lesson/stream")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  streamAiLesson(@Param("itemId") itemId: string, @Res() response: Response) {
+  streamTrackLesson(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
+    @Param("itemId") itemId: string,
+    @Res() response: Response,
+  ) {
     return this.streamResponse(response, (onDelta, signal) =>
-      this.learningService.generateAiLesson(itemId, onDelta, signal),
+      this.learningService.generateTrackLesson(trackKey, itemId, onDelta, signal),
     );
   }
 
-  @Post("yandex-sprint/blocks/:blockId/lesson/generate")
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  generateYandexLesson(@Param("blockId") blockId: string) {
-    return this.learningService.generateYandexLesson(blockId);
-  }
-
-  @Post("yandex-sprint/blocks/:blockId/lesson/generate/stream")
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  streamYandexLesson(@Param("blockId") blockId: string, @Res() response: Response) {
-    return this.streamResponse(response, (onDelta, signal) =>
-      this.learningService.generateYandexLesson(blockId, onDelta, signal),
-    );
-  }
-
-  @Post("ozon-sprint/blocks/:blockId/lesson/generate")
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  generateOzonLesson(@Param("blockId") blockId: string) {
-    return this.learningService.generateOzonLesson(blockId);
-  }
-
-  @Post("ozon-sprint/blocks/:blockId/lesson/generate/stream")
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  streamOzonLesson(@Param("blockId") blockId: string, @Res() response: Response) {
-    return this.streamResponse(response, (onDelta, signal) =>
-      this.learningService.generateOzonLesson(blockId, onDelta, signal),
-    );
-  }
-
-  @Post("ai-course/lessons/:itemId/quiz")
-  submitAiLessonQuiz(
+  @Post("tracks/:trackKey/items/:itemId/quiz")
+  submitTrackQuiz(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
     @Body() dto: SubmitLessonQuizDto,
   ) {
-    return this.learningService.submitAiLessonQuiz(itemId, dto);
+    return this.learningService.submitTrackQuiz(trackKey, itemId, dto);
   }
 
-  @Post("yandex-sprint/blocks/:blockId/quiz")
-  submitYandexLessonQuiz(
-    @Param("blockId") blockId: string,
-    @Body() dto: SubmitLessonQuizDto,
-  ) {
-    return this.learningService.submitYandexLessonQuiz(blockId, dto);
-  }
-
-  @Post("ozon-sprint/blocks/:blockId/quiz")
-  submitOzonLessonQuiz(
-    @Param("blockId") blockId: string,
-    @Body() dto: SubmitLessonQuizDto,
-  ) {
-    return this.learningService.submitOzonLessonQuiz(blockId, dto);
-  }
-
-  @Put("ai-course/lessons/:itemId/practice")
-  updateAiPracticeSolution(
+  @Put("tracks/:trackKey/items/:itemId/practice")
+  saveTrackPracticeSolution(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
     @Body() dto: UpdatePracticeSolutionDto,
   ) {
-    return this.learningService.updateAiPracticeSolution(itemId, dto);
+    return this.learningService.saveTrackPracticeSolution(trackKey, itemId, dto);
   }
 
-  @Put("yandex-sprint/blocks/:blockId/practice")
-  updateYandexPracticeSolution(
-    @Param("blockId") blockId: string,
-    @Body() dto: UpdatePracticeSolutionDto,
+  @Get("tracks/:trackKey/items/:itemId/chat")
+  getTrackChat(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
+    @Param("itemId") itemId: string,
   ) {
-    return this.learningService.updateYandexPracticeSolution(blockId, dto);
+    return this.learningService.getTrackChat(trackKey, itemId);
   }
 
-  @Put("ozon-sprint/blocks/:blockId/practice")
-  updateOzonPracticeSolution(
-    @Param("blockId") blockId: string,
-    @Body() dto: UpdatePracticeSolutionDto,
-  ) {
-    return this.learningService.updateOzonPracticeSolution(blockId, dto);
-  }
-
-  @Get("ai-course/lessons/:itemId/chat")
-  getAiChat(@Param("itemId") itemId: string) {
-    return this.learningService.getAiChat(itemId);
-  }
-
-  @Post("ai-course/lessons/:itemId/chat")
+  @Post("tracks/:trackKey/items/:itemId/chat")
   @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  sendAiChatMessage(
+  sendTrackChatMessage(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
     @Body() dto: SendAiChatMessageDto,
   ) {
-    return this.learningService.sendAiChatMessage(itemId, dto);
+    return this.learningService.sendTrackChatMessage(trackKey, itemId, dto);
   }
 
-  @Post("ai-course/lessons/:itemId/chat/stream")
+  @Post("tracks/:trackKey/items/:itemId/chat/stream")
   @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  streamAiChatMessage(
+  streamTrackChatMessage(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
     @Body() dto: SendAiChatMessageDto,
     @Res() response: Response,
   ) {
     return this.streamResponse(response, (onDelta, signal) =>
-      this.learningService.sendAiChatMessage(itemId, dto, onDelta, signal),
+      this.learningService.sendTrackChatMessage(trackKey, itemId, dto, onDelta, signal),
     );
   }
 
-  @Delete("ai-course/lessons/:itemId/chat")
-  clearAiChat(@Param("itemId") itemId: string) {
-    return this.learningService.clearAiChat(itemId);
-  }
-
-  @Get("yandex-sprint/blocks/:blockId/chat")
-  getYandexAiChat(@Param("blockId") blockId: string) {
-    return this.learningService.getYandexAiChat(blockId);
-  }
-
-  @Post("yandex-sprint/blocks/:blockId/chat")
-  @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  sendYandexAiChatMessage(
-    @Param("blockId") blockId: string,
-    @Body() dto: SendAiChatMessageDto,
+  @Delete("tracks/:trackKey/items/:itemId/chat")
+  clearTrackChat(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
+    @Param("itemId") itemId: string,
   ) {
-    return this.learningService.sendYandexAiChatMessage(blockId, dto);
-  }
-
-  @Post("yandex-sprint/blocks/:blockId/chat/stream")
-  @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  streamYandexAiChatMessage(
-    @Param("blockId") blockId: string,
-    @Body() dto: SendAiChatMessageDto,
-    @Res() response: Response,
-  ) {
-    return this.streamResponse(response, (onDelta, signal) =>
-      this.learningService.sendYandexAiChatMessage(blockId, dto, onDelta, signal),
-    );
-  }
-
-  @Delete("yandex-sprint/blocks/:blockId/chat")
-  clearYandexAiChat(@Param("blockId") blockId: string) {
-    return this.learningService.clearYandexAiChat(blockId);
-  }
-
-  @Get("ozon-sprint/blocks/:blockId/chat")
-  getOzonAiChat(@Param("blockId") blockId: string) {
-    return this.learningService.getOzonAiChat(blockId);
-  }
-
-  @Post("ozon-sprint/blocks/:blockId/chat")
-  @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  sendOzonAiChatMessage(
-    @Param("blockId") blockId: string,
-    @Body() dto: SendAiChatMessageDto,
-  ) {
-    return this.learningService.sendOzonAiChatMessage(blockId, dto);
-  }
-
-  @Post("ozon-sprint/blocks/:blockId/chat/stream")
-  @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  streamOzonAiChatMessage(
-    @Param("blockId") blockId: string,
-    @Body() dto: SendAiChatMessageDto,
-    @Res() response: Response,
-  ) {
-    return this.streamResponse(response, (onDelta, signal) =>
-      this.learningService.sendOzonAiChatMessage(blockId, dto, onDelta, signal),
-    );
-  }
-
-  @Delete("ozon-sprint/blocks/:blockId/chat")
-  clearOzonAiChat(@Param("blockId") blockId: string) {
-    return this.learningService.clearOzonAiChat(blockId);
+    return this.learningService.clearTrackChat(trackKey, itemId);
   }
 
   @Patch("settings")

@@ -1,10 +1,58 @@
 import { QUESTION_BANK } from "./curriculum";
+import { TRACK_KEYS, type TrackKey, type TrackRecord } from "@prep/contracts";
+
 import type { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import type { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import type { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import type { MockInterview } from "./schemas/mock-interview.schema";
 import type { QuestionProgress } from "./schemas/question-progress.schema";
-import { findSprintTrackByCourse } from "./track-registry";
+import { findStaticTrackByCourse } from "./track-registry";
+
+interface TrackScopedDocument {
+  courseKey: string;
+  courseVersion: number;
+  itemId: string;
+}
+
+/** Определяет, какому треку принадлежит документ, или null для устаревших версий. */
+function resolveTrackKey(
+  document: TrackScopedDocument,
+  aiCourse: AiCourse | null,
+): TrackKey | null {
+  const staticTrack = findStaticTrackByCourse(
+    document.courseKey,
+    document.courseVersion,
+  );
+  if (staticTrack) return staticTrack.key;
+  if (
+    aiCourse &&
+    document.courseKey === aiCourse.key &&
+    document.courseVersion === aiCourse.version
+  ) {
+    return "course";
+  }
+  return null;
+}
+
+/**
+ * Раскладывает документы по трекам. Документы отсортированы по убыванию
+ * updatedAt, поэтому первым в каждый itemId попадает самый свежий.
+ */
+function groupByTrack<TDocument extends TrackScopedDocument, TResult>(
+  documents: TDocument[],
+  aiCourse: AiCourse | null,
+  serialize: (document: TDocument) => TResult,
+): TrackRecord<TResult> {
+  const result = Object.fromEntries(
+    TRACK_KEYS.map((track) => [track, {}]),
+  ) as TrackRecord<TResult>;
+  for (const document of documents) {
+    const track = resolveTrackKey(document, aiCourse);
+    if (!track || result[track][document.itemId]) continue;
+    result[track][document.itemId] = serialize(document);
+  }
+  return result;
+}
 
 export function serializeAiCourse(course: AiCourse) {
   return {
@@ -63,27 +111,7 @@ export function serializePracticeProgressCollection(
   progresses: AiPracticeProgress[],
   aiCourse: AiCourse | null,
 ) {
-  const result = {
-    course: {} as Record<string, ReturnType<typeof serializePracticeProgress>>,
-    yandex: {} as Record<string, ReturnType<typeof serializePracticeProgress>>,
-    ozon: {} as Record<string, ReturnType<typeof serializePracticeProgress>>,
-  };
-  for (const progress of progresses) {
-    const sprintTrack = findSprintTrackByCourse(
-      progress.courseKey,
-      progress.courseVersion,
-    );
-    const scope = sprintTrack
-      ? sprintTrack.scope
-      : aiCourse &&
-          progress.courseKey === aiCourse.key &&
-          progress.courseVersion === aiCourse.version
-        ? "course"
-        : null;
-    if (!scope || result[scope][progress.itemId]) continue;
-    result[scope][progress.itemId] = serializePracticeProgress(progress);
-  }
-  return result;
+  return groupByTrack(progresses, aiCourse, serializePracticeProgress);
 }
 
 export function serializeQuestionProgress(question: QuestionProgress) {
@@ -122,27 +150,15 @@ export function serializeQuizProgressCollection(
   progresses: AiQuizProgress[],
   aiCourse: AiCourse | null,
 ) {
-  const result = {
-    course: {} as Record<string, ReturnType<typeof serializeQuizProgress>>,
-    yandex: {} as Record<string, ReturnType<typeof serializeQuizProgress>>,
-    ozon: {} as Record<string, ReturnType<typeof serializeQuizProgress>>,
-  };
-  for (const progress of progresses) {
-    const sprintTrack = findSprintTrackByCourse(
-      progress.courseKey,
-      progress.courseVersion,
-    );
-    const scope = sprintTrack
-      ? sprintTrack.scope
-      : aiCourse &&
-          progress.courseKey === aiCourse.key &&
-          progress.courseVersion === aiCourse.version
-        ? "course"
-        : null;
-    if (!scope || result[scope][progress.itemId]) continue;
-    result[scope][progress.itemId] = serializeQuizProgress(progress);
-  }
-  return result;
+  return groupByTrack(progresses, aiCourse, serializeQuizProgress);
+}
+
+/** Раскладывает сгенерированные уроки по трекам для ответа bootstrap. */
+export function serializeLessonCollection(
+  lessons: AiLesson[],
+  aiCourse: AiCourse | null,
+) {
+  return groupByTrack(lessons, aiCourse, serializeAiLesson);
 }
 
 export function serializeMockInterview(interview: MockInterview & { _id: unknown }) {

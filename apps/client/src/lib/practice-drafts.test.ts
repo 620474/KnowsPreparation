@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { AiLesson, PracticeSolutionProgress } from "../types";
 import {
   markPracticeDraftEdited,
+  migrateStoredPracticeDraft,
   reconcilePracticeDraft,
   reconcilePracticeSaveResult,
 } from "./practice-drafts";
@@ -41,6 +42,24 @@ const serverProgress = (revision: number, solution: string): PracticeSolutionPro
 });
 
 describe("practice draft reconciliation", () => {
+  it("migrates a dirty draft saved with the legacy scope field", () => {
+    const migrated = migrateStoredPracticeDraft({
+      key: "yandex:1:item-1:1",
+      scope: "yandex",
+      courseVersion: 1,
+      itemId: "item-1",
+      lessonVersion: 1,
+      solution: "offline edit",
+      revision: 0,
+      baseRevision: 0,
+      dirty: true,
+      updatedAt: "2026-08-18T10:00:00.000Z",
+    });
+
+    expect(migrated).toMatchObject({ track: "yandex", dirty: true });
+    expect(migrated).not.toHaveProperty("scope");
+  });
+
   it("replaces a clean local copy with a newer server revision", () => {
     const local = reconcilePracticeDraft(
       "course",

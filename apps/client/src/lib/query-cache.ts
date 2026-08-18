@@ -4,14 +4,17 @@ import {
   type DehydratedState,
   type QueryClient,
 } from "@tanstack/react-query";
+import { TRACK_KEYS } from "@prep/contracts";
 
 import { isOfflineMutationKey } from "./offline-mutation-keys";
 import { openClientDatabase, QUERY_CACHE_STORE } from "./client-database";
 
 const CACHE_KEY = "main";
+const CACHE_VERSION = 2;
 const MAX_AGE = 7 * 24 * 60 * 60 * 1_000;
 
-interface PersistedQueryCache {
+export interface PersistedQueryCache {
+  version?: number;
   timestamp: number;
   state: DehydratedState;
 }
@@ -41,11 +44,52 @@ const writeCache = async (cache: PersistedQueryCache) => {
   database.close();
 };
 
+const migrateMutationVariables = (variables: unknown) => {
+  if (!variables || typeof variables !== "object" || Array.isArray(variables)) {
+    return variables;
+  }
+  const record = variables as Record<string, unknown>;
+  if (
+    "track" in record ||
+    typeof record.scope !== "string" ||
+    !(TRACK_KEYS as readonly string[]).includes(record.scope)
+  ) {
+    return variables;
+  }
+  const { scope, ...rest } = record;
+  return { ...rest, track: scope };
+};
+
+export function migratePersistedQueryCache(
+  cache: PersistedQueryCache,
+): PersistedQueryCache {
+  if (cache.version === CACHE_VERSION) return cache;
+  return {
+    version: CACHE_VERSION,
+    timestamp: cache.timestamp,
+    state: {
+      ...cache.state,
+      queries: cache.state.queries.filter((query) => query.queryKey[0] !== "bootstrap"),
+      mutations: cache.state.mutations.map((mutation) => ({
+        ...mutation,
+        state: {
+          ...mutation.state,
+          variables: migrateMutationVariables(mutation.state.variables),
+        },
+      })),
+    },
+  };
+}
+
 export async function restoreQueryCache(queryClient: QueryClient) {
   if (!("indexedDB" in window)) return;
   try {
     const cache = await readCache();
-    if (cache && isFreshQueryCache(cache.timestamp)) hydrate(queryClient, cache.state);
+    if (cache && isFreshQueryCache(cache.timestamp)) {
+      const migrated = migratePersistedQueryCache(cache);
+      hydrate(queryClient, migrated.state);
+      if (migrated !== cache) await writeCache(migrated);
+    }
   } catch {
     return;
   }
@@ -64,7 +108,9 @@ export function subscribeToQueryCache(queryClient: QueryClient) {
           return Boolean(query.state.data) && (rootKey === "bootstrap" || rootKey === "ai-chat");
         },
       });
-      void writeCache({ timestamp: Date.now(), state }).catch(() => undefined);
+      void writeCache({ version: CACHE_VERSION, timestamp: Date.now(), state }).catch(
+        () => undefined,
+      );
     }, 300);
   };
   const unsubscribeQueries = queryClient.getQueryCache().subscribe(scheduleWrite);

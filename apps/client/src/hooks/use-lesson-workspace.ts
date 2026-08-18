@@ -1,5 +1,55 @@
 import type { AppView, LessonRouteTarget } from "../lib/app-route";
-import type { BootstrapData } from "../types";
+import { trackForView } from "../lib/app-route";
+import type { BootstrapData, StudyDay, TrackKey } from "../types";
+
+interface ChatTopic {
+  id: string;
+  title: string;
+  objective: string;
+}
+
+interface TrackItem {
+  topic: ChatTopic;
+  eyebrow: string;
+  description: string;
+  resourceIds: string[];
+}
+
+/** Темы дней превращаются в плоский список блоков, доступных для разбора. */
+function collectDayItems(days: StudyDay[], eyebrowPrefix: string): TrackItem[] {
+  return days.flatMap((day) =>
+    day.blocks
+      .filter((block) => block.kind !== "review")
+      .map((block) => ({
+        topic: {
+          id: block.id,
+          title: block.title,
+          objective: `${day.title}. ${block.description}`,
+        },
+        eyebrow: `${eyebrowPrefix} · день ${day.dayNumber}`,
+        description: block.description,
+        resourceIds: block.resourceIds,
+      })),
+  );
+}
+
+function collectTrackItems(data: BootstrapData): Record<TrackKey, TrackItem[]> {
+  return {
+    course:
+      data.ai.course?.items.map((item) => ({
+        topic: { id: item.id, title: item.title, objective: item.objective },
+        eyebrow: "Персональный AI-курс",
+        description: item.objective,
+        resourceIds: item.resourceIds,
+      })) ?? [],
+    curriculum: collectDayItems(
+      data.curriculum.flatMap((week) => week.days),
+      "Учебный план",
+    ),
+    yandex: collectDayItems(data.yandexSprint, "Яндекс"),
+    ozon: collectDayItems(data.ozonSprint, "Ozon"),
+  };
+}
 
 export function buildLessonWorkspace(
   data: BootstrapData,
@@ -7,107 +57,38 @@ export function buildLessonWorkspace(
   lessonReader: LessonRouteTarget | null,
   chatItemId: string | null,
 ) {
-  const courseChatTopics =
-    data.ai.course?.items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      objective: item.objective,
-    })) ?? [];
-  const yandexChatTopics = data.yandexSprint.flatMap((day) =>
-    day.blocks
-      .filter((block) => block.kind !== "review")
-      .map((block) => ({
-        id: block.id,
-        title: block.title,
-        objective: `${day.title}. ${block.description}`,
-      })),
-  );
-  const ozonChatTopics = data.ozonSprint.flatMap((day) =>
-    day.blocks
-      .filter((block) => block.kind !== "review")
-      .map((block) => ({
-        id: block.id,
-        title: block.title,
-        objective: `${day.title}. ${block.description}`,
-      })),
-  );
-  const readerCourseItem =
-    lessonReader?.scope === "course"
-      ? data.ai.course?.items.find((item) => item.id === lessonReader.itemId)
-      : undefined;
-  const readerYandexEntry =
-    lessonReader?.scope === "yandex"
-      ? data.yandexSprint
-          .flatMap((day) => day.blocks.map((block) => ({ day, block })))
-          .find(({ block }) => block.id === lessonReader.itemId)
-      : undefined;
-  const readerOzonEntry =
-    lessonReader?.scope === "ozon"
-      ? data.ozonSprint
-          .flatMap((day) => day.blocks.map((block) => ({ day, block })))
-          .find(({ block }) => block.id === lessonReader.itemId)
-      : undefined;
+  const trackItems = collectTrackItems(data);
+  const readerItem = lessonReader
+    ? trackItems[lessonReader.track].find(
+        (item) => item.topic.id === lessonReader.itemId,
+      )
+    : undefined;
+
   const readerLesson = lessonReader
-    ? lessonReader.scope === "yandex"
-      ? data.ai.yandexLessons[lessonReader.itemId]
-      : lessonReader.scope === "ozon"
-        ? data.ai.ozonLessons[lessonReader.itemId]
-        : data.ai.lessons[lessonReader.itemId]
+    ? data.ai.lessons[lessonReader.track]?.[lessonReader.itemId]
     : undefined;
   const readerQuizProgress = lessonReader
-    ? data.ai.quizProgress[lessonReader.scope]?.[lessonReader.itemId]
+    ? data.ai.quizProgress[lessonReader.track]?.[lessonReader.itemId]
     : undefined;
   const readerPracticeProgress = lessonReader
-    ? data.ai.practiceProgress[lessonReader.scope]?.[lessonReader.itemId]
+    ? data.ai.practiceProgress[lessonReader.track]?.[lessonReader.itemId]
     : undefined;
-  const readerMetadata = readerCourseItem
+  const readerMetadata = readerItem
     ? {
-        eyebrow: "Персональный AI-курс",
-        title: readerCourseItem.title,
-        description: readerCourseItem.objective,
-        resourceIds: readerCourseItem.resourceIds,
+        eyebrow: readerItem.eyebrow,
+        title: readerItem.topic.title,
+        description: readerItem.description,
+        resourceIds: readerItem.resourceIds,
       }
-    : readerYandexEntry
-      ? {
-          eyebrow: `Яндекс · день ${readerYandexEntry.day.dayNumber}`,
-          title: readerYandexEntry.block.title,
-          description: readerYandexEntry.block.description,
-          resourceIds: readerYandexEntry.block.resourceIds,
-        }
-      : readerOzonEntry
-        ? {
-            eyebrow: `Ozon · день ${readerOzonEntry.day.dayNumber}`,
-            title: readerOzonEntry.block.title,
-            description: readerOzonEntry.block.description,
-            resourceIds: readerOzonEntry.block.resourceIds,
-          }
-        : undefined;
-  const chatScope =
-    lessonReader?.scope ??
-    (activeView === "yandex"
-      ? "yandex"
-      : activeView === "ozon"
-        ? "ozon"
-        : "course");
-  const chatTopics = lessonReader
-    ? lessonReader.scope === "yandex"
-      ? yandexChatTopics
-      : lessonReader.scope === "ozon"
-        ? ozonChatTopics
-        : courseChatTopics
-    : activeView === "yandex"
-      ? yandexChatTopics
-      : activeView === "ozon"
-        ? ozonChatTopics
-        : activeView === "ai-course"
-          ? courseChatTopics
-          : [];
-  const generatedChatLessons =
-    chatScope === "yandex"
-      ? data.ai.yandexLessons
-      : chatScope === "ozon"
-        ? data.ai.ozonLessons
-        : data.ai.lessons;
+    : undefined;
+
+  // Читалка урока задаёт трек напрямую, иначе его определяет открытый экран.
+  const chatTrack = lessonReader?.track ?? trackForView(activeView) ?? "course";
+  const chatTopics =
+    lessonReader || trackForView(activeView)
+      ? trackItems[chatTrack].map((item) => item.topic)
+      : [];
+  const generatedChatLessons = data.ai.lessons[chatTrack] ?? {};
   const fallbackChatItemId =
     chatTopics.find((item) => generatedChatLessons[item.id])?.id ??
     chatTopics[0]?.id ??
@@ -122,7 +103,7 @@ export function buildLessonWorkspace(
     readerQuizProgress,
     readerPracticeProgress,
     readerMetadata,
-    chatScope,
+    chatTrack,
     chatTopics,
     activeChatItemId,
   };

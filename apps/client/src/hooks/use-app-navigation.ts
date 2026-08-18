@@ -4,12 +4,12 @@ import { buildAiChatDraft } from "../lib/ai-chat-draft";
 import {
   formatAppRoute,
   parseAppRoute,
-  viewForLessonScope,
+  viewForTrack,
   type AppRoute,
   type AppView,
   type LessonRouteTarget,
 } from "../lib/app-route";
-import type { AiChatScope, AiLessonQuestionContext } from "../types";
+import type { TrackKey, AiLessonQuestionContext } from "../types";
 
 type NavigationMode = "push" | "replace";
 
@@ -56,7 +56,7 @@ export function useAppNavigation() {
   const navigateToRoute = useCallback(
     (route: AppRoute, mode: NavigationMode = "push") => {
       const lessonMarker = route.lessonReader
-        ? `${route.lessonReader.scope}:${route.lessonReader.itemId}`
+        ? `${route.lessonReader.track}:${route.lessonReader.itemId}`
         : undefined;
       const historyState = { ...(window.history.state ?? {}), lessonReader: lessonMarker };
       const hash = formatAppRoute(route);
@@ -84,17 +84,17 @@ export function useAppNavigation() {
   );
 
   const navigateToLesson = useCallback(
-    (scope: AiChatScope, itemId: string) =>
+    (track: TrackKey, itemId: string) =>
       navigateToRoute({
-        view: viewForLessonScope(scope),
-        lessonReader: { scope, itemId },
+        view: viewForTrack(track),
+        lessonReader: { track, itemId },
       }),
     [navigateToRoute],
   );
 
   const closeLessonReader = useCallback(() => {
     const marker = lessonReader
-      ? `${lessonReader.scope}:${lessonReader.itemId}`
+      ? `${lessonReader.track}:${lessonReader.itemId}`
       : undefined;
     if (marker && window.history.state?.lessonReader === marker) {
       window.history.back();

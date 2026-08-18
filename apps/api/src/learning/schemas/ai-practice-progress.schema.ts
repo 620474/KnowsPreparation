@@ -17,7 +17,9 @@ export class AiPracticeProgress {
   @Prop({ required: true })
   lessonVersion!: number;
 
-  @Prop({ required: true, default: "" })
+  // `required` несовместим с пустой строкой: Mongoose считает "" отсутствующим
+  // значением, поэтому очистка решения приводила к ошибке валидации.
+  @Prop({ type: String, default: "" })
   solution!: string;
 
   @Prop({ required: true, default: 0, min: 0 })

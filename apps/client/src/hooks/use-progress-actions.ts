@@ -28,7 +28,7 @@ import {
   writePracticeDraft,
 } from "../lib/practice-drafts";
 import type {
-  AiChatScope,
+  TrackKey,
   AppSettings,
   BootstrapData,
   LessonQuizProgress,
@@ -181,8 +181,8 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.quiz,
-    mutationFn: ({ scope, itemId, answers, operationId }) =>
-      learningApi.submitLessonQuiz(scope, itemId, answers, operationId),
+    mutationFn: ({ track, itemId, answers, operationId }) =>
+      learningApi.submitLessonQuiz(track, itemId, answers, operationId),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -190,14 +190,14 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
         if (!current) return current;
         const progress = buildOptimisticQuizProgress(current, variables);
         return progress
-          ? updateQuizProgress(current, variables.scope, variables.itemId, progress)
+          ? updateQuizProgress(current, variables.track, variables.itemId, progress)
           : current;
       });
       return { previous };
     },
-    onSuccess: (progress, { scope, itemId }) => {
+    onSuccess: (progress, { track, itemId }) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
-        current ? updateQuizProgress(current, scope, itemId, progress) : current,
+        current ? updateQuizProgress(current, track, itemId, progress) : current,
       );
     },
     onError: (error, _variables, context) => {
@@ -244,7 +244,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
       if (!draft.dirty || !online) return null;
       try {
         const result = await learningApi.savePracticeSolution(
-          draft.scope,
+          draft.track,
           draft.itemId,
           draft.lessonVersion,
           draft.solution,
@@ -256,7 +256,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
             current
               ? updatePracticeProgress(
                   current,
-                  draft.scope,
+                  draft.track,
                   draft.itemId,
                   result.progress!,
                 )
@@ -332,12 +332,12 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
   };
 
   const submitLessonQuiz = async (
-    scope: AiChatScope,
+    track: TrackKey,
     itemId: string,
     answers: QuizMutationVariables["answers"],
   ) => {
     setError("");
-    const variables = { scope, itemId, answers, operationId: createOperationId() };
+    const variables = { track, itemId, answers, operationId: createOperationId() };
     if (!online) {
       const current = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
       const optimisticProgress = current

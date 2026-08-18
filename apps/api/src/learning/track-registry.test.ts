@@ -1,33 +1,66 @@
 import { describe, expect, it } from "vitest";
 
+import { CURRICULUM, TASK_IDS } from "./curriculum";
 import {
-  findSprintTrackByCourse,
-  getSprintBlock,
+  CURRICULUM_DAYS,
+  findStaticTrackByCourse,
+  getStaticTrackItem,
+  isStaticTrackKey,
+  isTrackKey,
   SPRINT_TASK_IDS,
-  SPRINT_TRACK_LIST,
+  STATIC_TRACK_LIST,
+  TRACK_KEYS,
 } from "./track-registry";
 
-describe("sprint track registry", () => {
-  it("keeps course keys and task identifiers unique", () => {
-    expect(new Set(SPRINT_TRACK_LIST.map((track) => track.courseKey)).size).toBe(
-      SPRINT_TRACK_LIST.length,
+describe("track registry", () => {
+  it("exposes four tracks with unique course keys", () => {
+    expect(TRACK_KEYS).toEqual(["course", "curriculum", "yandex", "ozon"]);
+    expect(STATIC_TRACK_LIST).toHaveLength(3);
+    expect(new Set(STATIC_TRACK_LIST.map((track) => track.courseKey)).size).toBe(
+      STATIC_TRACK_LIST.length,
     );
-    const taskCount = SPRINT_TRACK_LIST.reduce(
-      (total, track) =>
-        total + track.days.reduce((sum, day) => sum + day.blocks.length, 0),
-      0,
-    );
-    expect(SPRINT_TASK_IDS.size).toBe(taskCount);
+    expect(STATIC_TRACK_LIST.every((track) => track.days.length > 0)).toBe(true);
   });
 
-  it("finds blocks and persisted lesson scopes", () => {
-    const yandex = SPRINT_TRACK_LIST.find((track) => track.scope === "yandex");
-    const blockId = yandex?.days[0]?.blocks[0]?.id;
-    if (!yandex || !blockId) throw new Error("Yandex track must contain a block");
+  it("recognises track keys and separates the dynamic course", () => {
+    expect(isTrackKey("curriculum")).toBe(true);
+    expect(isTrackKey("unknown")).toBe(false);
+    expect(isStaticTrackKey("course")).toBe(false);
+    expect(isStaticTrackKey("ozon")).toBe(true);
+  });
 
-    expect(getSprintBlock("yandex", blockId).block.id).toBe(blockId);
-    expect(findSprintTrackByCourse(yandex.courseKey, yandex.courseVersion)?.scope).toBe(
-      "yandex",
+  it("flattens the curriculum into all study days", () => {
+    const expectedDays = CURRICULUM.reduce((sum, week) => sum + week.days.length, 0);
+    expect(CURRICULUM_DAYS).toHaveLength(expectedDays);
+    expect(new Set(CURRICULUM_DAYS.map((day) => day.id)).size).toBe(expectedDays);
+  });
+
+  it("keeps sprint task ids separate from curriculum task ids", () => {
+    const sprintCount = STATIC_TRACK_LIST.filter(
+      (track) => track.key !== "curriculum",
+    ).reduce(
+      (sum, track) =>
+        sum + track.days.reduce((daySum, day) => daySum + day.blocks.length, 0),
+      0,
+    );
+    expect(SPRINT_TASK_IDS.size).toBe(sprintCount);
+    expect([...SPRINT_TASK_IDS].some((id) => TASK_IDS.has(id))).toBe(false);
+  });
+
+  it("resolves items for every static track", () => {
+    for (const track of STATIC_TRACK_LIST) {
+      const itemId = track.days[0]?.blocks[0]?.id;
+      if (!itemId) throw new Error(`${track.key} must contain at least one block`);
+      expect(getStaticTrackItem(track.key, itemId).block.id).toBe(itemId);
+      expect(findStaticTrackByCourse(track.courseKey, track.courseVersion)?.key).toBe(
+        track.key,
+      );
+    }
+  });
+
+  it("throws a track specific message for an unknown item", () => {
+    expect(() => getStaticTrackItem("curriculum", "missing")).toThrowError(
+      /учебного плана/,
     );
   });
 });

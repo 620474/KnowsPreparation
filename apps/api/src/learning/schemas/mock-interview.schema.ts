@@ -9,7 +9,9 @@ export class MockInterviewAnswer {
   @Prop({ required: true })
   questionId!: string;
 
-  @Prop({ required: true, default: "" })
+  // Ответ из одних пробелов после trim становится "", а `required` отклоняет
+  // пустую строку и роняет сохранение интервью.
+  @Prop({ type: String, default: "" })
   content!: string;
 }
 

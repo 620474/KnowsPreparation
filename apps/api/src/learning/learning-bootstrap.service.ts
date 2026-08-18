@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 
-import { bootstrapDataSchema } from "@prep/contracts";
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
@@ -15,7 +14,7 @@ import {
 } from "./curriculum";
 import {
   serializeAiCourse,
-  serializeAiLesson,
+  serializeLessonCollection,
   serializeMockInterview,
   serializePracticeProgressCollection,
   serializeQuestionProgress,
@@ -30,12 +29,12 @@ import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
-import { getSprintTrack, SPRINT_TRACK_LIST } from "./track-registry";
+import { getStaticTrack, STATIC_TRACK_LIST } from "./track-registry";
 
 const STATIC_CONTENT = {
   curriculum: CURRICULUM,
-  yandexSprint: getSprintTrack("yandex").days,
-  ozonSprint: getSprintTrack("ozon").days,
+  yandexSprint: getStaticTrack("yandex").days,
+  ozonSprint: getStaticTrack("ozon").days,
   resources: RESOURCES,
   questions: QUESTION_BANK,
   algorithmPatterns: ALGORITHM_PATTERNS,
@@ -100,24 +99,22 @@ export class LearningBootstrapService {
       this.aiCourseModel.findOne({ key: "main" }).lean().exec(),
       this.mockInterviewModel.find().sort({ updatedAt: -1 }).limit(20).lean().exec(),
     ]);
-    const [aiLessons, sprintLessonCollections, quizProgresses, practiceProgresses] = await Promise.all([
-      aiCourse
-        ? this.aiLessonModel
-            .find({ courseKey: aiCourse.key, courseVersion: aiCourse.version })
-            .lean()
-            .exec()
-        : Promise.resolve([]),
-      Promise.all(
-        SPRINT_TRACK_LIST.map((track) =>
-          this.aiLessonModel
-            .find({
-              courseKey: track.courseKey,
-              courseVersion: track.courseVersion,
-            })
-            .lean()
-            .exec(),
-        ),
-      ),
+    // Один запрос на все треки: персональный курс плюс статические программы.
+    const lessonScopes = [
+      ...STATIC_TRACK_LIST.map((track) => ({
+        courseKey: track.courseKey,
+        courseVersion: track.courseVersion,
+      })),
+      ...(aiCourse
+        ? [{ courseKey: aiCourse.key, courseVersion: aiCourse.version }]
+        : []),
+    ];
+    const [lessons, quizProgresses, practiceProgresses] = await Promise.all([
+      this.aiLessonModel
+        .find({ $or: lessonScopes })
+        .sort({ updatedAt: -1 })
+        .lean()
+        .exec(),
       this.aiQuizProgressModel.find().sort({ updatedAt: -1 }).lean().exec(),
       this.aiPracticeProgressModel.find().sort({ updatedAt: -1 }).lean().exec(),
     ]);
@@ -125,18 +122,6 @@ export class LearningBootstrapService {
     if (!settings) {
       throw new InternalServerErrorException("Не удалось создать настройки плана");
     }
-
-    const sprintLessons = Object.fromEntries(
-      SPRINT_TRACK_LIST.map((track, index) => [
-        track.scope,
-        Object.fromEntries(
-          (sprintLessonCollections[index] ?? []).map((lesson) => [
-            lesson.itemId,
-            serializeAiLesson(lesson),
-          ]),
-        ),
-      ]),
-    ) as Record<"yandex" | "ozon", Record<string, ReturnType<typeof serializeAiLesson>>>;
 
     return {
       settings: {
@@ -179,11 +164,7 @@ export class LearningBootstrapService {
         enabled: this.aiContent.enabled,
         model: this.aiContent.model,
         course: aiCourse ? serializeAiCourse(aiCourse) : null,
-        lessons: Object.fromEntries(
-          aiLessons.map((lesson) => [lesson.itemId, serializeAiLesson(lesson)]),
-        ),
-        yandexLessons: sprintLessons.yandex,
-        ozonLessons: sprintLessons.ozon,
+        lessons: serializeLessonCollection(lessons, aiCourse),
         quizProgress: serializeQuizProgressCollection(quizProgresses, aiCourse),
         practiceProgress: serializePracticeProgressCollection(
           practiceProgresses,
@@ -193,8 +174,4 @@ export class LearningBootstrapService {
     };
   }
 
-  async getLegacyBootstrap() {
-    const [content, progress] = await Promise.all([this.getContent(), this.getProgress()]);
-    return bootstrapDataSchema.parse({ ...content, ...progress });
-  }
 }

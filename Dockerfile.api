@@ -3,7 +3,10 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/client/package.json apps/client/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
 RUN npm ci
+COPY packages/contracts packages/contracts
+RUN npm run build -w @prep/contracts
 COPY apps/api apps/api
 RUN npm run build -w @prep/api
 
@@ -13,7 +16,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/client/package.json apps/client/package.json
-RUN npm ci --omit=dev --workspace @prep/api
+COPY packages/contracts/package.json packages/contracts/package.json
+RUN npm ci --omit=dev --workspace @prep/api --workspace @prep/contracts
 COPY --from=build /app/apps/api/dist apps/api/dist
+COPY --from=build /app/packages/contracts/dist packages/contracts/dist
 EXPOSE 3001
 CMD ["node", "apps/api/dist/main.js"]

@@ -976,6 +976,20 @@ p {
   border-color: var(--line-strong);
 }
 
+.plan-block-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.today-lesson-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .plan-block.complete {
   color: var(--complete-text);
   background: rgba(107, 245, 176, 0.06);

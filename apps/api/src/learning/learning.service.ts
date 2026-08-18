@@ -12,7 +12,7 @@ import { isValidObjectId, Model } from "mongoose";
 import { AiContentService, type AiDeltaHandler } from "./ai-content.service";
 import {
   buildAiChatContext,
-  buildInterviewSprintAiChatContext,
+  buildTrackAiChatContext,
 } from "./ai-chat";
 import { selectResourcesForCourseItem, type GeneratedLesson } from "./ai-course";
 import {
@@ -40,6 +40,7 @@ import {
   generateValidatedLesson,
   GeneratedRunnerValidationError,
 } from "./generated-runner";
+import { LearningCleanupService } from "./learning-cleanup.service";
 import {
   serializeAiCourse,
   serializeAiLesson,
@@ -60,9 +61,11 @@ import { TaskProgress } from "./schemas/task-progress.schema";
 import { scheduleQuestionReview } from "./spaced-repetition";
 import { buildTaskProgressUpdate } from "./task-progress";
 import {
-  getSprintBlock,
+  getStaticTrackItem,
+  isStaticTrackKey,
   SPRINT_TASK_IDS,
-  type SprintTrackScope,
+  type StaticTrackKey,
+  type TrackKey,
 } from "./track-registry";
 
 interface AiChatMessageRecord {
@@ -102,6 +105,7 @@ export class LearningService {
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
     private readonly aiContent: AiContentService,
+    private readonly cleanup: LearningCleanupService,
   ) {}
 
   async generateAiCourse(dto: GenerateAiCourseDto) {
@@ -147,27 +151,47 @@ export class LearningService {
     if (!course) {
       throw new InternalServerErrorException("Не удалось сохранить AI-курс");
     }
+    await this.pruneQuietly("course", () =>
+      this.cleanup.pruneCourseVersions(course.key, course.version),
+    );
     return serializeAiCourse(course);
   }
 
-  async generateAiLesson(
+  /**
+   * Уборка устаревших версий не должна ломать успешную генерацию: пользователь
+   * получает урок, а сбой очистки попадает в логи.
+   */
+  private async pruneQuietly(scope: string, prune: () => Promise<unknown>) {
+    try {
+      await prune();
+    } catch (error) {
+      this.logger.warn({
+        event: "version_prune_failed",
+        scope,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /** Единая точка генерации урока для любого трека. */
+  async generateTrackLesson(
+    trackKey: TrackKey,
     itemId: string,
     onDelta?: AiDeltaHandler,
     signal?: AbortSignal,
   ) {
-    const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
-    if (!course) {
-      throw new NotFoundException("Сначала создай AI-курс");
-    }
-    const item = course.items.find((courseItem) => courseItem.id === itemId);
-    if (!item) {
-      throw new NotFoundException("Тема AI-курса не найдена");
-    }
-    const resourceMap = new Map(RESOURCES.map((resource) => [resource.id, resource]));
-    const resources = item.resourceIds.flatMap((resourceId) => {
-      const resource = resourceMap.get(resourceId);
-      return resource ? [resource] : [];
-    });
+    return isStaticTrackKey(trackKey)
+      ? this.generateStaticTrackLesson(trackKey, itemId, onDelta, signal)
+      : this.generateCourseLesson(itemId, onDelta, signal);
+  }
+
+  private async generateCourseLesson(
+    itemId: string,
+    onDelta?: AiDeltaHandler,
+    signal?: AbortSignal,
+  ) {
+    const { course, item } = await this.getCourseItem(itemId);
+    const resources = this.resolveResources(item.resourceIds);
     const progressHandler = this.createSafeLessonProgressHandler(onDelta);
     const generated = await this.generateRunnableLesson(
       "course",
@@ -212,45 +236,32 @@ export class LearningService {
     if (!lesson) {
       throw new InternalServerErrorException("Не удалось сохранить AI-урок");
     }
+    await this.pruneQuietly("course-lesson", () =>
+      this.cleanup.pruneLessonVersions(
+        course.key,
+        course.version,
+        itemId,
+        lesson.version,
+      ),
+    );
     return serializeAiLesson(lesson);
   }
 
-  async generateYandexLesson(
-    blockId: string,
+  private async generateStaticTrackLesson(
+    trackKey: StaticTrackKey,
+    itemId: string,
     onDelta?: AiDeltaHandler,
     signal?: AbortSignal,
   ) {
-    return this.generateSprintLesson("yandex", blockId, onDelta, signal);
-  }
-
-  async generateOzonLesson(
-    blockId: string,
-    onDelta?: AiDeltaHandler,
-    signal?: AbortSignal,
-  ) {
-    return this.generateSprintLesson("ozon", blockId, onDelta, signal);
-  }
-
-  private async generateSprintLesson(
-    trackScope: SprintTrackScope,
-    blockId: string,
-    onDelta?: AiDeltaHandler,
-    signal?: AbortSignal,
-  ) {
-    const { track, day, block } = getSprintBlock(trackScope, blockId);
+    const { track, day, block } = getStaticTrackItem(trackKey, itemId);
     if (block.kind === "review") {
       throw new BadRequestException("Для блока разбора отдельный AI-урок не требуется");
     }
-    const resourceMap = new Map(RESOURCES.map((resource) => [resource.id, resource]));
-    const resources = block.resourceIds.flatMap((resourceId) => {
-      const resource = resourceMap.get(resourceId);
-      return resource ? [resource] : [];
-    });
+    const resources = this.resolveResources(block.resourceIds);
     const progressHandler = this.createSafeLessonProgressHandler(onDelta);
-    const generated = await this.generateRunnableLesson(
-      track.scope,
-      () => this.aiContent.generateSprintLesson(
-        track.company,
+    const generated = await this.generateRunnableLesson(track.key, () =>
+      this.aiContent.generateTrackLesson(
+        track.lessonPrompt,
         day,
         block,
         resources,
@@ -261,7 +272,7 @@ export class LearningService {
     const scope = {
       courseKey: track.courseKey,
       courseVersion: track.courseVersion,
-      itemId: blockId,
+      itemId,
     };
     const current = await this.aiLessonModel.findOne(scope).lean().exec();
     const lesson = await this.aiLessonModel
@@ -284,7 +295,36 @@ export class LearningService {
     if (!lesson) {
       throw new InternalServerErrorException(track.saveLessonError);
     }
+    await this.pruneQuietly(`${track.key}-lesson`, () =>
+      this.cleanup.pruneLessonVersions(
+        scope.courseKey,
+        scope.courseVersion,
+        itemId,
+        lesson.version,
+      ),
+    );
     return serializeAiLesson(lesson);
+  }
+
+  private resolveResources(resourceIds: string[]) {
+    const resourceMap = new Map(RESOURCES.map((resource) => [resource.id, resource]));
+    return resourceIds.flatMap((resourceId) => {
+      const resource = resourceMap.get(resourceId);
+      return resource ? [resource] : [];
+    });
+  }
+
+  /** Находит тему персонального AI-курса вместе с самим курсом. */
+  private async getCourseItem(itemId: string) {
+    const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
+    if (!course) {
+      throw new NotFoundException("Сначала создай AI-курс");
+    }
+    const item = course.items.find((courseItem) => courseItem.id === itemId);
+    if (!item) {
+      throw new NotFoundException("Тема AI-курса не найдена");
+    }
+    return { course, item };
   }
 
   private async generateRunnableLesson(
@@ -313,20 +353,8 @@ export class LearningService {
     return (delta: string) => onDelta(" ".repeat(delta.length));
   }
 
-  async getAiChat(itemId: string) {
-    return this.readAiChat(await this.getAiChatScope(itemId));
-  }
-
-  async getYandexAiChat(blockId: string) {
-    return this.getSprintAiChat("yandex", blockId);
-  }
-
-  async getOzonAiChat(blockId: string) {
-    return this.getSprintAiChat("ozon", blockId);
-  }
-
-  private async getSprintAiChat(trackScope: SprintTrackScope, blockId: string) {
-    return this.readAiChat(await this.getSprintAiChatScope(trackScope, blockId));
+  async getTrackChat(trackKey: TrackKey, itemId: string) {
+    return this.readAiChat(await this.resolveTrackChatScope(trackKey, itemId));
   }
 
   private async readAiChat(scope: AiChatScope) {
@@ -348,42 +376,15 @@ export class LearningService {
     };
   }
 
-  async sendAiChatMessage(
+  async sendTrackChatMessage(
+    trackKey: TrackKey,
     itemId: string,
     dto: SendAiChatMessageDto,
     onDelta?: AiDeltaHandler,
     signal?: AbortSignal,
   ) {
-    return this.replyToAiChat(await this.getAiChatScope(itemId), dto, onDelta, signal);
-  }
-
-  async sendYandexAiChatMessage(
-    blockId: string,
-    dto: SendAiChatMessageDto,
-    onDelta?: AiDeltaHandler,
-    signal?: AbortSignal,
-  ) {
-    return this.sendSprintAiChatMessage("yandex", blockId, dto, onDelta, signal);
-  }
-
-  async sendOzonAiChatMessage(
-    blockId: string,
-    dto: SendAiChatMessageDto,
-    onDelta?: AiDeltaHandler,
-    signal?: AbortSignal,
-  ) {
-    return this.sendSprintAiChatMessage("ozon", blockId, dto, onDelta, signal);
-  }
-
-  private async sendSprintAiChatMessage(
-    trackScope: SprintTrackScope,
-    blockId: string,
-    dto: SendAiChatMessageDto,
-    onDelta?: AiDeltaHandler,
-    signal?: AbortSignal,
-  ) {
     return this.replyToAiChat(
-      await this.getSprintAiChatScope(trackScope, blockId),
+      await this.resolveTrackChatScope(trackKey, itemId),
       dto,
       onDelta,
       signal,
@@ -443,20 +444,8 @@ export class LearningService {
     };
   }
 
-  async clearAiChat(itemId: string) {
-    return this.deleteAiChat(await this.getAiChatScope(itemId));
-  }
-
-  async clearYandexAiChat(blockId: string) {
-    return this.clearSprintAiChat("yandex", blockId);
-  }
-
-  async clearOzonAiChat(blockId: string) {
-    return this.clearSprintAiChat("ozon", blockId);
-  }
-
-  private async clearSprintAiChat(trackScope: SprintTrackScope, blockId: string) {
-    return this.deleteAiChat(await this.getSprintAiChatScope(trackScope, blockId));
+  async clearTrackChat(trackKey: TrackKey, itemId: string) {
+    return this.deleteAiChat(await this.resolveTrackChatScope(trackKey, itemId));
   }
 
   private async deleteAiChat(scope: AiChatScope) {
@@ -659,61 +648,45 @@ export class LearningService {
     };
   }
 
-  async submitAiLessonQuiz(itemId: string, dto: SubmitLessonQuizDto) {
-    const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
-    if (!course) throw new NotFoundException("Сначала создай AI-курс");
-    return this.submitLessonQuiz(course.key, course.version, itemId, dto);
+  async submitTrackQuiz(
+    trackKey: TrackKey,
+    itemId: string,
+    dto: SubmitLessonQuizDto,
+  ) {
+    const scope = await this.resolveTrackItemScope(trackKey, itemId);
+    return this.submitLessonQuiz(scope.courseKey, scope.courseVersion, itemId, dto);
   }
 
-  async submitYandexLessonQuiz(blockId: string, dto: SubmitLessonQuizDto) {
-    return this.submitSprintLessonQuiz("yandex", blockId, dto);
-  }
-
-  async submitOzonLessonQuiz(blockId: string, dto: SubmitLessonQuizDto) {
-    return this.submitSprintLessonQuiz("ozon", blockId, dto);
-  }
-
-  async updateAiPracticeSolution(
+  async saveTrackPracticeSolution(
+    trackKey: TrackKey,
     itemId: string,
     dto: UpdatePracticeSolutionDto,
   ) {
-    const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
-    if (!course) throw new NotFoundException("Сначала создай AI-курс");
-    if (!course.items.some((item) => item.id === itemId)) {
-      throw new NotFoundException("Тема AI-курса не найдена");
+    const scope = await this.resolveTrackItemScope(trackKey, itemId, {
+      requirePractice: true,
+    });
+    return this.savePracticeSolution(scope.courseKey, scope.courseVersion, itemId, dto);
+  }
+
+  /**
+   * Проверяет, что тема существует в треке, и возвращает её координаты в базе.
+   * Для персонального курса они берутся из документа, для статических треков —
+   * из реестра.
+   */
+  private async resolveTrackItemScope(
+    trackKey: TrackKey,
+    itemId: string,
+    options: { requirePractice?: boolean } = {},
+  ) {
+    if (isStaticTrackKey(trackKey)) {
+      const { track, block } = getStaticTrackItem(trackKey, itemId);
+      if (options.requirePractice && block.kind === "review") {
+        throw new BadRequestException("Для блока разбора нет практического решения");
+      }
+      return { courseKey: track.courseKey, courseVersion: track.courseVersion };
     }
-    return this.savePracticeSolution(course.key, course.version, itemId, dto);
-  }
-
-  async updateYandexPracticeSolution(
-    blockId: string,
-    dto: UpdatePracticeSolutionDto,
-  ) {
-    return this.updateSprintPracticeSolution("yandex", blockId, dto);
-  }
-
-  async updateOzonPracticeSolution(
-    blockId: string,
-    dto: UpdatePracticeSolutionDto,
-  ) {
-    return this.updateSprintPracticeSolution("ozon", blockId, dto);
-  }
-
-  private async updateSprintPracticeSolution(
-    trackScope: SprintTrackScope,
-    blockId: string,
-    dto: UpdatePracticeSolutionDto,
-  ) {
-    const { track, block } = getSprintBlock(trackScope, blockId);
-    if (block.kind === "review") {
-      throw new BadRequestException("Для блока разбора нет практического решения");
-    }
-    return this.savePracticeSolution(
-      track.courseKey,
-      track.courseVersion,
-      blockId,
-      dto,
-    );
+    const { course } = await this.getCourseItem(itemId);
+    return { courseKey: course.key, courseVersion: course.version };
   }
 
   private async savePracticeSolution(
@@ -801,20 +774,6 @@ export class LearningService {
       saved: false,
       progress: conflict ? serializePracticeProgress(conflict) : null,
     };
-  }
-
-  private async submitSprintLessonQuiz(
-    trackScope: SprintTrackScope,
-    blockId: string,
-    dto: SubmitLessonQuizDto,
-  ) {
-    const { track } = getSprintBlock(trackScope, blockId);
-    return this.submitLessonQuiz(
-      track.courseKey,
-      track.courseVersion,
-      blockId,
-      dto,
-    );
   }
 
   private async submitLessonQuiz(
@@ -1024,61 +983,50 @@ export class LearningService {
     return { deleted: true };
   }
 
-  private async getAiChatScope(itemId: string) {
-    const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
-    if (!course) {
-      throw new NotFoundException("Сначала создай AI-курс");
+  /** Собирает координаты темы и текстовый контекст для AI-чата любого трека. */
+  private async resolveTrackChatScope(
+    trackKey: TrackKey,
+    itemId: string,
+  ): Promise<AiChatScope> {
+    if (isStaticTrackKey(trackKey)) {
+      const { track, day, block } = getStaticTrackItem(trackKey, itemId);
+      const lesson = await this.aiLessonModel
+        .findOne({
+          courseKey: track.courseKey,
+          courseVersion: track.courseVersion,
+          itemId,
+        })
+        .lean()
+        .exec();
+      return {
+        courseKey: track.courseKey,
+        courseVersion: track.courseVersion,
+        itemId,
+        title: block.title,
+        context: buildTrackAiChatContext(track.chatGoal, {
+          day,
+          block,
+          lesson,
+          resources: this.resolveResources(block.resourceIds),
+        }),
+      };
     }
-    const item = course.items.find((courseItem) => courseItem.id === itemId);
-    if (!item) {
-      throw new NotFoundException("Тема AI-курса не найдена");
-    }
+
+    const { course, item } = await this.getCourseItem(itemId);
     const lesson = await this.aiLessonModel
       .findOne({ courseKey: course.key, courseVersion: course.version, itemId })
       .lean()
       .exec();
-    const resourceMap = new Map(RESOURCES.map((resource) => [resource.id, resource]));
-    const resources = item.resourceIds.flatMap((resourceId) => {
-      const resource = resourceMap.get(resourceId);
-      return resource ? [resource] : [];
-    });
     return {
       courseKey: course.key,
       courseVersion: course.version,
       itemId,
       title: item.title,
-      context: buildAiChatContext({ course, item, lesson, resources }),
-    };
-  }
-
-  private async getSprintAiChatScope(
-    trackScope: SprintTrackScope,
-    blockId: string,
-  ): Promise<AiChatScope> {
-    const { track, day, block } = getSprintBlock(trackScope, blockId);
-    const lesson = await this.aiLessonModel
-      .findOne({
-        courseKey: track.courseKey,
-        courseVersion: track.courseVersion,
-        itemId: blockId,
-      })
-      .lean()
-      .exec();
-    const resourceMap = new Map(RESOURCES.map((resource) => [resource.id, resource]));
-    const resources = block.resourceIds.flatMap((resourceId) => {
-      const resource = resourceMap.get(resourceId);
-      return resource ? [resource] : [];
-    });
-    return {
-      courseKey: track.courseKey,
-      courseVersion: track.courseVersion,
-      itemId: blockId,
-      title: block.title,
-      context: buildInterviewSprintAiChatContext(track.company, {
-        day,
-        block,
+      context: buildAiChatContext({
+        course,
+        item,
         lesson,
-        resources,
+        resources: this.resolveResources(item.resourceIds),
       }),
     };
   }

@@ -21,7 +21,7 @@ export function OzonSprintView(props: OzonSprintViewProps) {
       {...props}
       description="Программа основана на присланных конспектах интервью 2024 года и не является официальным списком вопросов Ozon."
       eyebrow="Ozon · 14 дней · без календаря"
-      lessons={props.data.ai.ozonLessons}
+      lessons={props.data.ai.lessons.ozon}
       sprintDays={props.data.ozonSprint}
       title="Спринт к интервью Ozon"
       weekTitles={["JavaScript и асинхронность", "Браузер, React и мок-интервью"]}

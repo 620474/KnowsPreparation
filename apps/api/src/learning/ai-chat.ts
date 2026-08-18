@@ -9,7 +9,7 @@ interface AiChatContextInput {
   resources: LearningResource[];
 }
 
-interface InterviewSprintAiChatContextInput {
+interface TrackAiChatContextInput {
   day: StudyDay;
   block: StudyBlock;
   lesson: AiLesson | null;
@@ -79,20 +79,23 @@ export function buildAiChatContext({
 
   return sections.join("\n\n").slice(0, 30_000);
 }
-
-export function buildInterviewSprintAiChatContext(
-  company: string,
+/**
+ * Собирает контекст чата для блока статического трека. Цель подготовки задаёт
+ * сам трек, поэтому функция не знает о конкретных компаниях.
+ */
+export function buildTrackAiChatContext(
+  chatGoal: string,
   {
     day,
     block,
     lesson,
     resources,
-  }: InterviewSprintAiChatContextInput,
+  }: TrackAiChatContextInput,
 ) {
   const sections = [
-    `Цель подготовки: пройти frontend-собеседование в ${company}`,
+    `Цель подготовки: ${chatGoal}`,
     "Уровень: Middle+/Senior",
-    `День спринта: ${day.dayNumber}. ${day.title}`,
+    `День программы: ${day.dayNumber}. ${day.title}`,
     `Текущий блок: ${block.title}`,
     `Тип блока: ${block.kind}`,
     `Описание: ${block.description}`,
@@ -112,12 +115,4 @@ export function buildInterviewSprintAiChatContext(
   if (resourceSection) sections.push(resourceSection);
 
   return sections.join("\n\n").slice(0, 30_000);
-}
-
-export function buildYandexAiChatContext(input: InterviewSprintAiChatContextInput) {
-  return buildInterviewSprintAiChatContext("Яндекс", input);
-}
-
-export function buildOzonAiChatContext(input: InterviewSprintAiChatContextInput) {
-  return buildInterviewSprintAiChatContext("Ozon", input);
 }

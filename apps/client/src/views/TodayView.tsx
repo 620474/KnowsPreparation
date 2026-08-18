@@ -1,6 +1,18 @@
 import type { CSSProperties } from "react";
-import { ActionIcon, Button, Textarea } from "@mantine/core";
-import { BarChart3, BrainCircuit, Check, Clock3, MessagesSquare, Target, Trophy, Flame } from "lucide-react";
+import { ActionIcon, Button, Loader, Textarea } from "@mantine/core";
+import {
+  BarChart3,
+  BookOpen,
+  BrainCircuit,
+  Check,
+  Clock3,
+  Flame,
+  MessageCircle,
+  MessagesSquare,
+  Sparkles,
+  Target,
+  Trophy,
+} from "lucide-react";
 
 import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
@@ -10,6 +22,11 @@ import type { BootstrapData, TaskUpdateHandler } from "../types";
 
 interface TodayViewProps {
   data: BootstrapData;
+  generatingLessonId: string | null;
+  generationCharacters: number;
+  onGenerateLesson: (blockId: string) => void;
+  onOpenLesson: (blockId: string) => void;
+  onOpenChat: (blockId: string) => void;
   onUpdateTask: TaskUpdateHandler;
   onOpenAnalytics: () => void;
   onOpenMock: () => void;
@@ -25,6 +42,11 @@ const kindLabels = {
 
 export function TodayView({
   data,
+  generatingLessonId,
+  generationCharacters,
+  onGenerateLesson,
+  onOpenLesson,
+  onOpenChat,
   onUpdateTask,
   onOpenAnalytics,
   onOpenMock,
@@ -118,6 +140,9 @@ export function TodayView({
               solution: "",
               ...data.progress.tasks[block.id],
             };
+            const lesson = data.ai.lessons.curriculum[block.id];
+            const isGenerating = generatingLessonId === block.id;
+            const supportsLesson = block.kind !== "review";
             return (
               <article className={progress.completed ? "task-card complete" : "task-card"} key={block.id}>
                 <div className="task-number">0{index + 1}</div>
@@ -129,6 +154,49 @@ export function TodayView({
                   <h3>{block.title}</h3>
                   <p>{block.description}</p>
                   <ResourceLinks resourceIds={block.resourceIds} resources={data.resources} />
+                  {supportsLesson && data.ai.enabled ? (
+                    <div className="today-lesson-actions">
+                      {lesson ? (
+                        <>
+                          <Button
+                            className="secondary-button"
+                            leftSection={<BookOpen size={15} />}
+                            size="xs"
+                            type="button"
+                            variant="default"
+                            onClick={() => onOpenLesson(block.id)}
+                          >
+                            Открыть разбор
+                          </Button>
+                          <Button
+                            className="secondary-button"
+                            leftSection={<MessageCircle size={15} />}
+                            size="xs"
+                            type="button"
+                            variant="default"
+                            onClick={() => onOpenChat(block.id)}
+                          >
+                            Спросить
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          className="primary-button"
+                          disabled={isGenerating}
+                          leftSection={
+                            isGenerating ? <Loader size={14} /> : <Sparkles size={15} />
+                          }
+                          size="xs"
+                          type="button"
+                          onClick={() => onGenerateLesson(block.id)}
+                        >
+                          {isGenerating
+                            ? `Готовим разбор… ${generationCharacters}`
+                            : "Сделать разбор"}
+                        </Button>
+                      )}
+                    </div>
+                  ) : null}
                   {block.kind === "practice" || block.kind === "ai" ? (
                     <TaskWorkspace
                       includeCustomTask={block.kind === "ai"}

@@ -4,7 +4,9 @@ export const questionStatusSchema = z.enum(["new", "learning", "review", "master
 export const reviewRatingSchema = z.enum(["again", "hard", "good", "easy"]);
 export const difficultySchema = z.enum(["easy", "medium", "hard"]);
 export const aiLevelSchema = z.enum(["middle", "middle-plus", "senior"]);
-export const aiChatScopeSchema = z.enum(["course", "yandex", "ozon"]);
+export const TRACK_KEYS = ["course", "curriculum", "yandex", "ozon"] as const;
+export const trackKeySchema = z.enum(TRACK_KEYS);
+export type TrackKey = z.infer<typeof trackKeySchema>;
 export const studyBlockKindSchema = z.enum(["theory", "practice", "ai", "review"]);
 export const resourceLanguageSchema = z.enum(["ru", "en"]);
 export const resourceKindSchema = z.enum([
@@ -333,20 +335,30 @@ export const learningBackupSchema = z.object({
   ),
 });
 
-const scopeRecord = <T extends z.ZodType>(schema: T) => z.object({
-  course: z.record(z.string(), schema),
-  yandex: z.record(z.string(), schema),
-  ozon: z.record(z.string(), schema),
-});
+/** Данные, разложенные по учебным трекам: track -> itemId -> значение. */
+const trackRecord = <T extends z.ZodType>(schema: T) =>
+  z.object(
+    Object.fromEntries(
+      TRACK_KEYS.map((key) => [key, z.record(z.string(), schema)]),
+    ) as {
+      [Key in TrackKey]: z.ZodRecord<z.ZodString, T>;
+    },
+  );
 
-export const bootstrapDataSchema = z.object({
-  settings: appSettingsSchema,
+/** Статический учебный контент. Кешируется и меняется только с новым релизом. */
+export const bootstrapContentSchema = z.object({
+  contentVersion: z.string(),
   curriculum: z.array(studyWeekSchema),
   yandexSprint: z.array(studyDaySchema),
   ozonSprint: z.array(studyDaySchema),
   resources: z.array(learningResourceSchema),
   questions: z.array(interviewQuestionSchema),
   algorithmPatterns: z.array(z.string()),
+});
+
+/** Персональный прогресс. Всегда запрашивается заново. */
+export const bootstrapProgressSchema = z.object({
+  settings: appSettingsSchema,
   progress: z.object({
     tasks: z.record(z.string(), taskProgressSchema),
     questions: z.record(z.string(), questionProgressSchema),
@@ -357,19 +369,23 @@ export const bootstrapDataSchema = z.object({
     enabled: z.boolean(),
     model: z.string(),
     course: aiCourseSchema.nullable(),
-    lessons: z.record(z.string(), aiLessonSchema),
-    yandexLessons: z.record(z.string(), aiLessonSchema),
-    ozonLessons: z.record(z.string(), aiLessonSchema),
-    quizProgress: scopeRecord(lessonQuizProgressSchema),
-    practiceProgress: scopeRecord(practiceSolutionProgressSchema),
+    lessons: trackRecord(aiLessonSchema),
+    quizProgress: trackRecord(lessonQuizProgressSchema),
+    practiceProgress: trackRecord(practiceSolutionProgressSchema),
   }),
 });
+
+/** Полное состояние приложения: контент и прогресс, склеенные на клиенте. */
+export const bootstrapDataSchema = bootstrapContentSchema.extend(
+  bootstrapProgressSchema.shape,
+);
 
 export type QuestionStatus = z.infer<typeof questionStatusSchema>;
 export type ReviewRating = z.infer<typeof reviewRatingSchema>;
 export type Difficulty = z.infer<typeof difficultySchema>;
 export type AiLevel = z.infer<typeof aiLevelSchema>;
-export type AiChatScope = z.infer<typeof aiChatScopeSchema>;
+/** Данные, разложенные по трекам: track -> itemId -> значение. */
+export type TrackRecord<T> = Record<TrackKey, Record<string, T>>;
 export type StudyBlockKind = z.infer<typeof studyBlockKindSchema>;
 export type ResourceLanguage = z.infer<typeof resourceLanguageSchema>;
 export type ResourceKind = z.infer<typeof resourceKindSchema>;
@@ -418,4 +434,6 @@ export type SettingsPatch = Partial<
   Pick<AppSettings, "startDate" | "reminderEnabled" | "reminderTime">
 >;
 export type LearningBackup = z.infer<typeof learningBackupSchema>;
+export type BootstrapContent = z.infer<typeof bootstrapContentSchema>;
+export type BootstrapProgress = z.infer<typeof bootstrapProgressSchema>;
 export type BootstrapData = z.infer<typeof bootstrapDataSchema>;

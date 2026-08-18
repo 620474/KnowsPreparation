@@ -1,13 +1,10 @@
 import {
   mergeBootstrapPayloads,
-  normalizeBootstrapData,
-  type BootstrapContentPayload,
-  type BootstrapPayload,
-  type BootstrapProgressPayload,
+  parseBootstrapContent,
+  parseBootstrapProgress,
 } from "./lib/bootstrap";
 import type {
   AlgorithmEntry,
-  AiChatScope,
   AiCourse,
   AiCourseProfile,
   AiChatHistory,
@@ -22,51 +19,30 @@ import type {
   ReviewRating,
   TaskProgress,
   TaskProgressPatch,
+  TrackKey,
   AppSettings,
   SettingsPatch,
 } from "./types";
 import { SseParser } from "./lib/sse";
 
-const getAiChatPath = (scope: AiChatScope, itemId: string) => {
-  if (scope === "yandex") {
-    return `/learning/yandex-sprint/blocks/${encodeURIComponent(itemId)}/chat`;
-  }
-  if (scope === "ozon") {
-    return `/learning/ozon-sprint/blocks/${encodeURIComponent(itemId)}/chat`;
-  }
-  return `/learning/ai-course/lessons/${encodeURIComponent(itemId)}/chat`;
-};
-
-const getLessonGeneratePath = (scope: AiChatScope, itemId: string) => {
-  const encodedId = encodeURIComponent(itemId);
-  if (scope === "yandex") return `/learning/yandex-sprint/blocks/${encodedId}/lesson/generate`;
-  if (scope === "ozon") return `/learning/ozon-sprint/blocks/${encodedId}/lesson/generate`;
-  return `/learning/ai-course/lessons/${encodedId}/generate`;
-};
-
-const getLessonQuizPath = (scope: AiChatScope, itemId: string) => {
-  const encodedId = encodeURIComponent(itemId);
-  if (scope === "yandex") return `/learning/yandex-sprint/blocks/${encodedId}/quiz`;
-  if (scope === "ozon") return `/learning/ozon-sprint/blocks/${encodedId}/quiz`;
-  return `/learning/ai-course/lessons/${encodedId}/quiz`;
-};
-
-const getPracticePath = (scope: AiChatScope, itemId: string) => {
-  const encodedId = encodeURIComponent(itemId);
-  if (scope === "yandex") return `/learning/yandex-sprint/blocks/${encodedId}/practice`;
-  if (scope === "ozon") return `/learning/ozon-sprint/blocks/${encodedId}/practice`;
-  return `/learning/ai-course/lessons/${encodedId}/practice`;
-};
+/** Все ресурсы трека живут под одним префиксом, поэтому путь один для всех. */
+const trackItemPath = (track: TrackKey, itemId: string) =>
+  `/learning/tracks/${track}/items/${encodeURIComponent(itemId)}`;
 
 const API_URL_KEY = "prep-api-url";
 const TOKEN_KEY = "prep-auth-token";
 export const UNAUTHORIZED_EVENT = "prep:unauthorized";
 
-export const DEFAULT_API_URL =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001/api";
+export const DEFAULT_API_URL = normalizeApiUrl(
+  import.meta.env.VITE_API_URL ?? "http://localhost:3001/api/v1",
+);
 
 export function getApiUrl() {
-  return localStorage.getItem(API_URL_KEY) ?? DEFAULT_API_URL;
+  const stored = localStorage.getItem(API_URL_KEY);
+  if (!stored) return DEFAULT_API_URL;
+  const migrated = normalizeApiUrl(stored);
+  if (migrated !== stored) localStorage.setItem(API_URL_KEY, migrated);
+  return migrated;
 }
 
 export function getToken() {
@@ -77,8 +53,9 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-function normalizeApiUrl(url: string) {
-  return url.trim().replace(/\/$/, "");
+export function normalizeApiUrl(url: string) {
+  const normalized = url.trim().replace(/\/+$/, "");
+  return normalized.endsWith("/api") ? `${normalized}/v1` : normalized;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -194,15 +171,9 @@ export async function login(apiUrl: string, password: string) {
 export const learningApi = {
   bootstrap: () =>
     Promise.all([
-      request<BootstrapContentPayload>("/learning/bootstrap/content"),
-      request<BootstrapProgressPayload>("/learning/bootstrap/progress"),
-    ])
-      .then(([content, progress]) => mergeBootstrapPayloads(content, progress))
-      .then((data) => bootstrapDataSchema.parse(data)),
-  legacyBootstrap: () =>
-    request<BootstrapPayload>("/learning/bootstrap")
-      .then(normalizeBootstrapData)
-      .then((data) => bootstrapDataSchema.parse(data)),
+      request<unknown>("/learning/bootstrap/content").then(parseBootstrapContent),
+      request<unknown>("/learning/bootstrap/progress").then(parseBootstrapProgress),
+    ]).then(([content, progress]) => mergeBootstrapPayloads(content, progress)),
   exportBackup: () => request<LearningBackup>("/learning/backup"),
   importBackup: (backup: LearningBackup) =>
     request<{ imported: Record<string, number>; total: number }>("/learning/backup/import", {
@@ -214,48 +185,42 @@ export const learningApi = {
       method: "POST",
       body: JSON.stringify(profile),
     }),
-  generateAiLesson: (itemId: string) =>
-    request<AiLesson>(`/learning/ai-course/lessons/${itemId}/generate`, {
+  generateAiLesson: (track: TrackKey, itemId: string) =>
+    request<AiLesson>(`${trackItemPath(track, itemId)}/lesson`, {
       method: "POST",
     }).then((lesson) => aiLessonSchema.parse(lesson)),
-  generateYandexLesson: (blockId: string) =>
-    request<AiLesson>(
-      `/learning/yandex-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
-      { method: "POST" },
-    ).then((lesson) => aiLessonSchema.parse(lesson)),
-  generateOzonLesson: (blockId: string) =>
-    request<AiLesson>(
-      `/learning/ozon-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
-      { method: "POST" },
-    ).then((lesson) => aiLessonSchema.parse(lesson)),
   generateAiLessonStream: (
-    scope: AiChatScope,
+    track: TrackKey,
     itemId: string,
     onDelta: (delta: string) => void,
   ) =>
-    streamRequest<AiLesson>(`${getLessonGeneratePath(scope, itemId)}/stream`, {
-      method: "POST",
-    }, onDelta).then((lesson) => aiLessonSchema.parse(lesson)),
-  getAiChat: (scope: AiChatScope, itemId: string) =>
-    request<AiChatHistory>(getAiChatPath(scope, itemId)),
-  sendAiChatMessage: (scope: AiChatScope, itemId: string, content: string) =>
-    request<{ messages: AiChatMessage[] }>(getAiChatPath(scope, itemId), {
+    streamRequest<AiLesson>(
+      `${trackItemPath(track, itemId)}/lesson/stream`,
+      { method: "POST" },
+      onDelta,
+    ).then((lesson) => aiLessonSchema.parse(lesson)),
+  getAiChat: (track: TrackKey, itemId: string) =>
+    request<AiChatHistory>(`${trackItemPath(track, itemId)}/chat`),
+  sendAiChatMessage: (track: TrackKey, itemId: string, content: string) =>
+    request<{ messages: AiChatMessage[] }>(`${trackItemPath(track, itemId)}/chat`, {
       method: "POST",
       body: JSON.stringify({ content }),
     }),
   sendAiChatMessageStream: (
-    scope: AiChatScope,
+    track: TrackKey,
     itemId: string,
     content: string,
     onDelta: (delta: string) => void,
   ) =>
     streamRequest<{ messages: AiChatMessage[] }>(
-      `${getAiChatPath(scope, itemId)}/stream`,
+      `${trackItemPath(track, itemId)}/chat/stream`,
       { method: "POST", body: JSON.stringify({ content }) },
       onDelta,
     ),
-  clearAiChat: (scope: AiChatScope, itemId: string) =>
-    request<{ deleted: boolean }>(getAiChatPath(scope, itemId), { method: "DELETE" }),
+  clearAiChat: (track: TrackKey, itemId: string) =>
+    request<{ deleted: boolean }>(`${trackItemPath(track, itemId)}/chat`, {
+      method: "DELETE",
+    }),
   updateSettings: (settings: SettingsPatch) =>
     request<AppSettings>("/learning/settings", {
       method: "PATCH",
@@ -282,24 +247,24 @@ export const learningApi = {
       { method: "POST", body: JSON.stringify({ rating, note, operationId }) },
     ),
   submitLessonQuiz: (
-    scope: AiChatScope,
+    track: TrackKey,
     itemId: string,
     answers: Array<{ questionId: string; selectedOptionIndex: number }>,
     operationId?: string,
   ) =>
-    request<LessonQuizProgress>(getLessonQuizPath(scope, itemId), {
+    request<LessonQuizProgress>(`${trackItemPath(track, itemId)}/quiz`, {
       method: "POST",
       body: JSON.stringify({ answers, operationId }),
     }),
   savePracticeSolution: (
-    scope: AiChatScope,
+    track: TrackKey,
     itemId: string,
     lessonVersion: number,
     solution: string,
     baseRevision: number,
     operationId: string,
   ) =>
-    request<PracticeSolutionSaveResult>(getPracticePath(scope, itemId), {
+    request<PracticeSolutionSaveResult>(`${trackItemPath(track, itemId)}/practice`, {
       method: "PUT",
       body: JSON.stringify({
         lessonVersion,
@@ -344,8 +309,4 @@ export const difficultyLabels: Record<Difficulty, string> = {
   medium: "Medium",
   hard: "Hard",
 };
-import {
-  aiLessonSchema,
-  bootstrapDataSchema,
-  practiceSolutionSaveResultSchema,
-} from "@prep/contracts";
+import { aiLessonSchema, practiceSolutionSaveResultSchema } from "@prep/contracts";

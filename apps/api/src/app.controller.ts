@@ -1,8 +1,14 @@
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  ServiceUnavailableException,
+  VERSION_NEUTRAL,
+} from "@nestjs/common";
 import { InjectConnection } from "@nestjs/mongoose";
 import type { Connection } from "mongoose";
 
-@Controller()
+// Пробы контейнера настроены на /api/health, поэтому health не версионируется.
+@Controller({ version: VERSION_NEUTRAL })
 export class AppController {
   constructor(@InjectConnection() private readonly connection: Connection) {}
 

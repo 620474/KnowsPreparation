@@ -1,5 +1,5 @@
 import type { INestApplication } from "@nestjs/common";
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe, VersioningType } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { getConnectionToken, getModelToken, MongooseModule } from "@nestjs/mongoose";
 import { Test } from "@nestjs/testing";
@@ -8,10 +8,12 @@ import type { Connection, Model } from "mongoose";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppController } from "../app.controller";
 import { AuthModule } from "../auth/auth.module";
 import { QUESTION_BANK, TASK_IDS } from "./curriculum";
 import { LearningModule } from "./learning.module";
 import { AiLesson } from "./schemas/ai-course.schema";
+import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
 
 const TEST_PASSWORD = "integration-test-password";
@@ -42,10 +44,12 @@ describe("Learning API", () => {
         AuthModule,
         LearningModule,
       ],
+      controllers: [AppController],
     }).compile();
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix("api");
+    app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -59,7 +63,7 @@ describe("Learning API", () => {
     lessonModel = app.get<Model<AiLesson>>(getModelToken(AiLesson.name));
 
     const loginResponse = await request(app.getHttpServer())
-      .post("/api/auth/login")
+      .post("/api/v1/auth/login")
       .send({ password: TEST_PASSWORD })
       .expect(201);
     token = loginResponse.body.token as string;
@@ -79,10 +83,10 @@ describe("Learning API", () => {
     const taskId = [...TASK_IDS][0];
     if (!taskId) throw new Error("Curriculum must contain at least one task");
 
-    await request(app.getHttpServer()).get("/api/learning/bootstrap").expect(401);
+    await request(app.getHttpServer()).get("/api/v1/learning/bootstrap/progress").expect(401);
 
     await request(app.getHttpServer())
-      .put(`/api/learning/tasks/${taskId}`)
+      .put(`/api/v1/learning/tasks/${taskId}`)
       .set("Authorization", `Bearer ${token}`)
       .send({ completed: true, note: "Проверено интеграционным тестом" })
       .expect(200)
@@ -95,7 +99,7 @@ describe("Learning API", () => {
       });
 
     const bootstrapResponse = await request(app.getHttpServer())
-      .get("/api/learning/bootstrap")
+      .get("/api/v1/learning/bootstrap/progress")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
 
@@ -107,7 +111,7 @@ describe("Learning API", () => {
 
   it("serves cacheable content and dynamic progress separately", async () => {
     const contentResponse = await request(app.getHttpServer())
-      .get("/api/learning/bootstrap/content")
+      .get("/api/v1/learning/bootstrap/content")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(contentResponse.headers.etag).toMatch(/^"[\w-]+"$/);
@@ -117,20 +121,45 @@ describe("Learning API", () => {
     expect(contentResponse.body).not.toHaveProperty("progress");
 
     const progressResponse = await request(app.getHttpServer())
-      .get("/api/learning/bootstrap/progress")
+      .get("/api/v1/learning/bootstrap/progress")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(progressResponse.headers["cache-control"]).toContain("no-store");
     expect(progressResponse.body).toHaveProperty("progress");
     expect(progressResponse.body).toHaveProperty("settings");
     expect(progressResponse.body).not.toHaveProperty("curriculum");
+    expect(Object.keys(progressResponse.body.ai.lessons)).toEqual([
+      "course",
+      "curriculum",
+      "yandex",
+      "ozon",
+    ]);
+    expect(Object.keys(progressResponse.body.ai.quizProgress)).toEqual([
+      "course",
+      "curriculum",
+      "yandex",
+      "ozon",
+    ]);
 
-    const legacyResponse = await request(app.getHttpServer())
-      .get("/api/learning/bootstrap")
+    await request(app.getHttpServer())
+      .get("/api/v1/learning/bootstrap")
       .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-    expect(legacyResponse.body).toHaveProperty("curriculum");
-    expect(legacyResponse.body).toHaveProperty("progress");
+      .expect(404);
+  });
+
+  it("rejects an unknown track key", async () => {
+    await request(app.getHttpServer())
+      .post("/api/v1/learning/tracks/sprint/items/anything/lesson")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(400)
+      .expect(({ body }) => {
+        expect(String(body.message)).toContain("Неизвестный трек");
+      });
+  });
+
+  it("keeps health checks outside the versioned prefix", async () => {
+    await request(app.getHttpServer()).get("/api/health").expect(200);
+    await request(app.getHttpServer()).get("/api/v1/health").expect(404);
   });
 
   it("applies a repeated review operation only once", async () => {
@@ -139,13 +168,13 @@ describe("Learning API", () => {
     const operationId = "review-operation-1";
 
     const firstResponse = await request(app.getHttpServer())
-      .post(`/api/learning/questions/${questionId}/review`)
+      .post(`/api/v1/learning/questions/${questionId}/review`)
       .set("Authorization", `Bearer ${token}`)
       .send({ rating: "easy", operationId })
       .expect(201);
 
     const duplicateResponse = await request(app.getHttpServer())
-      .post(`/api/learning/questions/${questionId}/review`)
+      .post(`/api/v1/learning/questions/${questionId}/review`)
       .set("Authorization", `Bearer ${token}`)
       .send({ rating: "easy", operationId })
       .expect(201);
@@ -154,7 +183,7 @@ describe("Learning API", () => {
     expect(duplicateResponse.body).toEqual(firstResponse.body);
 
     const bootstrapResponse = await request(app.getHttpServer())
-      .get("/api/learning/bootstrap")
+      .get("/api/v1/learning/bootstrap/progress")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
 
@@ -202,7 +231,7 @@ describe("Learning API", () => {
       questionId: question.id,
       selectedOptionIndex: 0,
     }));
-    const path = `/api/learning/yandex-sprint/blocks/${blockId}/quiz`;
+    const path = `/api/v1/learning/tracks/yandex/items/${blockId}/quiz`;
     const payload = { answers, operationId: "quiz-operation-1" };
 
     const firstResponse = await request(app.getHttpServer())
@@ -246,7 +275,7 @@ describe("Learning API", () => {
       version: 1,
       generatedAt: new Date().toISOString(),
     });
-    const path = `/api/learning/yandex-sprint/blocks/${blockId}/practice`;
+    const path = `/api/v1/learning/tracks/yandex/items/${blockId}/practice`;
 
     const first = await request(app.getHttpServer())
       .put(path)
@@ -291,7 +320,7 @@ describe("Learning API", () => {
     expect(saved.body).toMatchObject({ saved: true, progress: { revision: 2 } });
 
     const bootstrap = await request(app.getHttpServer())
-      .get("/api/learning/bootstrap/progress")
+      .get("/api/v1/learning/bootstrap/progress")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(bootstrap.body.ai.practiceProgress.yandex[blockId]).toMatchObject({
@@ -306,18 +335,18 @@ describe("Learning API", () => {
     if (!taskId || !secondTaskId) throw new Error("Curriculum must contain two tasks");
 
     await request(app.getHttpServer())
-      .put(`/api/learning/tasks/${taskId}`)
+      .put(`/api/v1/learning/tasks/${taskId}`)
       .set("Authorization", `Bearer ${token}`)
       .send({ completed: true, solution: "const answer = 42;" })
       .expect(200);
     await request(app.getHttpServer())
-      .patch("/api/learning/settings")
+      .patch("/api/v1/learning/settings")
       .set("Authorization", `Bearer ${token}`)
       .send({ reminderEnabled: true, reminderTime: "20:15" })
       .expect(200);
 
     const exportResponse = await request(app.getHttpServer())
-      .get("/api/learning/backup")
+      .get("/api/v1/learning/backup")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(exportResponse.body).toMatchObject({
@@ -329,20 +358,20 @@ describe("Learning API", () => {
     const collections = await connection.db?.collections();
     await Promise.all((collections ?? []).map((collection) => collection.deleteMany({})));
     await request(app.getHttpServer())
-      .put(`/api/learning/tasks/${secondTaskId}`)
+      .put(`/api/v1/learning/tasks/${secondTaskId}`)
       .set("Authorization", `Bearer ${token}`)
       .send({ completed: true })
       .expect(200);
 
     const importResponse = await request(app.getHttpServer())
-      .post("/api/learning/backup/import")
+      .post("/api/v1/learning/backup/import")
       .set("Authorization", `Bearer ${token}`)
       .send({ backup: exportResponse.body })
       .expect(201);
     expect(importResponse.body.total).toBeGreaterThanOrEqual(2);
 
     const bootstrapResponse = await request(app.getHttpServer())
-      .get("/api/learning/bootstrap")
+      .get("/api/v1/learning/bootstrap/progress")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(bootstrapResponse.body.progress.tasks[taskId]).toMatchObject({
@@ -358,7 +387,7 @@ describe("Learning API", () => {
 
   it("transcribes a mock answer without storing the audio", async () => {
     const interviewResponse = await request(app.getHttpServer())
-      .post("/api/learning/mock-interviews")
+      .post("/api/v1/learning/mock-interviews")
       .set("Authorization", `Bearer ${token}`)
       .expect(201);
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -370,7 +399,7 @@ describe("Learning API", () => {
 
     try {
       const transcriptionResponse = await request(app.getHttpServer())
-        .post(`/api/learning/mock-interviews/${interviewResponse.body.id}/transcribe`)
+        .post(`/api/v1/learning/mock-interviews/${interviewResponse.body.id}/transcribe`)
         .set("Authorization", `Bearer ${token}`)
         .attach("audio", Buffer.from("test-audio"), {
           filename: "answer.webm",
@@ -389,5 +418,127 @@ describe("Learning API", () => {
     } finally {
       fetchSpy.mockRestore();
     }
+  });
+
+  it("saves an empty practice solution instead of failing validation", async () => {
+    const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;
+    if (!blockId) throw new Error("Yandex sprint must contain a practice-capable block");
+    await lessonModel.create({
+      courseKey: YANDEX_SPRINT_AI_KEY,
+      courseVersion: YANDEX_SPRINT_AI_VERSION,
+      itemId: blockId,
+      title: "Интеграционный урок",
+      goals: [],
+      explanation: "Тест",
+      codeExamples: [],
+      diagrams: [],
+      commonMistakes: [],
+      interviewQuestions: [],
+      practice: {
+        title: "Практика",
+        statement: "Решить задачу",
+        constraints: [],
+        examples: [],
+      },
+      quiz: [],
+      summary: "Итог",
+      resourceIds: [],
+      version: 1,
+      generatedAt: new Date().toISOString(),
+    });
+
+    const response = await request(app.getHttpServer())
+      .put(`/api/v1/learning/tracks/yandex/items/${blockId}/practice`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        lessonVersion: 1,
+        solution: "",
+        baseRevision: 0,
+        operationId: "practice-empty-1",
+      })
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      saved: true,
+      progress: { revision: 1, solution: "" },
+    });
+  });
+
+  it("serves the curriculum track through the same endpoints", async () => {
+    const track = getStaticTrack("curriculum");
+    const itemId = track.days[0]?.blocks.find((block) => block.kind !== "review")?.id;
+    if (!itemId) throw new Error("Curriculum must contain a lesson-capable block");
+
+    await lessonModel.create({
+      courseKey: track.courseKey,
+      courseVersion: track.courseVersion,
+      itemId,
+      title: "Урок учебного плана",
+      goals: [],
+      explanation: "Тест",
+      codeExamples: [],
+      diagrams: [],
+      commonMistakes: [],
+      interviewQuestions: [],
+      practice: {
+        title: "Практика",
+        statement: "Решить задачу",
+        constraints: [],
+        examples: [],
+      },
+      quiz: [],
+      summary: "Итог",
+      resourceIds: [],
+      version: 1,
+      generatedAt: new Date().toISOString(),
+    });
+
+    const chatResponse = await request(app.getHttpServer())
+      .get(`/api/v1/learning/tracks/curriculum/items/${itemId}/chat`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(chatResponse.body).toMatchObject({ itemId, messages: [] });
+
+    const practiceResponse = await request(app.getHttpServer())
+      .put(`/api/v1/learning/tracks/curriculum/items/${itemId}/practice`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        lessonVersion: 1,
+        solution: "const answer = 42;",
+        baseRevision: 0,
+        operationId: "curriculum-practice-1",
+      })
+      .expect(200);
+    expect(practiceResponse.body).toMatchObject({ saved: true });
+
+    const progressResponse = await request(app.getHttpServer())
+      .get("/api/v1/learning/bootstrap/progress")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(progressResponse.body.ai.lessons.curriculum[itemId]).toMatchObject({
+      itemId,
+      title: "Урок учебного плана",
+    });
+    expect(progressResponse.body.ai.practiceProgress.curriculum[itemId]).toMatchObject({
+      solution: "const answer = 42;",
+    });
+  });
+
+  it("accepts a whitespace-only mock answer without a server error", async () => {
+    const interviewResponse = await request(app.getHttpServer())
+      .post("/api/v1/learning/mock-interviews")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(201);
+    const questionId = interviewResponse.body.questions[0].id as string;
+
+    const response = await request(app.getHttpServer())
+      .put(
+        `/api/v1/learning/mock-interviews/${interviewResponse.body.id}/answers/${questionId}`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .send({ content: "   " })
+      .expect(200);
+
+    expect(response.body.answers[questionId]).toBe("");
   });
 });

@@ -42,8 +42,8 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
   });
   queryClient.setMutationDefaults(offlineMutationKeys.quiz, {
     ...offlineOptions,
-    mutationFn: ({ scope, itemId, answers, operationId }: QuizMutationVariables) =>
-      learningApi.submitLessonQuiz(scope, itemId, answers, operationId),
+    mutationFn: ({ track, itemId, answers, operationId }: QuizMutationVariables) =>
+      learningApi.submitLessonQuiz(track, itemId, answers, operationId),
     onSettled: refreshBootstrap,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.mockAnswer, {

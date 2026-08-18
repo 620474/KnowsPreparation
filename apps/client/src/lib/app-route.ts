@@ -1,4 +1,4 @@
-import type { AiChatScope } from "../types";
+import type { TrackKey } from "../types";
 
 export type AppView =
   | "today"
@@ -15,7 +15,7 @@ export type AppView =
   | "settings";
 
 export interface LessonRouteTarget {
-  scope: AiChatScope;
+  track: TrackKey;
   itemId: string;
 }
 
@@ -45,11 +45,19 @@ const pathViews = Object.fromEntries(
   Object.entries(viewPaths).map(([view, path]) => [path, view]),
 ) as Record<string, AppView>;
 
-const lessonScopes: Partial<Record<AppView, AiChatScope>> = {
+/** Родительский экран каждого трека; новый TrackKey нельзя добавить незаметно. */
+const trackViews = {
+  course: "ai-course",
+  curriculum: "plan",
   yandex: "yandex",
   ozon: "ozon",
-  "ai-course": "course",
-};
+} satisfies Record<TrackKey, AppView>;
+
+const viewTracks = Object.fromEntries(
+  Object.entries(trackViews).map(([track, view]) => [view, track]),
+) as Partial<Record<AppView, TrackKey>>;
+
+export const trackForView = (view: AppView): TrackKey | undefined => viewTracks[view];
 
 const decodeItemId = (value: string) => {
   try {
@@ -65,12 +73,12 @@ export function parseAppRoute(hash: string): AppRoute {
   const view = pathViews[segments[0] ?? ""];
   if (!view) return DEFAULT_ROUTE;
 
-  const scope = lessonScopes[view];
+  const track = viewTracks[view];
   const itemId = segments[1] === "lesson" && segments[2] ? decodeItemId(segments[2]) : "";
 
   return {
     view,
-    lessonReader: scope && itemId ? { scope, itemId } : null,
+    lessonReader: track && itemId ? { track, itemId } : null,
   };
 }
 
@@ -81,7 +89,6 @@ export function formatAppRoute(route: AppRoute): string {
   return `#/${path}/lesson/${encodeURIComponent(route.lessonReader.itemId)}`;
 }
 
-export function viewForLessonScope(scope: AiChatScope): AppView {
-  if (scope === "course") return "ai-course";
-  return scope;
+export function viewForTrack(track: TrackKey): AppView {
+  return trackViews[track];
 }

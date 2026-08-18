@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe, VersioningType } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ConfigService } from "@nestjs/config";
 import helmet from "helmet";
@@ -48,6 +48,9 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }),
   );
   app.setGlobalPrefix("api");
+  // Домен живёт под /api/v1, health-чеки остаются на /api/health,
+  // потому что на них настроены пробы контейнера.
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
 
   const port = config.get<number>("PORT") ?? 3001;
   await app.listen(port, "0.0.0.0");

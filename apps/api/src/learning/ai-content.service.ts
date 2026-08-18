@@ -18,6 +18,7 @@ import { createOpenAiAbortContext, isAbortError } from "./openai-request";
 import { OpenAiSseParser } from "./openai-sse";
 import type { AiCourseItem } from "./schemas/ai-course.schema";
 import type { LearningResource } from "./resources";
+import type { TrackLessonPrompt } from "./track-registry";
 
 export interface AiChatHistoryMessage {
   role: "user" | "assistant";
@@ -379,35 +380,12 @@ export class AiContentService {
     }
   }
 
-  async generateYandexLesson(
-    day: StudyDay,
-    block: StudyBlock,
-    resources: LearningResource[],
-    onDelta?: AiDeltaHandler,
-    signal?: AbortSignal,
-  ) {
-    return this.generateSprintLesson(
-      "Яндекс",
-      day,
-      block,
-      resources,
-      onDelta,
-      signal,
-    );
-  }
-
-  async generateOzonLesson(
-    day: StudyDay,
-    block: StudyBlock,
-    resources: LearningResource[],
-    onDelta?: AiDeltaHandler,
-    signal?: AbortSignal,
-  ) {
-    return this.generateSprintLesson("Ozon", day, block, resources, onDelta, signal);
-  }
-
-  async generateSprintLesson(
-    company: "Яндекс" | "Ozon",
+  /**
+   * Генерирует урок для блока статического трека. Специфика трека приходит
+   * из его определения в реестре, поэтому новый трек не требует правок здесь.
+   */
+  async generateTrackLesson(
+    prompt: TrackLessonPrompt,
     day: StudyDay,
     block: StudyBlock,
     resources: LearningResource[],
@@ -421,17 +399,16 @@ export class AiContentService {
       learningGoal: resource.learningGoal ?? "",
     }));
     const result = await this.request<unknown>(
-      company === "Ozon"
-        ? "ozon_frontend_interview_lesson"
-        : "yandex_frontend_interview_lesson",
+      prompt.name,
       lessonSchema,
       [
-        `Ты сильный frontend-инженер, готовящий кандидата к интервью в ${company}.`,
-        `Подготовь самостоятельный урок на русском языке для Middle+/Senior frontend-разработчика по текущему блоку ${company === "Ozon" ? "14" : "21"}-дневного спринта.`,
+        prompt.role,
+        prompt.program,
         "Материал должен помогать на секциях платформы, решения задач и работы с AI: объясняй причинно-следственные связи и формулировки для ответа вслух.",
         "Для алгоритмического блока обязательно разбери подходы, структуры данных и Big-O, но не выдавай готовое решение переданной задачи.",
-        "Примеры кода должны иллюстрировать отдельные идеи и не должны целиком решать переданное упражнение.",
-        "Сохрани исходные ограничения упражнения и добавь практику без готового решения.",
+        block.exercise
+          ? "Примеры кода должны иллюстрировать отдельные идеи и не должны целиком решать переданное упражнение. Сохрани исходные ограничения упражнения и добавь практику без готового решения."
+          : "Примеры кода должны иллюстрировать отдельные идеи. Составь практическую задачу по теме блока и не выдавай её готовое решение.",
         "Для практики обязательно верни запускаемый runner: starterCode без решения, от 3 до 6 детерминированных testCases и полное referenceSolution для внутренней проверки.",
         "Каждый testCases.expression должен синхронно вызывать код задачи, а expected должен быть строкой с валидным JSON ожидаемого результата. Используй только обычный JavaScript без TypeScript-синтаксиса, import, require, async, Promise, DOM, fetch, таймеров, eval, Function, Date и случайности.",
         "После урока добавь ровно 10 проверочных вопросов с четырьмя уникальными вариантами ответа, одним правильным вариантом и объяснением.",
@@ -439,12 +416,10 @@ export class AiContentService {
         "Если тема выигрывает от визуализации процесса или потока данных, добавь 1–2 содержательные диаграммы; иначе верни diagrams: [].",
         "В диаграмме используй уникальные id узлов, связывай рёбра только с существующими id и размещай узлы без наложений в сетке row/column от 0 до 4.",
         "Источники используй только как ориентиры: не добавляй новые ссылки и не утверждай, что цитируешь их.",
-        company === "Ozon"
-          ? "Программа составлена по пользовательским конспектам интервью 2024 года. Не называй её официальным процессом Ozon и используй React вместо других UI-фреймворков."
-          : "Ориентируй материал на заявленные секции frontend-интервью Яндекса.",
+        prompt.note,
       ].join(" "),
       JSON.stringify({
-        targetCompany: company,
+        targetCompany: prompt.targetCompany,
         day: { number: day.dayNumber, title: day.title },
         block,
         sources: sourceContext,
@@ -456,12 +431,7 @@ export class AiContentService {
     try {
       return normalizeGeneratedLesson(result);
     } catch (error) {
-      this.logNormalizationError(
-        company === "Ozon"
-          ? "ozon_frontend_interview_lesson"
-          : "yandex_frontend_interview_lesson",
-        error,
-      );
+      this.logNormalizationError(prompt.name, error);
       throw new BadGatewayException("OpenAI вернул неполный разбор темы. Попробуй ещё раз.");
     }
   }

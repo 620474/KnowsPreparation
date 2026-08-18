@@ -179,7 +179,7 @@ export default function App() {
     readerPracticeProgress,
     readerQuizProgress,
     readerMetadata,
-    chatScope,
+    chatTrack,
     chatTopics,
     activeChatItemId,
   } = buildLessonWorkspace(data, activeView, lessonReader, chatItemId);
@@ -223,7 +223,21 @@ export default function App() {
       {activeView === "today" ? (
         <TodayView
           data={data}
+          generatingLessonId={
+            generatingLesson?.track === "curriculum" ? generatingLesson.itemId : null
+          }
+          generationCharacters={
+            generationProgress?.track === "curriculum"
+              ? generationProgress.characters
+              : 0
+          }
+          onGenerateLesson={(blockId) => {
+            setSyncError("");
+            generateLesson("curriculum", blockId);
+          }}
           onOpenAnalytics={() => navigateToView("analytics")}
+          onOpenChat={(blockId) => openChat(blockId)}
+          onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
           onOpenMock={() => navigateToView("mock-interview")}
           onOpenReview={() => navigateToView("review")}
           onUpdateTask={updateTask}
@@ -233,10 +247,10 @@ export default function App() {
         <YandexSprintView
           data={data}
           generatingLessonId={
-            generatingLesson?.scope === "yandex" ? generatingLesson.itemId : null
+            generatingLesson?.track === "yandex" ? generatingLesson.itemId : null
           }
           generationCharacters={
-            generationProgress?.scope === "yandex" ? generationProgress.characters : 0
+            generationProgress?.track === "yandex" ? generationProgress.characters : 0
           }
           onGenerateLesson={(blockId) => {
             setSyncError("");
@@ -251,10 +265,10 @@ export default function App() {
         <OzonSprintView
           data={data}
           generatingLessonId={
-            generatingLesson?.scope === "ozon" ? generatingLesson.itemId : null
+            generatingLesson?.track === "ozon" ? generatingLesson.itemId : null
           }
           generationCharacters={
-            generationProgress?.scope === "ozon" ? generationProgress.characters : 0
+            generationProgress?.track === "ozon" ? generationProgress.characters : 0
           }
           onGenerateLesson={(blockId) => {
             setSyncError("");
@@ -270,10 +284,10 @@ export default function App() {
           data={data}
           generatingCourse={generatingCourse}
           generatingLessonId={
-            generatingLesson?.scope === "course" ? generatingLesson.itemId : null
+            generatingLesson?.track === "course" ? generatingLesson.itemId : null
           }
           generationCharacters={
-            generationProgress?.scope === "course" ? generationProgress.characters : 0
+            generationProgress?.track === "course" ? generationProgress.characters : 0
           }
           onGenerateCourse={(profile) => {
             setSyncError("");
@@ -288,7 +302,22 @@ export default function App() {
         />
       ) : null}
       {activeView === "plan" ? (
-        <PlanView data={data} onUpdateTask={updateTask} />
+        <PlanView
+          data={data}
+          generatingLessonId={
+            generatingLesson?.track === "curriculum" ? generatingLesson.itemId : null
+          }
+          generationCharacters={
+            generationProgress?.track === "curriculum" ? generationProgress.characters : 0
+          }
+          onGenerateLesson={(blockId) => {
+            setSyncError("");
+            generateLesson("curriculum", blockId);
+          }}
+          onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
+          onOpenChat={(blockId, context) => openChat(blockId, context)}
+          onUpdateTask={updateTask}
+        />
       ) : null}
       {activeView === "resources" ? <ResourcesView data={data} /> : null}
       {activeView === "questions" ? (
@@ -349,7 +378,7 @@ export default function App() {
           description={readerMetadata.description}
           eyebrow={readerMetadata.eyebrow}
           isRegenerating={
-            generatingLesson?.scope === lessonReader.scope &&
+            generatingLesson?.track === lessonReader.track &&
             generatingLesson.itemId === lessonReader.itemId
           }
           lesson={readerLesson}
@@ -358,24 +387,24 @@ export default function App() {
           resourceIds={readerMetadata.resourceIds}
           resources={data.resources}
           title={readerMetadata.title}
-          scope={lessonReader.scope}
+          track={lessonReader.track}
           onAsk={(context) => openChat(lessonReader.itemId, context)}
           onBack={closeLessonReader}
           onOpenChat={() => openChat(lessonReader.itemId)}
           onRegenerate={() => {
             setSyncError("");
-            generateLesson(lessonReader.scope, lessonReader.itemId);
+            generateLesson(lessonReader.track, lessonReader.itemId);
           }}
           onSavePractice={savePracticeDraft}
           onSubmitQuiz={(answers) =>
-            submitLessonQuiz(lessonReader.scope, lessonReader.itemId, answers)
+            submitLessonQuiz(lessonReader.track, lessonReader.itemId, answers)
           }
         />
       ) : null}
       <AiChatWidget
         key={`ai-chat-${chatDraftRequest?.id ?? 0}`}
         enabled={data.ai.enabled}
-        scope={chatScope}
+        track={chatTrack}
         topics={chatTopics}
         opened={chatOpen}
         activeItemId={activeChatItemId}

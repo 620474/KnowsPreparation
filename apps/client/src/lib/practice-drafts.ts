@@ -1,5 +1,7 @@
+import { TRACK_KEYS } from "@prep/contracts";
+
 import type {
-  AiChatScope,
+  TrackKey,
   AiLesson,
   PracticeSolutionProgress,
   PracticeSolutionSaveResult,
@@ -8,7 +10,7 @@ import { openClientDatabase, PRACTICE_DRAFT_STORE } from "./client-database";
 
 export interface LocalPracticeDraft {
   key: string;
-  scope: AiChatScope;
+  track: TrackKey;
   courseVersion: number;
   itemId: string;
   lessonVersion: number;
@@ -26,15 +28,29 @@ export interface ReconciledPracticeDraft {
   shouldSync: boolean;
 }
 
+type StoredPracticeDraft = LocalPracticeDraft & { scope?: TrackKey };
+
+export function migrateStoredPracticeDraft(value: unknown): LocalPracticeDraft | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const stored = value as Partial<StoredPracticeDraft>;
+  const track = stored.track ?? stored.scope;
+  if (!track || !(TRACK_KEYS as readonly string[]).includes(track)) {
+    return undefined;
+  }
+  const migrated = { ...stored, track } as StoredPracticeDraft;
+  delete migrated.scope;
+  return migrated as LocalPracticeDraft;
+}
+
 export const buildPracticeDraftKey = (
-  scope: AiChatScope,
+  track: TrackKey,
   courseVersion: number,
   itemId: string,
   lessonVersion: number,
-) => `${scope}:${courseVersion}:${itemId}:${lessonVersion}`;
+) => `${track}:${courseVersion}:${itemId}:${lessonVersion}`;
 
 const fromServer = (
-  scope: AiChatScope,
+  track: TrackKey,
   lesson: AiLesson,
   progress?: PracticeSolutionProgress,
 ): LocalPracticeDraft => {
@@ -45,12 +61,12 @@ const fromServer = (
       : undefined;
   return {
     key: buildPracticeDraftKey(
-      scope,
+      track,
       lesson.courseVersion,
       lesson.itemId,
       lesson.version,
     ),
-    scope,
+    track,
     courseVersion: lesson.courseVersion,
     itemId: lesson.itemId,
     lessonVersion: lesson.version,
@@ -63,12 +79,12 @@ const fromServer = (
 };
 
 export function reconcilePracticeDraft(
-  scope: AiChatScope,
+  track: TrackKey,
   lesson: AiLesson,
   local: LocalPracticeDraft | undefined,
   progress?: PracticeSolutionProgress,
 ): ReconciledPracticeDraft {
-  const serverDraft = fromServer(scope, lesson, progress);
+  const serverDraft = fromServer(track, lesson, progress);
   if (!local || local.key !== serverDraft.key) {
     return { draft: serverDraft, shouldSync: false };
   }
@@ -209,9 +225,8 @@ const runStoreRequest = async <T>(
 
 export async function readPracticeDraft(key: string) {
   if (!("indexedDB" in window)) return undefined;
-  return runStoreRequest<LocalPracticeDraft | undefined>("readonly", (store) =>
-    store.get(key),
-  );
+  const stored = await runStoreRequest<unknown>("readonly", (store) => store.get(key));
+  return migrateStoredPracticeDraft(stored);
 }
 
 export async function writePracticeDraft(draft: LocalPracticeDraft) {
@@ -223,8 +238,10 @@ export async function writePracticeDraft(draft: LocalPracticeDraft) {
 
 export async function readDirtyPracticeDrafts() {
   if (!("indexedDB" in window)) return [];
-  const drafts = await runStoreRequest<LocalPracticeDraft[]>("readonly", (store) =>
+  const drafts = await runStoreRequest<unknown[]>("readonly", (store) =>
     store.getAll(),
   );
-  return drafts.filter((draft) => draft.dirty);
+  return drafts
+    .map(migrateStoredPracticeDraft)
+    .filter((draft): draft is LocalPracticeDraft => Boolean(draft?.dirty));
 }

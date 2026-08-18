@@ -8,7 +8,7 @@ import {
 } from "../lib/bootstrap-cache";
 import type { AppView } from "../lib/app-route";
 import type {
-  AiChatScope,
+  TrackKey,
   AiCourse,
   AiCourseProfile,
   AiLesson,
@@ -16,14 +16,14 @@ import type {
 } from "../types";
 
 interface LessonGenerationVariables {
-  scope: AiChatScope;
+  track: TrackKey;
   itemId: string;
 }
 
 interface UseAiActionsOptions {
   onError: (message: string) => void;
   navigateToView: (view: AppView, mode?: "push" | "replace") => void;
-  navigateToLesson: (scope: AiChatScope, itemId: string) => void;
+  navigateToLesson: (track: TrackKey, itemId: string) => void;
   resetChat: () => void;
 }
 
@@ -35,7 +35,7 @@ export function useAiActions({
 }: UseAiActionsOptions) {
   const queryClient = useQueryClient();
   const [generationProgress, setGenerationProgress] = useState<{
-    scope: AiChatScope;
+    track: TrackKey;
     itemId: string;
     characters: number;
   } | null>(null);
@@ -43,9 +43,20 @@ export function useAiActions({
   const courseMutation = useMutation<AiCourse, Error, AiCourseProfile>({
     mutationFn: learningApi.generateAiCourse,
     onSuccess: (course) => {
+      // Новая версия курса выдаёт темам новые id, поэтому данные трека
+      // course сбрасываются — сервер их тоже удаляет при перегенерации.
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
         current
-          ? { ...current, ai: { ...current.ai, course, lessons: {} } }
+          ? {
+              ...current,
+              ai: {
+                ...current.ai,
+                course,
+                lessons: { ...current.ai.lessons, course: {} },
+                quizProgress: { ...current.ai.quizProgress, course: {} },
+                practiceProgress: { ...current.ai.practiceProgress, course: {} },
+              },
+            }
           : current,
       );
       queryClient.removeQueries({ queryKey: ["ai-chat", "course"] });
@@ -56,21 +67,21 @@ export function useAiActions({
   });
 
   const lessonMutation = useMutation<AiLesson, Error, LessonGenerationVariables>({
-    mutationFn: ({ scope, itemId }) => {
-      setGenerationProgress({ scope, itemId, characters: 0 });
-      return learningApi.generateAiLessonStream(scope, itemId, (delta) =>
+    mutationFn: ({ track, itemId }) => {
+      setGenerationProgress({ track, itemId, characters: 0 });
+      return learningApi.generateAiLessonStream(track, itemId, (delta) =>
         setGenerationProgress((current) =>
-          current?.scope === scope && current.itemId === itemId
+          current?.track === track && current.itemId === itemId
             ? { ...current, characters: current.characters + delta.length }
             : current,
         ),
       );
     },
-    onSuccess: (lesson, { scope }) => {
+    onSuccess: (lesson, { track }) => {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
-        current ? updateAiLesson(current, scope, lesson) : current,
+        current ? updateAiLesson(current, track, lesson) : current,
       );
-      navigateToLesson(scope, lesson.itemId);
+      navigateToLesson(track, lesson.itemId);
     },
     onError: (error) => onError(error.message),
     onSettled: () => setGenerationProgress(null),
@@ -78,8 +89,8 @@ export function useAiActions({
 
   return {
     generateCourse: courseMutation.mutate,
-    generateLesson: (scope: AiChatScope, itemId: string) =>
-      lessonMutation.mutate({ scope, itemId }),
+    generateLesson: (track: TrackKey, itemId: string) =>
+      lessonMutation.mutate({ track, itemId }),
     generatingCourse: courseMutation.isPending,
     generatingLesson: lessonMutation.isPending
       ? (lessonMutation.variables ?? null)

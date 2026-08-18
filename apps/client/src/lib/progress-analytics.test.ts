@@ -5,6 +5,7 @@ import { normalizeQuestionProgress } from "./question-progress";
 import type { BootstrapData } from "../types";
 
 const data: BootstrapData = {
+  contentVersion: "content-v1",
   settings: {
     startDate: "2026-08-01",
     dailyMinutes: 120,
@@ -61,9 +62,9 @@ const data: BootstrapData = {
     enabled: true,
     model: "test-model",
     course: null,
-    lessons: {},
-    yandexLessons: {},
-    ozonLessons: {},
+    lessons: { course: {}, curriculum: {}, yandex: {}, ozon: {} },
+
+
     quizProgress: {
       course: {
         lesson: {
@@ -85,10 +86,11 @@ const data: BootstrapData = {
           ],
         },
       },
+      curriculum: {},
       yandex: {},
       ozon: {},
     },
-    practiceProgress: { course: {}, yandex: {}, ozon: {} },
+    practiceProgress: { course: {}, curriculum: {}, yandex: {}, ozon: {} },
   },
 };
 

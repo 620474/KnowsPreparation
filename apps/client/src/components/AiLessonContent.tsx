@@ -15,7 +15,7 @@ import {
   writePracticeDraft,
 } from "../lib/practice-drafts";
 import type {
-  AiChatScope,
+  TrackKey,
   AiLesson,
   AiLessonQuestionContext,
   PracticeSolutionProgress,
@@ -24,7 +24,7 @@ import type {
 
 interface AiLessonContentProps {
   lesson: AiLesson;
-  scope: AiChatScope;
+  track: TrackKey;
   practiceProgress?: PracticeSolutionProgress;
   onAsk?: (context: AiLessonQuestionContext) => void;
   onSavePractice: (
@@ -63,7 +63,7 @@ function AskButton({ section, excerpt, onAsk }: AskButtonProps) {
 
 export function AiLessonContent({
   lesson,
-  scope,
+  track,
   practiceProgress,
   onAsk,
   onSavePractice,
@@ -71,7 +71,7 @@ export function AiLessonContent({
   const diagrams = lesson.diagrams ?? [];
   const runner = lesson.practice.runner;
   const practiceKey = buildPracticeDraftKey(
-    scope,
+    track,
     lesson.courseVersion,
     lesson.itemId,
     lesson.version,
@@ -79,7 +79,7 @@ export function AiLessonContent({
   const rootRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<number | undefined>(undefined);
   const initialPracticeDraft = reconcilePracticeDraft(
-    scope,
+    track,
     lesson,
     undefined,
     practiceProgress,
@@ -121,7 +121,7 @@ export function AiLessonContent({
     let cancelled = false;
     window.clearTimeout(saveTimeoutRef.current);
     const fallback = reconcilePracticeDraft(
-      scope,
+      track,
       lesson,
       undefined,
       practiceProgress,
@@ -130,7 +130,7 @@ export function AiLessonContent({
     void readPracticeDraft(practiceKey).catch(() => undefined).then((local) => {
       if (cancelled) return;
       const reconciled = reconcilePracticeDraft(
-        scope,
+        track,
         lesson,
         local,
         practiceProgress,
@@ -142,7 +142,7 @@ export function AiLessonContent({
       cancelled = true;
       window.clearTimeout(saveTimeoutRef.current);
     };
-  }, [lesson, practiceKey, practiceProgress, schedulePracticeSave, scope, setCurrentDraft]);
+  }, [lesson, practiceKey, practiceProgress, schedulePracticeSave, track, setCurrentDraft]);
 
   useEffect(() => {
     if (!onAsk) return;

@@ -1,78 +1,146 @@
 import { NotFoundException } from "@nestjs/common";
+import { TRACK_KEYS, type TrackKey } from "@prep/contracts";
 
-import type { StudyBlock, StudyDay } from "./curriculum";
-import {
-  OZON_SPRINT,
-  OZON_SPRINT_AI_KEY,
-  OZON_SPRINT_AI_VERSION,
-} from "./ozon-sprint";
+import { CURRICULUM, type StudyBlock, type StudyDay } from "./curriculum";
+import { OZON_SPRINT, OZON_SPRINT_AI_KEY, OZON_SPRINT_AI_VERSION } from "./ozon-sprint";
 import {
   YANDEX_SPRINT,
   YANDEX_SPRINT_AI_KEY,
   YANDEX_SPRINT_AI_VERSION,
 } from "./yandex-sprint";
 
-export type SprintTrackScope = "yandex" | "ozon";
+/**
+ * Учебная программа, для которой доступны AI-уроки, тесты, практика и чат.
+ *
+ * `course` описывает персональный AI-курс: его темы живут в документе AiCourse
+ * и меняются при каждой перегенерации. Остальные треки статические: их дни
+ * и блоки заданы в коде, поэтому у них фиксированные courseKey и courseVersion.
+ */
+export { TRACK_KEYS, type TrackKey } from "@prep/contracts";
 
-export interface SprintTrackDefinition {
-  scope: SprintTrackScope;
-  company: "Яндекс" | "Ozon";
+export type StaticTrackKey = Exclude<TrackKey, "course">;
+
+export const CURRICULUM_AI_KEY = "curriculum";
+export const CURRICULUM_AI_VERSION = 1;
+
+export const CURRICULUM_DAYS: StudyDay[] = CURRICULUM.flatMap((week) => week.days);
+
+/** Инструкции промпта, специфичные для трека. Общая часть живёт в AiContentService. */
+export interface TrackLessonPrompt {
+  /** Имя запроса в логах и в json_schema. */
+  name: string;
+  /** Первая строка system-инструкции: кем себя считает модель. */
+  role: string;
+  /** Описание программы, в которую входит блок. */
+  program: string;
+  /** Завершающее уточнение, специфичное для трека. */
+  note: string;
+  /** Компания, если трек готовит к интервью в конкретную компанию. */
+  targetCompany: string | null;
+}
+
+export interface StaticTrackDefinition {
+  key: StaticTrackKey;
   courseKey: string;
   courseVersion: number;
   days: StudyDay[];
-  missingBlockMessage: string;
+  /** Строка «Цель подготовки» в контексте AI-чата. */
+  chatGoal: string;
+  lessonPrompt: TrackLessonPrompt;
+  missingItemMessage: string;
   saveLessonError: string;
 }
 
-export const SPRINT_TRACKS = {
+export const STATIC_TRACKS = {
+  curriculum: {
+    key: "curriculum",
+    courseKey: CURRICULUM_AI_KEY,
+    courseVersion: CURRICULUM_AI_VERSION,
+    days: CURRICULUM_DAYS,
+    chatGoal: "пройти 12-недельную программу подготовки к frontend-собеседованиям",
+    lessonPrompt: {
+      name: "curriculum_lesson",
+      role: "Ты сильный frontend-инженер и наставник, ведущий кандидата по 12-недельной программе подготовки.",
+      program:
+        "Подготовь самостоятельный урок на русском языке для Middle+/Senior frontend-разработчика по текущему блоку недельной программы.",
+      note: "Программа рассчитана на 120 минут в день, поэтому уложи материал в отведённое блоку время и не выходи за его тему.",
+      targetCompany: null,
+    },
+    missingItemMessage: "Тема учебного плана не найдена",
+    saveLessonError: "Не удалось сохранить разбор темы учебного плана",
+  },
   yandex: {
-    scope: "yandex",
-    company: "Яндекс",
+    key: "yandex",
     courseKey: YANDEX_SPRINT_AI_KEY,
     courseVersion: YANDEX_SPRINT_AI_VERSION,
     days: YANDEX_SPRINT,
-    missingBlockMessage: "Тема Яндекс-спринта не найдена",
+    chatGoal: "пройти frontend-собеседование в Яндексе",
+    lessonPrompt: {
+      name: "yandex_frontend_interview_lesson",
+      role: "Ты сильный frontend-инженер, готовящий кандидата к интервью в Яндекс.",
+      program:
+        "Подготовь самостоятельный урок на русском языке для Middle+/Senior frontend-разработчика по текущему блоку 21-дневного спринта.",
+      note: "Ориентируй материал на заявленные секции frontend-интервью Яндекса.",
+      targetCompany: "Яндекс",
+    },
+    missingItemMessage: "Тема Яндекс-спринта не найдена",
     saveLessonError: "Не удалось сохранить разбор темы Яндекса",
   },
   ozon: {
-    scope: "ozon",
-    company: "Ozon",
+    key: "ozon",
     courseKey: OZON_SPRINT_AI_KEY,
     courseVersion: OZON_SPRINT_AI_VERSION,
     days: OZON_SPRINT,
-    missingBlockMessage: "Тема Ozon-спринта не найдена",
+    chatGoal: "пройти frontend-собеседование в Ozon",
+    lessonPrompt: {
+      name: "ozon_frontend_interview_lesson",
+      role: "Ты сильный frontend-инженер, готовящий кандидата к интервью в Ozon.",
+      program:
+        "Подготовь самостоятельный урок на русском языке для Middle+/Senior frontend-разработчика по текущему блоку 14-дневного спринта.",
+      note: "Программа составлена по пользовательским конспектам интервью 2024 года. Не называй её официальным процессом Ozon и используй React вместо других UI-фреймворков.",
+      targetCompany: "Ozon",
+    },
+    missingItemMessage: "Тема Ozon-спринта не найдена",
     saveLessonError: "Не удалось сохранить разбор темы Ozon",
   },
-} satisfies Record<SprintTrackScope, SprintTrackDefinition>;
+} satisfies Record<StaticTrackKey, StaticTrackDefinition>;
 
-export const SPRINT_TRACK_LIST = Object.values(SPRINT_TRACKS);
+export const STATIC_TRACK_LIST: StaticTrackDefinition[] = Object.values(STATIC_TRACKS);
 
+export const isTrackKey = (value: string): value is TrackKey =>
+  (TRACK_KEYS as readonly string[]).includes(value);
+
+export const isStaticTrackKey = (value: TrackKey): value is StaticTrackKey =>
+  value !== "course";
+
+/**
+ * Идентификаторы блоков статических треков, для которых допустимо сохранять
+ * прогресс. Учебный план исключён: его блоки уже входят в TASK_IDS.
+ */
 export const SPRINT_TASK_IDS = new Set(
-  SPRINT_TRACK_LIST.flatMap((track) =>
+  STATIC_TRACK_LIST.filter((track) => track.key !== "curriculum").flatMap((track) =>
     track.days.flatMap((day) => day.blocks.map((block) => block.id)),
   ),
 );
 
-export function getSprintTrack(scope: SprintTrackScope) {
-  return SPRINT_TRACKS[scope];
+export function getStaticTrack(key: StaticTrackKey) {
+  return STATIC_TRACKS[key];
 }
 
-export function findSprintTrackByCourse(courseKey: string, courseVersion: number) {
-  return SPRINT_TRACK_LIST.find(
-    (track) =>
-      track.courseKey === courseKey && track.courseVersion === courseVersion,
+export function findStaticTrackByCourse(courseKey: string, courseVersion: number) {
+  return STATIC_TRACK_LIST.find(
+    (track) => track.courseKey === courseKey && track.courseVersion === courseVersion,
   );
 }
 
-export function getSprintBlock(scope: SprintTrackScope, blockId: string): {
-  track: SprintTrackDefinition;
-  day: StudyDay;
-  block: StudyBlock;
-} {
-  const track = getSprintTrack(scope);
+export function getStaticTrackItem(
+  key: StaticTrackKey,
+  itemId: string,
+): { track: StaticTrackDefinition; day: StudyDay; block: StudyBlock } {
+  const track = getStaticTrack(key);
   for (const day of track.days) {
-    const block = day.blocks.find((candidate) => candidate.id === blockId);
+    const block = day.blocks.find((candidate) => candidate.id === itemId);
     if (block) return { track, day, block };
   }
-  throw new NotFoundException(track.missingBlockMessage);
+  throw new NotFoundException(track.missingItemMessage);
 }

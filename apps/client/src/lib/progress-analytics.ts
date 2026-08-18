@@ -36,8 +36,8 @@ export function calculateProgressAnalytics(data: BootstrapData, now = new Date()
   }
 
   const topicWeakness = new Map<string, number>();
-  const quizGroups = Object.values(data.ai.quizProgress).flatMap((scope) =>
-    Object.values(scope),
+  const quizGroups = Object.values(data.ai.quizProgress).flatMap((track) =>
+    Object.values(track),
   );
   for (const progress of quizGroups) {
     const latestAttempt = progress.attempts.at(-1);

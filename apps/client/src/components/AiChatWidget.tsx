@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, MessageCircle, Send, Sparkles, Trash2 } from "lucide-react";
 
 import { learningApi } from "../api";
-import type { AiChatHistory, AiChatMessage, AiChatScope } from "../types";
+import type { AiChatHistory, AiChatMessage, TrackKey } from "../types";
 
 export interface AiChatTopic {
   id: string;
@@ -22,7 +22,7 @@ export interface AiChatTopic {
 
 interface AiChatWidgetProps {
   enabled: boolean;
-  scope: AiChatScope;
+  track: TrackKey;
   topics: AiChatTopic[];
   opened: boolean;
   activeItemId: string | null;
@@ -32,7 +32,7 @@ interface AiChatWidgetProps {
   onItemChange: (itemId: string) => void;
 }
 
-const chatKey = (scope: AiChatScope, itemId: string) => ["ai-chat", scope, itemId] as const;
+const chatKey = (track: TrackKey, itemId: string) => ["ai-chat", track, itemId] as const;
 
 const formatTime = (value: string) =>
   new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -51,7 +51,7 @@ interface SendMessageContext {
 
 export function AiChatWidget({
   enabled,
-  scope,
+  track,
   topics,
   opened,
   activeItemId,
@@ -67,8 +67,8 @@ export function AiChatWidget({
   const activeItem = topics.find((item) => item.id === activeItemId) ?? null;
 
   const chatQuery = useQuery({
-    queryKey: chatKey(scope, activeItemId ?? "none"),
-    queryFn: () => learningApi.getAiChat(scope, activeItemId ?? ""),
+    queryKey: chatKey(track, activeItemId ?? "none"),
+    queryFn: () => learningApi.getAiChat(track, activeItemId ?? ""),
     enabled: opened && Boolean(activeItemId),
     staleTime: 15_000,
   });
@@ -80,8 +80,8 @@ export function AiChatWidget({
     SendMessageContext
   >({
     mutationFn: ({ itemId, content, assistantMessageId }) =>
-      learningApi.sendAiChatMessageStream(scope, itemId, content, (delta) => {
-        queryClient.setQueryData<AiChatHistory>(chatKey(scope, itemId), (current) =>
+      learningApi.sendAiChatMessageStream(track, itemId, content, (delta) => {
+        queryClient.setQueryData<AiChatHistory>(chatKey(track, itemId), (current) =>
           current
             ? {
                 ...current,
@@ -95,7 +95,7 @@ export function AiChatWidget({
         );
       }),
     onMutate: async (variables) => {
-      const key = chatKey(scope, variables.itemId);
+      const key = chatKey(track, variables.itemId);
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<AiChatHistory>(key);
       const optimisticMessages: AiChatMessage[] = [
@@ -121,7 +121,7 @@ export function AiChatWidget({
       return { previous };
     },
     onSuccess: ({ messages }, { itemId, userMessageId, assistantMessageId }) => {
-      queryClient.setQueryData<AiChatHistory>(chatKey(scope, itemId), (current) =>
+      queryClient.setQueryData<AiChatHistory>(chatKey(track, itemId), (current) =>
         current
           ? {
               ...current,
@@ -141,15 +141,15 @@ export function AiChatWidget({
       );
     },
     onError: (_error, variables, context) => {
-      queryClient.setQueryData(chatKey(scope, variables.itemId), context?.previous);
+      queryClient.setQueryData(chatKey(track, variables.itemId), context?.previous);
       setDraft(variables.content);
     },
   });
 
   const clearMutation = useMutation({
-    mutationFn: (itemId: string) => learningApi.clearAiChat(scope, itemId),
+    mutationFn: (itemId: string) => learningApi.clearAiChat(track, itemId),
     onSuccess: (_result, itemId) => {
-      queryClient.setQueryData<AiChatHistory>(chatKey(scope, itemId), (current) =>
+      queryClient.setQueryData<AiChatHistory>(chatKey(track, itemId), (current) =>
         current ? { ...current, messages: [] } : current,
       );
     },

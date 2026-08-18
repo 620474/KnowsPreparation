@@ -1,5 +1,5 @@
-import { UnstyledButton } from "@mantine/core";
-import { Check, ChevronDown, Clock3 } from "lucide-react";
+import { Button, Loader, UnstyledButton } from "@mantine/core";
+import { BookOpen, Check, ChevronDown, Clock3, MessageCircle, Sparkles } from "lucide-react";
 
 import { ResourceLinks } from "../components/ResourceLinks";
 import { getStudyPosition } from "../lib/date";
@@ -7,10 +7,24 @@ import type { BootstrapData, TaskUpdateHandler } from "../types";
 
 interface PlanViewProps {
   data: BootstrapData;
+  generatingLessonId: string | null;
+  generationCharacters: number;
+  onGenerateLesson: (blockId: string) => void;
+  onOpenLesson: (blockId: string) => void;
+  onOpenChat: (blockId: string, context?: { section: string; excerpt: string }) => void;
   onUpdateTask: TaskUpdateHandler;
 }
 
-export function PlanView({ data, onUpdateTask }: PlanViewProps) {
+export function PlanView({
+  data,
+  generatingLessonId,
+  generationCharacters,
+  onGenerateLesson,
+  onOpenLesson,
+  onOpenChat,
+  onUpdateTask,
+}: PlanViewProps) {
+  const lessons = data.ai.lessons.curriculum;
   const currentWeek = Math.min(
     Math.max(getStudyPosition(data.settings.startDate).weekNumber, 1),
     data.curriculum.length,
@@ -62,6 +76,9 @@ export function PlanView({ data, onUpdateTask }: PlanViewProps) {
                     <div className="plan-blocks">
                       {day.blocks.map((block) => {
                         const task = data.progress.tasks[block.id] ?? { completed: false };
+                        const lesson = lessons[block.id];
+                        const isGenerating = generatingLessonId === block.id;
+                        const supportsLesson = block.kind !== "review";
                         return (
                           <div
                             className={task.completed ? "plan-block complete" : "plan-block"}
@@ -86,6 +103,49 @@ export function PlanView({ data, onUpdateTask }: PlanViewProps) {
                               resourceIds={block.resourceIds}
                               resources={data.resources}
                             />
+                            {supportsLesson && data.ai.enabled ? (
+                              <div className="plan-block-actions">
+                                {lesson ? (
+                                  <>
+                                    <Button
+                                      className="secondary-button"
+                                      leftSection={<BookOpen size={15} />}
+                                      size="xs"
+                                      type="button"
+                                      variant="default"
+                                      onClick={() => onOpenLesson(block.id)}
+                                    >
+                                      Открыть разбор
+                                    </Button>
+                                    <Button
+                                      className="secondary-button"
+                                      leftSection={<MessageCircle size={15} />}
+                                      size="xs"
+                                      type="button"
+                                      variant="default"
+                                      onClick={() => onOpenChat(block.id)}
+                                    >
+                                      Спросить
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    className="primary-button"
+                                    disabled={isGenerating}
+                                    leftSection={
+                                      isGenerating ? <Loader size={14} /> : <Sparkles size={15} />
+                                    }
+                                    size="xs"
+                                    type="button"
+                                    onClick={() => onGenerateLesson(block.id)}
+                                  >
+                                    {isGenerating
+                                      ? `Готовим разбор… ${generationCharacters}`
+                                      : "Сделать разбор"}
+                                  </Button>
+                                )}
+                              </div>
+                            ) : null}
                           </div>
                         );
                       })}

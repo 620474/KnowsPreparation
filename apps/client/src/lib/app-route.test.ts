@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AppView } from "./app-route";
-import { formatAppRoute, parseAppRoute, viewForLessonScope } from "./app-route";
+import { formatAppRoute, parseAppRoute, viewForTrack } from "./app-route";
 
 describe("app routes", () => {
   it("falls back to the Yandex sprint for an empty or unknown route", () => {
@@ -31,7 +31,7 @@ describe("app routes", () => {
   it("round-trips an encoded lesson route", () => {
     const route = {
       view: "yandex" as const,
-      lessonReader: { scope: "yandex" as const, itemId: "event loop/очередь" },
+      lessonReader: { track: "yandex" as const, itemId: "event loop/очередь" },
     };
     const hash = formatAppRoute(route);
 
@@ -39,9 +39,10 @@ describe("app routes", () => {
     expect(parseAppRoute(hash)).toEqual(route);
   });
 
-  it("maps lesson scopes to their parent views", () => {
-    expect(viewForLessonScope("course")).toBe("ai-course");
-    expect(viewForLessonScope("yandex")).toBe("yandex");
-    expect(viewForLessonScope("ozon")).toBe("ozon");
+  it("maps lesson tracks to their parent views", () => {
+    expect(viewForTrack("course")).toBe("ai-course");
+    expect(viewForTrack("curriculum")).toBe("plan");
+    expect(viewForTrack("yandex")).toBe("yandex");
+    expect(viewForTrack("ozon")).toBe("ozon");
   });
 });

@@ -54,7 +54,7 @@ Frontend не нужно размещать в интернете. Чтобы т
    ```
 
 5. Открыть `http://localhost:5173`. Адрес API по умолчанию —
-   `http://localhost:3001/api`.
+   `http://localhost:3001/api/v1`.
 
 ## Общая MongoDB
 
@@ -65,7 +65,7 @@ Frontend не нужно размещать в интернете. Чтобы т
 3. Разместить только API, используя `Dockerfile.api` или обычный Node.js runtime.
 4. Передать API переменные `MONGODB_URI`, `APP_PASSWORD`, `JWT_SECRET`, `PORT` и
    `CLIENT_ORIGINS`.
-5. В клиенте указать HTTPS-адрес вида `https://your-api.example.com/api`.
+5. В клиенте указать HTTPS-адрес вида `https://your-api.example.com/api/v1`.
 
 Не добавляйте MongoDB connection string в Vite-переменные или Android-проект.
 
@@ -107,7 +107,7 @@ pull request и каждого обновления `main`. В GitHub реком
    - startup и readiness: `GET /api/health`;
    - liveness: `GET /api/health/live`.
 8. После деплоя указать в web-клиенте и Android адрес
-   `https://<northflank-domain>/api`.
+   `https://<northflank-domain>/api/v1`.
 
 API пишет структурированные JSON-логи, добавляет `X-Request-Id` к каждому ответу
 и сохраняет этот идентификатор в связанных сообщениях. Авторизация, cookie,
@@ -144,12 +144,31 @@ MongoDB.
 3. Отправить изменения в GitHub.
 4. Дождаться автоматического деплоя API в Northflank.
 
-Новый клиент получает кешируемые `curriculum`, спринты, `resources` и `questions`
-через `GET /api/learning/bootstrap/content`, а изменяемый прогресс — через
-`GET /api/learning/bootstrap/progress`. Старый `GET /api/learning/bootstrap`
-сохранён для уже установленных APK. Поэтому изменения контента не требуют
+Клиент получает кешируемые `curriculum`, спринты, `resources` и `questions`
+через `GET /api/v1/learning/bootstrap/content`, а изменяемый прогресс — через
+`GET /api/v1/learning/bootstrap/progress`. Поэтому изменения контента не требуют
 пересборки APK. Новая версия APK нужна только при изменении React-интерфейса или
 клиентской логики.
+
+## Учебные треки
+
+AI-разбор, проверочный тест, практику с запуском кода и чат поддерживают четыре
+трека: `course` (персональный AI-курс), `curriculum` (12-недельный учебный план),
+`yandex` и `ozon`. Все они работают через один набор адресов:
+
+```text
+POST   /api/v1/learning/tracks/:trackKey/items/:itemId/lesson
+POST   /api/v1/learning/tracks/:trackKey/items/:itemId/lesson/stream
+POST   /api/v1/learning/tracks/:trackKey/items/:itemId/quiz
+PUT    /api/v1/learning/tracks/:trackKey/items/:itemId/practice
+GET    /api/v1/learning/tracks/:trackKey/items/:itemId/chat
+POST   /api/v1/learning/tracks/:trackKey/items/:itemId/chat
+POST   /api/v1/learning/tracks/:trackKey/items/:itemId/chat/stream
+DELETE /api/v1/learning/tracks/:trackKey/items/:itemId/chat
+```
+
+Новый трек добавляется записью в `apps/api/src/learning/track-registry.ts`:
+дни, цель для чата и инструкции промпта. Правки в контроллере не нужны.
 
 ## Бэкап прогресса
 
@@ -222,6 +241,6 @@ npm run build
 - `apps/client` — React, Mantine, Vite и Capacitor Android;
 - `apps/client/src/hooks` — навигация и доменные действия интерфейса;
 - `apps/api` — NestJS, авторизация и MongoDB-модели;
-- `apps/api/src/learning/track-registry.ts` — единая конфигурация спринтов;
+- `apps/api/src/learning/track-registry.ts` — единая конфигурация учебных треков;
 - `apps/api/src/learning/curriculum.ts` — учебная программа и банк вопросов.
 - `apps/api/src/learning/data/resources.json` — серверный каталог материалов.

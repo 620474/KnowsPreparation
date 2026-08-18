@@ -1,5 +1,5 @@
 import type {
-  AiChatScope,
+  TrackKey,
   AiLesson,
   BootstrapData,
   LessonQuizProgress,
@@ -24,7 +24,7 @@ export const updateMockInterviews = (
 
 export const updateQuizProgress = (
   current: BootstrapData,
-  scope: AiChatScope,
+  track: TrackKey,
   itemId: string,
   progress: LessonQuizProgress,
 ): BootstrapData => ({
@@ -33,8 +33,8 @@ export const updateQuizProgress = (
     ...current.ai,
     quizProgress: {
       ...current.ai.quizProgress,
-      [scope]: {
-        ...current.ai.quizProgress[scope],
+      [track]: {
+        ...current.ai.quizProgress[track],
         [itemId]: progress,
       },
     },
@@ -43,7 +43,7 @@ export const updateQuizProgress = (
 
 export const updatePracticeProgress = (
   current: BootstrapData,
-  scope: AiChatScope,
+  track: TrackKey,
   itemId: string,
   progress: PracticeSolutionProgress,
 ): BootstrapData => ({
@@ -52,8 +52,8 @@ export const updatePracticeProgress = (
     ...current.ai,
     practiceProgress: {
       ...current.ai.practiceProgress,
-      [scope]: {
-        ...current.ai.practiceProgress[scope],
+      [track]: {
+        ...current.ai.practiceProgress[track],
         [itemId]: progress,
       },
     },
@@ -62,49 +62,24 @@ export const updatePracticeProgress = (
 
 export const updateAiLesson = (
   current: BootstrapData,
-  scope: AiChatScope,
+  track: TrackKey,
   lesson: AiLesson,
-): BootstrapData => {
-  if (scope === "course") {
-    return {
-      ...current,
-      ai: {
-        ...current.ai,
-        lessons: { ...current.ai.lessons, [lesson.itemId]: lesson },
-      },
-    };
-  }
-  if (scope === "yandex") {
-    return {
-      ...current,
-      ai: {
-        ...current.ai,
-        yandexLessons: {
-          ...current.ai.yandexLessons,
-          [lesson.itemId]: lesson,
-        },
-      },
-    };
-  }
-  return {
-    ...current,
-    ai: {
-      ...current.ai,
-      ozonLessons: { ...current.ai.ozonLessons, [lesson.itemId]: lesson },
+): BootstrapData => ({
+  ...current,
+  ai: {
+    ...current.ai,
+    lessons: {
+      ...current.ai.lessons,
+      [track]: { ...current.ai.lessons[track], [lesson.itemId]: lesson },
     },
-  };
-};
+  },
+});
 
 export const buildOptimisticQuizProgress = (
   current: BootstrapData,
   variables: QuizMutationVariables,
 ): LessonQuizProgress | null => {
-  const lesson =
-    variables.scope === "course"
-      ? current.ai.lessons[variables.itemId]
-      : variables.scope === "yandex"
-        ? current.ai.yandexLessons[variables.itemId]
-        : current.ai.ozonLessons[variables.itemId];
+  const lesson = current.ai.lessons[variables.track]?.[variables.itemId];
   if (!lesson || lesson.quiz.length !== 10) return null;
   const submitted = new Map(
     variables.answers.map((answer) => [answer.questionId, answer.selectedOptionIndex]),
@@ -121,7 +96,7 @@ export const buildOptimisticQuizProgress = (
     };
   });
   if (answers.some((answer) => answer === null)) return null;
-  const previous = current.ai.quizProgress[variables.scope][variables.itemId];
+  const previous = current.ai.quizProgress[variables.track]?.[variables.itemId];
   const previousAttempts =
     previous?.lessonVersion === lesson.version ? previous.attempts : [];
   return {
