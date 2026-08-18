@@ -4,9 +4,9 @@ import type { AppView } from "./app-route";
 import { formatAppRoute, parseAppRoute, viewForTrack } from "./app-route";
 
 describe("app routes", () => {
-  it("falls back to Today for an empty or unknown route", () => {
-    expect(parseAppRoute("")).toEqual({ view: "today", lessonReader: null });
-    expect(parseAppRoute("#/unknown")).toEqual({ view: "today", lessonReader: null });
+  it("falls back to Yandex for an empty or unknown route", () => {
+    expect(parseAppRoute("")).toEqual({ view: "yandex", lessonReader: null });
+    expect(parseAppRoute("#/unknown")).toEqual({ view: "yandex", lessonReader: null });
   });
 
   it.each<[AppView, string]>([
@@ -40,24 +40,28 @@ describe("app routes", () => {
     expect(parseAppRoute(hash)).toEqual(route);
   });
 
-  it("round-trips a plan day and its lesson", () => {
+  it.each([
+    ["plan", "curriculum", "w02-d03"],
+    ["yandex", "yandex", "yandex-d03"],
+    ["ozon", "ozon", "ozon-d03"],
+  ] as const)("round-trips a %s day and its lesson", (view, track, dayId) => {
     const dayRoute = {
-      view: "plan" as const,
-      planDayId: "w02-d03",
+      view,
+      dayReader: { track, dayId },
       lessonReader: null,
     };
     const lessonRoute = {
       ...dayRoute,
       lessonReader: {
-        track: "curriculum" as const,
+        track,
         itemId: "closures/замыкания",
       },
     };
 
-    expect(formatAppRoute(dayRoute)).toBe("#/plan/day/w02-d03");
+    expect(formatAppRoute(dayRoute)).toBe(`#/${view}/day/${dayId}`);
     expect(parseAppRoute(formatAppRoute(dayRoute))).toEqual(dayRoute);
     expect(formatAppRoute(lessonRoute)).toBe(
-      "#/plan/day/w02-d03/lesson/closures%2F%D0%B7%D0%B0%D0%BC%D1%8B%D0%BA%D0%B0%D0%BD%D0%B8%D1%8F",
+      `#/${view}/day/${dayId}/lesson/closures%2F%D0%B7%D0%B0%D0%BC%D1%8B%D0%BA%D0%B0%D0%BD%D0%B8%D1%8F`,
     );
     expect(parseAppRoute(formatAppRoute(lessonRoute))).toEqual(lessonRoute);
   });

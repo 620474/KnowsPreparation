@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   BrainCircuit,
   Building2,
+  CalendarDays,
   CalendarClock,
   Code2,
   Download,
@@ -24,6 +25,7 @@ import type { BootstrapData, LearningBackup, SettingsPatch } from "../types";
 interface SettingsViewProps {
   data: BootstrapData;
   onOpenOzon: () => void;
+  onOpenPlan: () => void;
   onOpenAiCourse: () => void;
   onOpenAlgorithms: () => void;
   onOpenQuestions: () => void;
@@ -37,6 +39,7 @@ interface SettingsViewProps {
 export function SettingsView({
   data,
   onOpenOzon,
+  onOpenPlan,
   onOpenAiCourse,
   onOpenAlgorithms,
   onOpenQuestions,
@@ -135,6 +138,9 @@ export function SettingsView({
           <h2>Материалы и практика</h2>
           <p>Библиотека источников, банк вопросов и отдельный трек алгоритмов.</p>
           <div className="settings-controls">
+            <Button className="secondary-button" leftSection={<CalendarDays size={17} />} type="button" variant="default" onClick={onOpenPlan}>
+              Учебный план
+            </Button>
             <Button className="secondary-button" leftSection={<LibraryBig size={17} />} type="button" variant="default" onClick={onOpenResources}>
               Библиотека
             </Button>

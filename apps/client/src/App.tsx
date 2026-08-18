@@ -34,9 +34,9 @@ const AlgorithmsView = lazy(() =>
 const AnalyticsView = lazy(() =>
   import("./views/AnalyticsView").then((module) => ({ default: module.AnalyticsView })),
 );
-const CurriculumDayView = lazy(() =>
-  import("./views/CurriculumDayView").then((module) => ({
-    default: module.CurriculumDayView,
+const TrackDayView = lazy(() =>
+  import("./views/TrackDayView").then((module) => ({
+    default: module.TrackDayView,
   })),
 );
 const MockInterviewView = lazy(() =>
@@ -93,14 +93,14 @@ export default function App() {
   const {
     activeView,
     lessonReader,
-    planDayId,
+    dayReader,
     chatOpen,
     chatItemId,
     chatDraftRequest,
     setChatItemId,
     navigateToView,
     navigateToLesson,
-    navigateToPlanDay,
+    navigateToTrackDay,
     openLessonReader,
     closeLessonReader,
     openChat,
@@ -271,7 +271,7 @@ export default function App() {
       {activeView === "today" ? (
         <TodayView
           data={data}
-          onOpenDay={navigateToPlanDay}
+          onOpenDay={(dayId) => navigateToTrackDay("curriculum", dayId)}
           onOpenAnalytics={() => navigateToView("analytics")}
           onOpenMock={() => navigateToView("interview")}
           onOpenReview={() => navigateToView("review")}
@@ -292,40 +292,66 @@ export default function App() {
           }}
         />
       ) : null}
-      {activeView === "yandex" ? (
-        <YandexSprintView
+      {activeView === "yandex" && dayReader?.track === "yandex" ? (
+        <TrackDayView
+          key={dayReader.dayId}
           data={data}
+          dayId={dayReader.dayId}
+          days={data.yandexSprint}
+          track="yandex"
+          trackLabel="Яндекс"
           generatingLessonId={
             generatingLesson?.track === "yandex" ? generatingLesson.itemId : null
           }
           generationCharacters={
             generationProgress?.track === "yandex" ? generationProgress.characters : 0
           }
+          onBack={() => navigateToView("yandex")}
           onGenerateLesson={(blockId) => {
             setSyncError("");
             generateLesson("yandex", blockId);
           }}
+          onOpenChat={(blockId) => openChat(blockId)}
+          onOpenDay={(dayId) => navigateToTrackDay("yandex", dayId)}
           onOpenLesson={(blockId) => openLessonReader("yandex", blockId)}
-          onOpenChat={(blockId, context) => openChat(blockId, context)}
           onUpdateTask={updateTask}
         />
       ) : null}
-      {activeView === "ozon" ? (
-        <OzonSprintView
+      {activeView === "yandex" && dayReader?.track !== "yandex" ? (
+        <YandexSprintView
           data={data}
+          onOpenDay={(dayId) => navigateToTrackDay("yandex", dayId)}
+        />
+      ) : null}
+      {activeView === "ozon" && dayReader?.track === "ozon" ? (
+        <TrackDayView
+          key={dayReader.dayId}
+          data={data}
+          dayId={dayReader.dayId}
+          days={data.ozonSprint}
+          track="ozon"
+          trackLabel="Ozon"
           generatingLessonId={
             generatingLesson?.track === "ozon" ? generatingLesson.itemId : null
           }
           generationCharacters={
             generationProgress?.track === "ozon" ? generationProgress.characters : 0
           }
+          onBack={() => navigateToView("ozon")}
           onGenerateLesson={(blockId) => {
             setSyncError("");
             generateLesson("ozon", blockId);
           }}
+          onOpenChat={(blockId) => openChat(blockId)}
+          onOpenDay={(dayId) => navigateToTrackDay("ozon", dayId)}
           onOpenLesson={(blockId) => openLessonReader("ozon", blockId)}
-          onOpenChat={(blockId, context) => openChat(blockId, context)}
           onUpdateTask={updateTask}
+        />
+      ) : null}
+      {activeView === "ozon" && dayReader?.track !== "ozon" ? (
+        <OzonSprintView
+          data={data}
+          onOpenDay={(dayId) => navigateToTrackDay("ozon", dayId)}
         />
       ) : null}
       {activeView === "ai-course" ? (
@@ -350,11 +376,14 @@ export default function App() {
           onOpenChat={(itemId, context) => openChat(itemId, context)}
         />
       ) : null}
-      {activeView === "plan" && planDayId ? (
-        <CurriculumDayView
-          key={planDayId}
+      {activeView === "plan" && dayReader?.track === "curriculum" ? (
+        <TrackDayView
+          key={dayReader.dayId}
           data={data}
-          dayId={planDayId}
+          dayId={dayReader.dayId}
+          days={data.curriculum.flatMap((week) => week.days)}
+          track="curriculum"
+          trackLabel="Учебный план"
           generatingLessonId={
             generatingLesson?.track === "curriculum" ? generatingLesson.itemId : null
           }
@@ -367,15 +396,15 @@ export default function App() {
             generateLesson("curriculum", blockId);
           }}
           onOpenChat={(blockId) => openChat(blockId)}
-          onOpenDay={navigateToPlanDay}
+          onOpenDay={(dayId) => navigateToTrackDay("curriculum", dayId)}
           onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
           onUpdateTask={updateTask}
         />
       ) : null}
-      {activeView === "plan" && !planDayId ? (
+      {activeView === "plan" && dayReader?.track !== "curriculum" ? (
         <PlanView
           data={data}
-          onOpenDay={navigateToPlanDay}
+          onOpenDay={(dayId) => navigateToTrackDay("curriculum", dayId)}
         />
       ) : null}
       {activeView === "resources" ? <ResourcesView data={data} /> : null}
@@ -431,6 +460,7 @@ export default function App() {
           onOpenAlgorithms={() => navigateToView("algorithms")}
           onOpenAiCourse={() => navigateToView("ai-course")}
           onOpenOzon={() => navigateToView("ozon")}
+          onOpenPlan={() => navigateToView("plan")}
           onOpenQuestions={() => navigateToView("questions")}
           onOpenResources={() => navigateToView("resources")}
           onUpdateSettings={updateSettings}

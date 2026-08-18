@@ -7,6 +7,7 @@ import {
   viewForTrack,
   type AppRoute,
   type AppView,
+  type DayRouteTarget,
   type LessonRouteTarget,
 } from "../lib/app-route";
 import type { TrackKey, AiLessonQuestionContext } from "../types";
@@ -20,8 +21,8 @@ export function useAppNavigation() {
   const [lessonReader, setLessonReader] = useState<LessonRouteTarget | null>(
     () => parseAppRoute(window.location.hash).lessonReader,
   );
-  const [planDayId, setPlanDayId] = useState<string | null>(
-    () => parseAppRoute(window.location.hash).planDayId ?? null,
+  const [dayReader, setDayReader] = useState<DayRouteTarget | null>(
+    () => parseAppRoute(window.location.hash).dayReader ?? null,
   );
   const [chatOpen, setChatOpen] = useState(false);
   const [chatItemId, setChatItemId] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function useAppNavigation() {
       const route = parseAppRoute(window.location.hash);
       setActiveView(route.view);
       setLessonReader(route.lessonReader);
-      setPlanDayId(route.planDayId ?? null);
+      setDayReader(route.dayReader ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -74,7 +75,7 @@ export function useAppNavigation() {
 
       setActiveView(route.view);
       setLessonReader(route.lessonReader);
-      setPlanDayId(route.planDayId ?? null);
+      setDayReader(route.dayReader ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -93,17 +94,17 @@ export function useAppNavigation() {
       navigateToRoute({
         view: viewForTrack(track),
         lessonReader: { track, itemId },
-        ...(track === "curriculum" && planDayId ? { planDayId } : {}),
+        ...(dayReader?.track === track ? { dayReader } : {}),
       }),
-    [navigateToRoute, planDayId],
+    [dayReader, navigateToRoute],
   );
 
-  const navigateToPlanDay = useCallback(
-    (dayId: string) =>
+  const navigateToTrackDay = useCallback(
+    (track: DayRouteTarget["track"], dayId: string) =>
       navigateToRoute({
-        view: "plan",
+        view: viewForTrack(track),
         lessonReader: null,
-        planDayId: dayId,
+        dayReader: { track, dayId },
       }),
     [navigateToRoute],
   );
@@ -120,11 +121,11 @@ export function useAppNavigation() {
       {
         view: activeView,
         lessonReader: null,
-        ...(planDayId ? { planDayId } : {}),
+        ...(dayReader ? { dayReader } : {}),
       },
       "replace",
     );
-  }, [activeView, lessonReader, navigateToRoute, planDayId]);
+  }, [activeView, dayReader, lessonReader, navigateToRoute]);
 
   const openChat = useCallback(
     (itemId: string | null, context?: AiLessonQuestionContext) => {
@@ -156,14 +157,14 @@ export function useAppNavigation() {
   return {
     activeView,
     lessonReader,
-    planDayId,
+    dayReader,
     chatOpen,
     chatItemId,
     chatDraftRequest,
     setChatItemId,
     navigateToView,
     navigateToLesson,
-    navigateToPlanDay,
+    navigateToTrackDay,
     openLessonReader: navigateToLesson,
     closeLessonReader,
     openChat,

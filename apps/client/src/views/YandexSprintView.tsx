@@ -1,41 +1,27 @@
+import type { CSSProperties } from "react";
 import { Alert, Button, Progress, UnstyledButton } from "@mantine/core";
 import {
-  BookOpenText,
+  ArrowRight,
   Check,
+  ChevronDown,
+  ChevronRight,
   CircleAlert,
   Clock3,
-  ListChecks,
-  MessageCircle,
+  RotateCcw,
   Target,
 } from "lucide-react";
 
-import { ResourceLinks } from "../components/ResourceLinks";
-import { TaskWorkspace } from "../components/TaskWorkspace";
-import type {
-  AiLessonQuestionContext,
-  AiLesson,
-  BootstrapData,
-  StudyDay,
-  StudyBlockKind,
-  TaskUpdateHandler,
-  TrackKey,
-} from "../types";
+import type { BootstrapData, StudyDay, TrackKey } from "../types";
 
 interface YandexSprintViewProps {
   data: BootstrapData;
   sprintDays?: StudyDay[];
-  lessons?: Record<string, AiLesson>;
   eyebrow?: string;
   title?: string;
   description?: string;
   weekTitles?: string[];
-  generatingLessonId: string | null;
-  generationCharacters: number;
-  onGenerateLesson: (blockId: string) => void;
-  onOpenLesson: (blockId: string) => void;
-  onOpenChat: (blockId: string, context?: AiLessonQuestionContext) => void;
-  onUpdateTask: TaskUpdateHandler;
   track?: Extract<TrackKey, "yandex" | "ozon">;
+  onOpenDay: (dayId: string) => void;
 }
 
 const WEEK_TITLES = [
@@ -44,31 +30,17 @@ const WEEK_TITLES = [
   "Интервью-режим",
 ];
 
-const BLOCK_LABELS: Record<StudyBlockKind, string> = {
-  theory: "Платформа",
-  practice: "Задача",
-  ai: "AI-секция",
-  review: "Разбор",
-};
-
 export function YandexSprintView({
   data,
   sprintDays: providedSprintDays,
-  lessons: providedLessons,
-  eyebrow = "Яндекс · 21 день · без календаря",
-  title = "Спринт к собеседованию",
-  description = "Проходи пункты в любом темпе. Ничего не переносится и не пропадает из-за даты.",
+  eyebrow = "Главный приоритет · 21 день",
+  title = "Подготовка к Яндексу",
+  description = "Иди по дням с начала: платформа, задачи, AI-секция и короткий разбор результата.",
   weekTitles = WEEK_TITLES,
-  generatingLessonId,
-  generationCharacters,
-  onGenerateLesson,
-  onOpenLesson,
-  onOpenChat,
-  onUpdateTask,
   track = "yandex",
+  onOpenDay,
 }: YandexSprintViewProps) {
   const sprintDays = providedSprintDays ?? data.yandexSprint ?? [];
-  const lessons = providedLessons ?? data.ai.lessons.yandex;
   const allBlocks = sprintDays.flatMap((day) => day.blocks);
   const completedBlocks = allBlocks.filter(
     (block) => data.progress.tasks[block.id]?.completed,
@@ -78,227 +50,153 @@ export function YandexSprintView({
     : 0;
   const nextDay = sprintDays.find((day) =>
     day.blocks.some((block) => !data.progress.tasks[block.id]?.completed),
-  );
+  ) ?? sprintDays[0];
   const nextBlock = nextDay?.blocks.find(
     (block) => !data.progress.tasks[block.id]?.completed,
   );
   const weeks = Array.from({ length: Math.ceil(sprintDays.length / 7) }, (_, weekIndex) =>
     sprintDays.slice(weekIndex * 7, weekIndex * 7 + 7),
   );
+  const totalMinutes = allBlocks.reduce((sum, block) => sum + block.minutes, 0);
+  const dialStyle = { "--progress": `${totalProgress * 3.6}deg` } as CSSProperties;
 
   return (
-    <div className="page-stack yandex-page">
-      <header className="page-header">
-        <div>
+    <div className="page-stack today-dashboard sprint-dashboard">
+      <section className="hero-grid today-hero-grid">
+        <div className="hero-card today-hero-card">
+          <div className="hero-topline">
+            <span className="status-pill"><Target size={15} /> {track === "yandex" ? "Приоритет №1" : "Приоритет №2"}</span>
+            <span>{Math.round(totalMinutes / 60)} часов</span>
+          </div>
           <p className="eyebrow">{eyebrow}</p>
           <h1>{title}</h1>
-          <p>{description}</p>
-        </div>
-        <div className="header-stat accent">
-          <Target size={20} />
-          <strong>{completedBlocks}/{allBlocks.length}</strong>
-          <span>блоков готово</span>
-        </div>
-      </header>
-
-      {!data.ai.enabled ? (
-        <Alert color="orange" icon={<CircleAlert size={18} />} variant="light">
-          AI-разборы выключены. Добавь <code>OPENAI_API_KEY</code> в Runtime variables API
-          на Northflank и перезапусти deployment.
-        </Alert>
-      ) : null}
-
-      <section className="yandex-overview">
-        <div className="yandex-progress-card">
-          <div className="section-heading">
-            <div>
-              <span>Общий прогресс</span>
-              <strong>{totalProgress}%</strong>
-            </div>
-            <ListChecks size={22} />
+          <p>{nextBlock ? `Следующий шаг: ${nextBlock.title}` : description}</p>
+          <div className="hero-meta">
+            <span><Clock3 size={18} /> 120 минут в день</span>
+            <span><Target size={18} /> {completedBlocks} из {allBlocks.length} блоков</span>
           </div>
-          <Progress value={totalProgress} color="mint" radius="xl" size="md" />
+          <div className="sprint-hero-actions">
+            <Button
+              className="primary-button today-primary-action"
+              disabled={!nextDay}
+              rightSection={<ArrowRight size={17} />}
+              type="button"
+              onClick={() => nextDay && onOpenDay(nextDay.id)}
+            >
+              {totalProgress === 100 ? "Посмотреть программу" : "Продолжить подготовку"}
+            </Button>
+            <Button
+              className="secondary-button"
+              disabled={!sprintDays[0]}
+              leftSection={<RotateCcw size={16} />}
+              type="button"
+              variant="default"
+              onClick={() => sprintDays[0] && onOpenDay(sprintDays[0].id)}
+            >
+              Начать с первого дня
+            </Button>
+          </div>
         </div>
-        <div className="yandex-next-card">
-          <Clock3 size={22} />
+
+        <div className="progress-card today-progress-card">
+          <div className="progress-dial" style={dialStyle}>
+            <div>
+              <strong>{totalProgress}%</strong>
+              <span>готово</span>
+            </div>
+          </div>
           <div>
-            <span>{nextDay ? `Следующий пункт · день ${nextDay.dayNumber}` : "Спринт завершён"}</span>
-            <strong>{nextBlock?.title ?? "Можно идти на собеседование"}</strong>
+            <p className="eyebrow">Прогресс спринта</p>
+            <h2>{completedBlocks} / {allBlocks.length}</h2>
+            <p>{nextDay ? `Продолжение — день ${nextDay.dayNumber}.` : "Все блоки завершены."}</p>
           </div>
         </div>
       </section>
 
-      <div className="yandex-week-list">
-        {weeks.map((days, weekIndex) => {
-          const weekBlocks = days.flatMap((day) => day.blocks);
-          const weekCompleted = weekBlocks.filter(
-            (block) => data.progress.tasks[block.id]?.completed,
-          ).length;
+      {!data.ai.enabled ? (
+        <Alert color="orange" icon={<CircleAlert size={18} />} variant="light">
+          AI-разборы сейчас недоступны. Ссылки, задачи и сохранённые решения продолжат работать.
+        </Alert>
+      ) : null}
 
-          return (
-            <section className="yandex-week-card" key={weekIndex}>
-              <header className="yandex-week-heading">
-                <div>
-                  <span>Неделя {weekIndex + 1}</span>
-                  <h2>{weekTitles[weekIndex] ?? `Неделя ${weekIndex + 1}`}</h2>
+      <section className="sprint-days-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Программа по дням</p>
+            <h2>Открывай один день за раз</h2>
+            <p>{description}</p>
+          </div>
+        </div>
+
+        <div className="week-list sprint-week-list">
+          {weeks.map((days, weekIndex) => {
+            const weekBlocks = days.flatMap((day) => day.blocks);
+            const weekCompleted = weekBlocks.filter(
+              (block) => data.progress.tasks[block.id]?.completed,
+            ).length;
+            const weekProgress = weekBlocks.length
+              ? Math.round((weekCompleted / weekBlocks.length) * 100)
+              : 0;
+
+            return (
+              <details className="week-card" key={weekIndex} open={weekIndex === 0 || days.some((day) => day.id === nextDay?.id)}>
+                <summary>
+                  <div className="week-number">{String(weekIndex + 1).padStart(2, "0")}</div>
+                  <div className="week-summary-copy">
+                    <span>Неделя {weekIndex + 1}</span>
+                    <h2>{weekTitles[weekIndex] ?? `Неделя ${weekIndex + 1}`}</h2>
+                    <p>{weekCompleted} из {weekBlocks.length} блоков завершено</p>
+                  </div>
+                  <div className="week-progress">
+                    <strong>{weekProgress}%</strong>
+                    <span>{weekCompleted}/{weekBlocks.length}</span>
+                  </div>
+                  <ChevronDown className="summary-chevron" size={22} />
+                </summary>
+
+                <div className="plan-day-list">
+                  {days.map((day) => {
+                    const completed = day.blocks.filter(
+                      (block) => data.progress.tasks[block.id]?.completed,
+                    ).length;
+                    const dayProgress = day.blocks.length
+                      ? Math.round((completed / day.blocks.length) * 100)
+                      : 0;
+                    const dayMinutes = day.blocks.reduce((sum, block) => sum + block.minutes, 0);
+                    const isNext = day.id === nextDay?.id && totalProgress < 100;
+
+                    return (
+                      <UnstyledButton
+                        className={isNext ? "plan-day-row current" : "plan-day-row"}
+                        key={day.id}
+                        type="button"
+                        onClick={() => onOpenDay(day.id)}
+                      >
+                        <span className="plan-day-marker">
+                          <small>День</small>
+                          <strong>{String(day.dayNumber).padStart(2, "0")}</strong>
+                        </span>
+                        <span className="plan-day-copy">
+                          <span className="plan-day-title-line">
+                            <strong>{day.title}</strong>
+                            {isNext ? <em>Дальше</em> : null}
+                          </span>
+                          <small>{dayMinutes} минут · {completed} из {day.blocks.length} блоков</small>
+                          <Progress color="mint" radius="xl" size={5} value={dayProgress} />
+                        </span>
+                        <span className={dayProgress === 100 ? "plan-day-state complete" : "plan-day-state"}>
+                          {dayProgress === 100 ? <Check size={18} /> : <span>{dayProgress}%</span>}
+                          <ChevronRight size={19} />
+                        </span>
+                      </UnstyledButton>
+                    );
+                  })}
                 </div>
-                <strong>{weekCompleted}/{weekBlocks.length}</strong>
-              </header>
-
-              <div className="yandex-day-list">
-                {days.map((day) => {
-                  const dayCompleted = day.blocks.filter(
-                    (block) => data.progress.tasks[block.id]?.completed,
-                  ).length;
-
-                  return (
-                    <article
-                      className={dayCompleted === day.blocks.length ? "yandex-day complete" : "yandex-day"}
-                      key={day.id}
-                    >
-                      <div className="yandex-day-marker">
-                        <span>День</span>
-                        <strong>{String(day.dayNumber).padStart(2, "0")}</strong>
-                        <small>{dayCompleted}/{day.blocks.length}</small>
-                      </div>
-                      <div className="yandex-day-content">
-                        <h3>{day.title}</h3>
-                        <div className="yandex-task-list">
-                          {day.blocks.map((block) => {
-                            const task = {
-                              completed: false,
-                              note: "",
-                              customTask: "",
-                              solution: "",
-                              ...data.progress.tasks[block.id],
-                            };
-                            const lesson = lessons[block.id];
-                            const isGenerating = generatingLessonId === block.id;
-                            const supportsAiLesson = block.kind !== "review";
-
-                            return (
-                              <div
-                                className={
-                                  task.completed
-                                    ? `yandex-task kind-${block.kind} complete`
-                                    : `yandex-task kind-${block.kind}`
-                                }
-                                key={block.id}
-                              >
-                                <UnstyledButton
-                                  className="yandex-task-toggle"
-                                  type="button"
-                                  onClick={() => void onUpdateTask(block.id, {
-                                    completed: !task.completed,
-                                  })}
-                                  aria-pressed={task.completed}
-                                >
-                                  <span className="yandex-check"><Check size={16} /></span>
-                                  <span className="yandex-task-copy">
-                                    <small>{BLOCK_LABELS[block.kind]} · {block.minutes} минут</small>
-                                    <strong>{block.title}</strong>
-                                    <p>{block.description}</p>
-                                  </span>
-                                </UnstyledButton>
-                                {supportsAiLesson ? (
-                                  <div className="yandex-ai-actions">
-                                    <Button
-                                      className="primary-button"
-                                      type="button"
-                                      leftSection={<BookOpenText size={16} />}
-                                      loading={!lesson && isGenerating}
-                                      disabled={
-                                        !lesson &&
-                                        (!data.ai.enabled ||
-                                          (generatingLessonId !== null && !isGenerating))
-                                      }
-                                      onClick={() =>
-                                        lesson
-                                          ? onOpenLesson(block.id)
-                                          : onGenerateLesson(block.id)
-                                      }
-                                    >
-                                      {lesson
-                                        ? "Открыть разбор"
-                                        : isGenerating && generationCharacters > 0
-                                          ? `Пишу · ${generationCharacters.toLocaleString("ru-RU")} симв.`
-                                          : "Написать разбор"}
-                                    </Button>
-                                    <Button
-                                      className="secondary-button"
-                                      type="button"
-                                      variant="default"
-                                      leftSection={<MessageCircle size={16} />}
-                                      disabled={!data.ai.enabled}
-                                      onClick={() => onOpenChat(block.id)}
-                                    >
-                                      Обсудить
-                                    </Button>
-                                  </div>
-                                ) : null}
-                                {block.exercise ? (
-                                  <details className="yandex-exercise">
-                                    <summary>Условие задачи</summary>
-                                    <div className="yandex-exercise-content">
-                                      <p>{block.exercise.statement}</p>
-                                      {block.exercise.signature ? (
-                                        <div className="yandex-exercise-section">
-                                          <span>Сигнатура</span>
-                                          <pre>{block.exercise.signature}</pre>
-                                        </div>
-                                      ) : null}
-                                      <div className="yandex-exercise-section">
-                                        <span>Ограничения</span>
-                                        <ul>
-                                          {block.exercise.constraints.map((constraint) => (
-                                            <li key={constraint}>{constraint}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                      <div className="yandex-exercise-section">
-                                        <span>Примеры</span>
-                                        <div className="yandex-examples">
-                                          {block.exercise.examples.map((example, exampleIndex) => (
-                                            <div className="yandex-example" key={`${example.input}-${exampleIndex}`}>
-                                              <small>Пример {exampleIndex + 1}</small>
-                                              <pre>Вход: {example.input}{"\n"}Выход: {example.output}</pre>
-                                              {example.explanation ? <p>{example.explanation}</p> : null}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </details>
-                                ) : null}
-                                <ResourceLinks
-                                  compact
-                                  resourceIds={block.resourceIds}
-                                  resources={data.resources}
-                                />
-                                {block.kind === "practice" || block.kind === "ai" ? (
-                                  <TaskWorkspace
-                                    includeCustomTask={block.kind === "ai"}
-                                    onUpdateTask={onUpdateTask}
-                                    progress={task}
-                                    runner={block.exercise?.runner}
-                                    taskId={block.id}
-                                    taskTitle={block.title}
-                                    track={track}
-                                  />
-                                ) : null}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+              </details>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

@@ -3644,6 +3644,27 @@ p {
   margin-top: 24px;
 }
 
+.sprint-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.sprint-hero-actions .today-primary-action {
+  margin-top: 0;
+}
+
+.sprint-days-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.sprint-week-list {
+  width: 100%;
+}
+
 .today-focus-panel,
 .curriculum-day-header,
 .curriculum-day-block {
@@ -5099,6 +5120,11 @@ p {
   }
 
   .today-primary-action {
+    width: 100%;
+  }
+
+  .sprint-hero-actions,
+  .sprint-hero-actions > * {
     width: 100%;
   }
 

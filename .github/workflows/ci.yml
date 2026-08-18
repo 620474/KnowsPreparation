@@ -99,9 +99,10 @@ jobs:
             echo "ANDROID_DEBUG_KEYSTORE_BASE64 is not configured" >&2
             exit 1
           fi
-          mkdir -p "$HOME/.android"
-          printf '%s' "$ANDROID_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore"
+          keystore_path="$RUNNER_TEMP/frontend-prep.keystore"
+          printf '%s' "$ANDROID_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+          echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
 
       - name: Create release
         env:

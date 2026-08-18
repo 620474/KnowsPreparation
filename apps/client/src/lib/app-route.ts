@@ -20,13 +20,20 @@ export interface LessonRouteTarget {
   itemId: string;
 }
 
+export type DayTrackKey = Extract<TrackKey, "curriculum" | "yandex" | "ozon">;
+
+export interface DayRouteTarget {
+  track: DayTrackKey;
+  dayId: string;
+}
+
 export interface AppRoute {
   view: AppView;
   lessonReader: LessonRouteTarget | null;
-  planDayId?: string | null;
+  dayReader?: DayRouteTarget | null;
 }
 
-const DEFAULT_ROUTE: AppRoute = { view: "today", lessonReader: null };
+const DEFAULT_ROUTE: AppRoute = { view: "yandex", lessonReader: null };
 
 const viewPaths: Record<AppView, string> = {
   today: "today",
@@ -62,6 +69,9 @@ const viewTracks = Object.fromEntries(
 
 export const trackForView = (view: AppView): TrackKey | undefined => viewTracks[view];
 
+const isDayTrack = (track: TrackKey | undefined): track is DayTrackKey =>
+  track === "curriculum" || track === "yandex" || track === "ozon";
+
 const decodeItemId = (value: string) => {
   try {
     return decodeURIComponent(value);
@@ -76,21 +86,21 @@ export function parseAppRoute(hash: string): AppRoute {
   const view = pathViews[segments[0] ?? ""];
   if (!view) return DEFAULT_ROUTE;
 
-  if (view === "plan" && segments[1] === "day" && segments[2]) {
-    const planDayId = decodeItemId(segments[2]);
+  const track = viewTracks[view];
+  if (isDayTrack(track) && segments[1] === "day" && segments[2]) {
+    const dayId = decodeItemId(segments[2]);
     const lessonItemId =
       segments[3] === "lesson" && segments[4] ? decodeItemId(segments[4]) : "";
 
     return {
       view,
-      planDayId,
+      dayReader: { track, dayId },
       lessonReader: lessonItemId
-        ? { track: "curriculum", itemId: lessonItemId }
+        ? { track, itemId: lessonItemId }
         : null,
     };
   }
 
-  const track = viewTracks[view];
   const itemId = segments[1] === "lesson" && segments[2] ? decodeItemId(segments[2]) : "";
 
   return {
@@ -102,8 +112,8 @@ export function parseAppRoute(hash: string): AppRoute {
 export function formatAppRoute(route: AppRoute): string {
   const path = viewPaths[route.view];
 
-  if (route.view === "plan" && route.planDayId) {
-    const dayPath = `#/${path}/day/${encodeURIComponent(route.planDayId)}`;
+  if (route.dayReader) {
+    const dayPath = `#/${path}/day/${encodeURIComponent(route.dayReader.dayId)}`;
     if (!route.lessonReader) return dayPath;
     return `${dayPath}/lesson/${encodeURIComponent(route.lessonReader.itemId)}`;
   }

@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 
 def appVersionCode = (System.getenv('APP_VERSION_CODE') ?: '1000000').toInteger()
 def appVersionName = System.getenv('APP_VERSION_NAME') ?: '1.0.0'
+def releaseKeystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
 
 android {
     namespace = "ru.maksim.frontendprep"
@@ -19,9 +20,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        stableRelease {
+            if (releaseKeystorePath) {
+                storeFile file(releaseKeystorePath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: 'android'
+                keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: 'androiddebugkey'
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: 'android'
+            }
+        }
+    }
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig releaseKeystorePath ? signingConfigs.stableRelease : signingConfigs.debug
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

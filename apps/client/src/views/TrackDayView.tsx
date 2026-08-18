@@ -15,11 +15,16 @@ import {
 import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
 import { getDateForOffset } from "../lib/date";
-import type { BootstrapData, TaskUpdateHandler } from "../types";
+import type { BootstrapData, StudyDay, TaskUpdateHandler, TrackKey } from "../types";
 
-interface CurriculumDayViewProps {
+type DayTrackKey = Extract<TrackKey, "curriculum" | "yandex" | "ozon">;
+
+interface TrackDayViewProps {
   data: BootstrapData;
   dayId: string;
+  days: StudyDay[];
+  track: DayTrackKey;
+  trackLabel: string;
   generatingLessonId: string | null;
   generationCharacters: number;
   onBack: () => void;
@@ -37,9 +42,12 @@ const kindLabels = {
   review: "Повторение",
 };
 
-export function CurriculumDayView({
+export function TrackDayView({
   data,
   dayId,
+  days,
+  track,
+  trackLabel,
   generatingLessonId,
   generationCharacters,
   onBack,
@@ -48,31 +56,32 @@ export function CurriculumDayView({
   onOpenLesson,
   onOpenChat,
   onUpdateTask,
-}: CurriculumDayViewProps) {
-  const days = data.curriculum.flatMap((week) => week.days);
+}: TrackDayViewProps) {
   const dayIndex = days.findIndex((candidate) => candidate.id === dayId);
   const day = days[dayIndex];
-  const week = data.curriculum.find((candidate) =>
-    candidate.days.some((studyDay) => studyDay.id === dayId),
-  );
+  const curriculumWeek = track === "curriculum"
+    ? data.curriculum.find((candidate) =>
+        candidate.days.some((studyDay) => studyDay.id === dayId),
+      )
+    : null;
   const initialOpenBlockId =
     day?.blocks.find((block) => !data.progress.tasks[block.id]?.completed)?.id ??
     day?.blocks[0]?.id ??
     null;
   const [openBlockId, setOpenBlockId] = useState<string | null>(initialOpenBlockId);
 
-  if (!day || !week) {
+  if (!day) {
     return (
       <div className="page-stack narrow-page">
         <header className="page-header">
           <div>
-            <p className="eyebrow">Учебный план</p>
+            <p className="eyebrow">{trackLabel}</p>
             <h1>День не найден</h1>
             <p>Возможно, программа обновилась. Вернись к списку дней.</p>
           </div>
         </header>
         <Button className="primary-button" leftSection={<ArrowLeft size={17} />} onClick={onBack}>
-          Вернуться к плану
+          Вернуться к программе
         </Button>
       </div>
     );
@@ -81,9 +90,15 @@ export function CurriculumDayView({
   const completedCount = day.blocks.filter(
     (block) => data.progress.tasks[block.id]?.completed,
   ).length;
-  const progress = Math.round((completedCount / day.blocks.length) * 100);
+  const progress = day.blocks.length
+    ? Math.round((completedCount / day.blocks.length) * 100)
+    : 0;
   const previousDay = days[dayIndex - 1];
   const nextDay = days[dayIndex + 1];
+  const eyebrow = curriculumWeek
+    ? `Неделя ${curriculumWeek.number} · ${getDateForOffset(data.settings.startDate, day.offset)}`
+    : `${trackLabel} · день ${day.dayNumber} из ${days.length}`;
+  const description = curriculumWeek?.outcome ?? "Пройди блоки по порядку и сохрани решения перед переходом дальше.";
 
   return (
     <div className="page-stack curriculum-day-page">
@@ -97,7 +112,7 @@ export function CurriculumDayView({
             variant="default"
             onClick={onBack}
           >
-            Весь план
+            Все дни
           </Button>
           <div className="curriculum-day-switcher">
             <Button
@@ -111,7 +126,7 @@ export function CurriculumDayView({
             >
               <ChevronLeft size={17} />
             </Button>
-            <span>День {day.offset + 1} из {days.length}</span>
+            <span>День {dayIndex + 1} из {days.length}</span>
             <Button
               aria-label="Следующий день"
               className="secondary-button"
@@ -128,11 +143,9 @@ export function CurriculumDayView({
 
         <div className="curriculum-day-title">
           <div>
-            <p className="eyebrow">
-              Неделя {week.number} · {getDateForOffset(data.settings.startDate, day.offset)}
-            </p>
+            <p className="eyebrow">{eyebrow}</p>
             <h1>{day.title}</h1>
-            <p>{week.outcome}</p>
+            <p>{description}</p>
           </div>
           <div className="curriculum-day-progress">
             <strong>{completedCount}/{day.blocks.length}</strong>
@@ -151,7 +164,7 @@ export function CurriculumDayView({
             solution: "",
             ...data.progress.tasks[block.id],
           };
-          const lesson = data.ai.lessons.curriculum[block.id];
+          const lesson = data.ai.lessons[track][block.id];
           const supportsLesson = block.kind !== "review";
           const isGenerating = generatingLessonId === block.id;
 
@@ -224,6 +237,45 @@ export function CurriculumDayView({
                   </div>
                 ) : null}
 
+                {block.exercise ? (
+                  <details className="yandex-exercise">
+                    <summary>Условие задачи</summary>
+                    <div className="yandex-exercise-content">
+                      <p>{block.exercise.statement}</p>
+                      {block.exercise.signature ? (
+                        <div className="yandex-exercise-section">
+                          <span>Сигнатура</span>
+                          <pre>{block.exercise.signature}</pre>
+                        </div>
+                      ) : null}
+                      {block.exercise.constraints.length ? (
+                        <div className="yandex-exercise-section">
+                          <span>Ограничения</span>
+                          <ul>
+                            {block.exercise.constraints.map((constraint) => (
+                              <li key={constraint}>{constraint}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {block.exercise.examples.length ? (
+                        <div className="yandex-exercise-section">
+                          <span>Примеры</span>
+                          <div className="yandex-examples">
+                            {block.exercise.examples.map((example, exampleIndex) => (
+                              <div className="yandex-example" key={`${example.input}-${exampleIndex}`}>
+                                <small>Пример {exampleIndex + 1}</small>
+                                <pre>Вход: {example.input}{"\n"}Выход: {example.output}</pre>
+                                {example.explanation ? <p>{example.explanation}</p> : null}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </details>
+                ) : null}
+
                 {block.kind === "practice" || block.kind === "ai" ? (
                   <TaskWorkspace
                     includeCustomTask={block.kind === "ai"}
@@ -232,7 +284,7 @@ export function CurriculumDayView({
                     runner={block.exercise?.runner}
                     taskId={block.id}
                     taskTitle={block.title}
-                    track="curriculum"
+                    track={track}
                   />
                 ) : null}
 
@@ -251,9 +303,7 @@ export function CurriculumDayView({
                   leftSection={<Check size={17} />}
                   type="button"
                   variant={task.completed ? "default" : "filled"}
-                  onClick={() =>
-                    void onUpdateTask(block.id, { completed: !task.completed })
-                  }
+                  onClick={() => void onUpdateTask(block.id, { completed: !task.completed })}
                 >
                   {task.completed ? "Вернуть в работу" : "Завершить блок"}
                 </Button>

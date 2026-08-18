@@ -3,6 +3,7 @@ import { UnstyledButton, useComputedColorScheme, useMantineColorScheme } from "@
 import {
   BookOpenCheck,
   BriefcaseBusiness,
+  Building2,
   CalendarDays,
   CircleUserRound,
   Code2,
@@ -31,6 +32,7 @@ const navigation: Array<{
 }> = [
   { id: "today", label: "Сегодня", shortLabel: "Сегодня", icon: Gauge },
   { id: "yandex", label: "Яндекс-спринт", shortLabel: "Яндекс", icon: ListChecks },
+  { id: "ozon", label: "Ozon-спринт", shortLabel: "Ozon", icon: Building2 },
   { id: "interview", label: "Интервью", shortLabel: "Собес", icon: BriefcaseBusiness },
   { id: "plan", label: "Учебный план", shortLabel: "План", icon: CalendarDays },
   { id: "resources", label: "Библиотека", shortLabel: "База", icon: LibraryBig },
@@ -39,20 +41,20 @@ const navigation: Array<{
   { id: "settings", label: "Ещё", shortLabel: "Ещё", icon: Settings },
 ];
 
-const mobileNavigation = navigation.filter(({ id }) =>
-  ["today", "yandex", "plan", "interview", "settings"].includes(id),
-);
+const mobileNavigation = (["yandex", "ozon", "interview", "today", "settings"] as const)
+  .map((id) => navigation.find((item) => item.id === id))
+  .filter((item): item is (typeof navigation)[number] => Boolean(item));
 
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
   navigationId === activeView ||
-  (navigationId === "settings" && ["ozon", "ai-course"].includes(activeView)) ||
+  (navigationId === "settings" && activeView === "ai-course") ||
   (navigationId === "questions" &&
     ["review", "mock-interview", "analytics"].includes(activeView));
 
 const isMobileNavigationActive = (navigationId: AppView, activeView: AppView) =>
   isNavigationActive(navigationId, activeView) ||
   (navigationId === "settings" &&
-    ["ozon", "ai-course", "resources", "questions", "review", "mock-interview", "analytics", "algorithms"].includes(activeView));
+    ["ai-course", "plan", "resources", "questions", "review", "mock-interview", "analytics", "algorithms"].includes(activeView));
 
 function ThemeToggle() {
   const { setColorScheme } = useMantineColorScheme();
