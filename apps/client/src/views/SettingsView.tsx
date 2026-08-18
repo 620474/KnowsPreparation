@@ -2,10 +2,13 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button, Switch, TextInput } from "@mantine/core";
 import {
   Bell,
+  BookOpenCheck,
   BrainCircuit,
   Building2,
   CalendarClock,
+  Code2,
   Download,
+  LibraryBig,
   LogOut,
   Server,
   ShieldCheck,
@@ -22,6 +25,9 @@ interface SettingsViewProps {
   data: BootstrapData;
   onOpenOzon: () => void;
   onOpenAiCourse: () => void;
+  onOpenAlgorithms: () => void;
+  onOpenQuestions: () => void;
+  onOpenResources: () => void;
   onUpdateSettings: (settings: SettingsPatch) => Promise<boolean>;
   onExportBackup: () => Promise<boolean>;
   onImportBackup: (backup: LearningBackup) => Promise<number | null>;
@@ -32,6 +38,9 @@ export function SettingsView({
   data,
   onOpenOzon,
   onOpenAiCourse,
+  onOpenAlgorithms,
+  onOpenQuestions,
+  onOpenResources,
   onUpdateSettings,
   onExportBackup,
   onImportBackup,
@@ -119,6 +128,25 @@ export function SettingsView({
       </header>
 
       {status ? <p className="settings-status" role="status">{status}</p> : null}
+
+      <section className="settings-card">
+        <div className="settings-icon"><LibraryBig /></div>
+        <div>
+          <h2>Материалы и практика</h2>
+          <p>Библиотека источников, банк вопросов и отдельный трек алгоритмов.</p>
+          <div className="settings-controls">
+            <Button className="secondary-button" leftSection={<LibraryBig size={17} />} type="button" variant="default" onClick={onOpenResources}>
+              Библиотека
+            </Button>
+            <Button className="secondary-button" leftSection={<BookOpenCheck size={17} />} type="button" variant="default" onClick={onOpenQuestions}>
+              Вопросы
+            </Button>
+            <Button className="secondary-button" leftSection={<Code2 size={17} />} type="button" variant="default" onClick={onOpenAlgorithms}>
+              Алгоритмы
+            </Button>
+          </div>
+        </div>
+      </section>
 
       <section className="settings-card">
         <div className="settings-icon"><Building2 /></div>

@@ -39,11 +39,20 @@ const navigation: Array<{
   { id: "settings", label: "Ещё", shortLabel: "Ещё", icon: Settings },
 ];
 
+const mobileNavigation = navigation.filter(({ id }) =>
+  ["today", "yandex", "plan", "interview", "settings"].includes(id),
+);
+
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
   navigationId === activeView ||
   (navigationId === "settings" && ["ozon", "ai-course"].includes(activeView)) ||
   (navigationId === "questions" &&
     ["review", "mock-interview", "analytics"].includes(activeView));
+
+const isMobileNavigationActive = (navigationId: AppView, activeView: AppView) =>
+  isNavigationActive(navigationId, activeView) ||
+  (navigationId === "settings" &&
+    ["ozon", "ai-course", "resources", "questions", "review", "mock-interview", "analytics", "algorithms"].includes(activeView));
 
 function ThemeToggle() {
   const { setColorScheme } = useMantineColorScheme();
@@ -121,13 +130,13 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
       </div>
 
       <nav className="bottom-nav" aria-label="Мобильная навигация">
-        {navigation.map(({ id, shortLabel, icon: Icon }) => (
+        {mobileNavigation.map(({ id, shortLabel, icon: Icon }) => (
           <UnstyledButton
             key={id}
-            className={isNavigationActive(id, activeView) ? "active" : ""}
+            className={isMobileNavigationActive(id, activeView) ? "active" : ""}
             type="button"
             onClick={() => onViewChange(id)}
-            aria-current={isNavigationActive(id, activeView) ? "page" : undefined}
+            aria-current={isMobileNavigationActive(id, activeView) ? "page" : undefined}
           >
             <Icon size={20} />
             <span>{shortLabel}</span>

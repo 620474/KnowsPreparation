@@ -514,7 +514,6 @@ p {
 
 .hero-card,
 .progress-card,
-.task-card,
 .week-card,
 .question-card,
 .algorithm-form,
@@ -562,7 +561,6 @@ p {
 
 .hero-topline,
 .hero-meta,
-.task-kicker,
 .section-heading,
 .page-header,
 .week-progress,
@@ -670,59 +668,6 @@ p {
   margin-bottom: 20px;
 }
 
-.task-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.task-card {
-  position: relative;
-  display: grid;
-  min-height: 350px;
-  grid-template-columns: 36px minmax(0, 1fr);
-  border-radius: 18px;
-  padding: 22px;
-  transition: 160ms ease;
-}
-
-.task-card:hover {
-  border-color: var(--line-strong);
-  transform: translateY(-2px);
-}
-
-.task-card.complete {
-  border-color: rgba(107, 245, 176, 0.28);
-  background: var(--complete-surface);
-}
-
-.task-number {
-  color: var(--faint);
-  font-size: 0.75rem;
-  font-weight: 900;
-}
-
-.task-content {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-}
-
-.task-kicker {
-  justify-content: space-between;
-  margin-bottom: 22px;
-  color: var(--muted);
-  font-size: 0.73rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.task-card h3 {
-  font-size: 1.18rem;
-  line-height: 1.25;
-}
-
 .resource-links {
   display: grid;
   gap: 7px;
@@ -764,38 +709,6 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
-}
-
-.task-note {
-  margin-top: auto;
-}
-
-.task-note .mantine-Textarea-input {
-  min-height: 76px;
-  border-color: transparent;
-  background: var(--surface-overlay);
-  font-size: 0.82rem;
-}
-
-.task-check {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  color: var(--faint);
-  background: var(--surface-input);
-  transition: 150ms ease;
-}
-
-.task-card.complete .task-check {
-  border-color: var(--accent);
-  color: var(--on-accent);
-  background: var(--accent);
 }
 
 .page-header {
@@ -934,116 +847,6 @@ p {
   gap: 1px;
   border-top: 1px solid var(--line);
   background: var(--line);
-}
-
-.plan-day {
-  display: grid;
-  grid-template-columns: 130px minmax(0, 1fr);
-  gap: 18px;
-  padding: 18px 24px;
-  background: var(--surface-raised);
-}
-
-.plan-day-heading span,
-.plan-day-heading strong {
-  display: block;
-}
-
-.plan-day-heading span {
-  margin-bottom: 4px;
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-
-.plan-blocks {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.plan-block {
-  display: grid;
-  min-width: 0;
-  border: 1px solid transparent;
-  border-radius: 11px;
-  color: var(--text);
-  background: var(--surface-subtle);
-  text-align: left;
-  transition: 150ms ease;
-}
-
-.plan-block:hover {
-  border-color: var(--line-strong);
-}
-
-.plan-block-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 12px 12px;
-}
-
-.today-lesson-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.plan-block.complete {
-  color: var(--complete-text);
-  background: rgba(107, 245, 176, 0.06);
-}
-
-.plan-block-toggle {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-  border-radius: 11px;
-  padding: 10px;
-  color: inherit;
-  text-align: left;
-}
-
-.plan-block-toggle > span:last-child {
-  min-width: 0;
-}
-
-.plan-block strong,
-.plan-block small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.plan-block strong {
-  font-size: 0.78rem;
-}
-
-.plan-block small {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 0.68rem;
-}
-
-.small-check {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  place-items: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  color: transparent;
-}
-
-.plan-block.complete .small-check {
-  border-color: var(--accent);
-  color: var(--on-accent);
-  background: var(--accent);
 }
 
 .yandex-overview {
@@ -3827,19 +3630,412 @@ p {
   gap: 8px;
 }
 
+.today-hero-card,
+.today-progress-card {
+  min-height: 310px;
+}
+
+.today-hero-card .hero-topline {
+  margin-bottom: 34px;
+}
+
+.today-primary-action {
+  width: fit-content;
+  margin-top: 24px;
+}
+
+.today-focus-panel,
+.curriculum-day-header,
+.curriculum-day-block {
+  border: 1px solid var(--line);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.today-focus-panel {
+  display: grid;
+  gap: 22px;
+  border-radius: 22px;
+  padding: clamp(20px, 3vw, 30px);
+}
+
+.today-block-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.today-block-row {
+  display: grid;
+  min-width: 0;
+  min-height: 96px;
+  cursor: pointer;
+  grid-template-columns: 34px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  font: inherit;
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.today-block-row:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.today-block-row.complete {
+  border-color: rgba(107, 245, 176, 0.25);
+  background: var(--complete-surface);
+}
+
+.today-block-number {
+  color: var(--faint);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.today-block-copy,
+.today-block-copy small,
+.today-block-copy strong {
+  display: block;
+  min-width: 0;
+}
+
+.today-block-copy small {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.today-block-copy strong {
+  overflow: hidden;
+  font-size: 0.88rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+}
+
+.today-block-check {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  color: var(--muted);
+}
+
+.today-block-row.complete .today-block-check {
+  border-color: var(--accent);
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+.plan-day-list {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid var(--line);
+  background: var(--line);
+}
+
+.plan-day-row {
+  display: grid;
+  width: 100%;
+  min-height: 92px;
+  grid-template-columns: 60px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 15px 24px;
+  color: var(--text);
+  background: var(--surface-raised);
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.plan-day-row:hover,
+.plan-day-row.current {
+  background: var(--surface-subtle);
+}
+
+.plan-day-row.current {
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.plan-day-marker {
+  display: grid;
+  width: 52px;
+  height: 58px;
+  place-items: center;
+  align-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  color: var(--muted);
+}
+
+.plan-day-marker small,
+.plan-day-marker strong {
+  display: block;
+}
+
+.plan-day-marker small {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.plan-day-marker strong {
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.plan-day-copy {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.plan-day-title-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan-day-title-line strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-day-title-line em {
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: var(--accent);
+  background: rgba(107, 245, 176, 0.08);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.plan-day-copy > small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.plan-day-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.plan-day-state.complete {
+  color: var(--accent);
+}
+
+.curriculum-day-page {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.curriculum-day-header {
+  overflow: hidden;
+  border-radius: 24px;
+  background:
+    linear-gradient(140deg, rgba(107, 245, 176, 0.1), transparent 48%),
+    var(--panel);
+}
+
+.curriculum-day-toolbar,
+.curriculum-day-title,
+.curriculum-day-switcher,
+.curriculum-day-footer {
+  display: flex;
+  align-items: center;
+}
+
+.curriculum-day-toolbar {
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+  padding: 16px clamp(20px, 4vw, 36px);
+}
+
+.curriculum-day-switcher {
+  gap: 10px;
+}
+
+.curriculum-day-switcher span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.curriculum-day-title {
+  justify-content: space-between;
+  gap: 40px;
+  padding: clamp(26px, 5vw, 48px);
+}
+
+.curriculum-day-title > div:first-child {
+  max-width: 700px;
+}
+
+.curriculum-day-title h1 {
+  margin-bottom: 12px;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+}
+
+.curriculum-day-title p:last-child {
+  margin-bottom: 0;
+}
+
+.curriculum-day-progress {
+  display: grid;
+  width: min(190px, 100%);
+  flex: 0 0 190px;
+  gap: 7px;
+}
+
+.curriculum-day-progress strong {
+  font-size: 1.75rem;
+}
+
+.curriculum-day-progress span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.curriculum-day-blocks {
+  display: grid;
+  gap: 12px;
+}
+
+.curriculum-day-block {
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.curriculum-day-block.complete {
+  border-color: rgba(107, 245, 176, 0.25);
+}
+
+.curriculum-day-block summary {
+  display: grid;
+  min-height: 96px;
+  cursor: pointer;
+  list-style: none;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 24px;
+}
+
+.curriculum-day-block summary::-webkit-details-marker {
+  display: none;
+}
+
+.curriculum-block-index {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.curriculum-day-block.complete .curriculum-block-index {
+  border-color: rgba(107, 245, 176, 0.35);
+  color: var(--accent);
+  background: rgba(107, 245, 176, 0.07);
+}
+
+.curriculum-block-summary,
+.curriculum-block-summary small,
+.curriculum-block-summary strong {
+  display: block;
+  min-width: 0;
+}
+
+.curriculum-block-summary small {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.curriculum-block-summary strong {
+  font-size: 1.02rem;
+}
+
+.curriculum-block-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.curriculum-day-block.complete .curriculum-block-status {
+  color: var(--accent);
+}
+
+.curriculum-block-chevron {
+  transition: transform 160ms ease;
+}
+
+.curriculum-day-block[open] .curriculum-block-chevron {
+  transform: rotate(180deg);
+}
+
+.curriculum-block-content {
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  padding: 24px 24px 26px 90px;
+  background: var(--surface-raised);
+}
+
+.curriculum-block-content > p {
+  max-width: 780px;
+  margin: 0;
+}
+
+.curriculum-block-content .resource-links {
+  max-width: 780px;
+  margin: 0;
+}
+
+.curriculum-block-actions,
+.curriculum-day-footer {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.curriculum-block-note {
+  max-width: 780px;
+}
+
+.curriculum-day-footer {
+  justify-content: space-between;
+}
+
 @media (max-width: 1080px) {
-  .task-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .task-card {
-    min-height: 270px;
-  }
-
-  .plan-blocks {
-    grid-template-columns: 1fr;
-  }
-
   .algorithm-layout {
     grid-template-columns: 1fr;
   }
@@ -3926,7 +4122,7 @@ p {
     max-width: calc(100vw - 20px);
     overflow: hidden;
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     border: 1px solid var(--line-strong);
     border-radius: 18px;
     padding: 7px;
@@ -4019,10 +4215,6 @@ p {
 
   .week-progress {
     display: none;
-  }
-
-  .plan-day {
-    grid-template-columns: 1fr;
   }
 
   .yandex-overview,
@@ -4272,16 +4464,6 @@ p {
   .algorithm-practice-content > .primary-button,
   .algorithm-practice-content > .secondary-button {
     width: 100%;
-  }
-
-  .task-card {
-    grid-template-columns: 28px minmax(0, 1fr);
-    padding: 18px;
-  }
-
-  .task-check {
-    right: 14px;
-    bottom: 14px;
   }
 
   .week-summary-copy p {
@@ -4880,5 +5062,113 @@ p {
   .interview-code-editor .mantine-Textarea-input {
     min-height: 300px;
     font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 820px) {
+  .today-block-list {
+    grid-template-columns: 1fr;
+  }
+
+  .today-block-row {
+    min-height: 82px;
+  }
+
+  .plan-day-row {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 13px 16px;
+  }
+
+  .curriculum-day-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .curriculum-day-progress {
+    width: 100%;
+    flex-basis: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .today-hero-card,
+  .today-progress-card {
+    min-height: auto;
+  }
+
+  .today-primary-action {
+    width: 100%;
+  }
+
+  .plan-day-row {
+    grid-template-columns: 46px minmax(0, 1fr) 24px;
+    min-height: 82px;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .plan-day-marker {
+    width: 44px;
+    height: 52px;
+  }
+
+  .plan-day-title-line em,
+  .plan-day-state > span {
+    display: none;
+  }
+
+  .curriculum-day-header {
+    border-radius: 18px;
+  }
+
+  .curriculum-day-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 14px 16px;
+  }
+
+  .curriculum-day-switcher {
+    justify-content: space-between;
+  }
+
+  .curriculum-day-title {
+    padding: 24px 18px;
+  }
+
+  .curriculum-day-title h1 {
+    font-size: clamp(1.9rem, 10vw, 2.5rem);
+  }
+
+  .curriculum-day-block summary {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 11px;
+    padding: 14px;
+  }
+
+  .curriculum-block-index {
+    width: 40px;
+    height: 40px;
+  }
+
+  .curriculum-block-status > svg:first-child {
+    display: none;
+  }
+
+  .curriculum-block-content {
+    padding: 18px 16px 20px;
+  }
+
+  .curriculum-block-actions > *,
+  .curriculum-block-content > .primary-button,
+  .curriculum-block-content > .secondary-button,
+  .curriculum-day-footer > * {
+    width: 100%;
+  }
+
+  .curriculum-day-footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

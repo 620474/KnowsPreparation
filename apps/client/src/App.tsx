@@ -34,6 +34,11 @@ const AlgorithmsView = lazy(() =>
 const AnalyticsView = lazy(() =>
   import("./views/AnalyticsView").then((module) => ({ default: module.AnalyticsView })),
 );
+const CurriculumDayView = lazy(() =>
+  import("./views/CurriculumDayView").then((module) => ({
+    default: module.CurriculumDayView,
+  })),
+);
 const MockInterviewView = lazy(() =>
   import("./views/MockInterviewView").then((module) => ({
     default: module.MockInterviewView,
@@ -88,12 +93,14 @@ export default function App() {
   const {
     activeView,
     lessonReader,
+    planDayId,
     chatOpen,
     chatItemId,
     chatDraftRequest,
     setChatItemId,
     navigateToView,
     navigateToLesson,
+    navigateToPlanDay,
     openLessonReader,
     closeLessonReader,
     openChat,
@@ -264,21 +271,8 @@ export default function App() {
       {activeView === "today" ? (
         <TodayView
           data={data}
-          generatingLessonId={
-            generatingLesson?.track === "curriculum" ? generatingLesson.itemId : null
-          }
-          generationCharacters={
-            generationProgress?.track === "curriculum"
-              ? generationProgress.characters
-              : 0
-          }
-          onGenerateLesson={(blockId) => {
-            setSyncError("");
-            generateLesson("curriculum", blockId);
-          }}
+          onOpenDay={navigateToPlanDay}
           onOpenAnalytics={() => navigateToView("analytics")}
-          onOpenChat={(blockId) => openChat(blockId)}
-          onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
           onOpenMock={() => navigateToView("interview")}
           onOpenReview={() => navigateToView("review")}
           onOpenAdaptiveItem={(item) => {
@@ -296,7 +290,6 @@ export default function App() {
               navigateToView(viewForTrack(item.track));
             }
           }}
-          onUpdateTask={updateTask}
         />
       ) : null}
       {activeView === "yandex" ? (
@@ -357,22 +350,32 @@ export default function App() {
           onOpenChat={(itemId, context) => openChat(itemId, context)}
         />
       ) : null}
-      {activeView === "plan" ? (
-        <PlanView
+      {activeView === "plan" && planDayId ? (
+        <CurriculumDayView
+          key={planDayId}
           data={data}
+          dayId={planDayId}
           generatingLessonId={
             generatingLesson?.track === "curriculum" ? generatingLesson.itemId : null
           }
           generationCharacters={
             generationProgress?.track === "curriculum" ? generationProgress.characters : 0
           }
+          onBack={() => navigateToView("plan")}
           onGenerateLesson={(blockId) => {
             setSyncError("");
             generateLesson("curriculum", blockId);
           }}
+          onOpenChat={(blockId) => openChat(blockId)}
+          onOpenDay={navigateToPlanDay}
           onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
-          onOpenChat={(blockId, context) => openChat(blockId, context)}
           onUpdateTask={updateTask}
+        />
+      ) : null}
+      {activeView === "plan" && !planDayId ? (
+        <PlanView
+          data={data}
+          onOpenDay={navigateToPlanDay}
         />
       ) : null}
       {activeView === "resources" ? <ResourcesView data={data} /> : null}
@@ -425,8 +428,11 @@ export default function App() {
           data={data}
           onExportBackup={exportBackup}
           onImportBackup={importBackup}
+          onOpenAlgorithms={() => navigateToView("algorithms")}
           onOpenAiCourse={() => navigateToView("ai-course")}
           onOpenOzon={() => navigateToView("ozon")}
+          onOpenQuestions={() => navigateToView("questions")}
+          onOpenResources={() => navigateToView("resources")}
           onUpdateSettings={updateSettings}
           onLogout={logout}
         />

@@ -20,6 +20,9 @@ export function useAppNavigation() {
   const [lessonReader, setLessonReader] = useState<LessonRouteTarget | null>(
     () => parseAppRoute(window.location.hash).lessonReader,
   );
+  const [planDayId, setPlanDayId] = useState<string | null>(
+    () => parseAppRoute(window.location.hash).planDayId ?? null,
+  );
   const [chatOpen, setChatOpen] = useState(false);
   const [chatItemId, setChatItemId] = useState<string | null>(null);
   const [chatDraftRequest, setChatDraftRequest] = useState<{
@@ -34,6 +37,7 @@ export function useAppNavigation() {
       const route = parseAppRoute(window.location.hash);
       setActiveView(route.view);
       setLessonReader(route.lessonReader);
+      setPlanDayId(route.planDayId ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -70,6 +74,7 @@ export function useAppNavigation() {
 
       setActiveView(route.view);
       setLessonReader(route.lessonReader);
+      setPlanDayId(route.planDayId ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -88,6 +93,17 @@ export function useAppNavigation() {
       navigateToRoute({
         view: viewForTrack(track),
         lessonReader: { track, itemId },
+        ...(track === "curriculum" && planDayId ? { planDayId } : {}),
+      }),
+    [navigateToRoute, planDayId],
+  );
+
+  const navigateToPlanDay = useCallback(
+    (dayId: string) =>
+      navigateToRoute({
+        view: "plan",
+        lessonReader: null,
+        planDayId: dayId,
       }),
     [navigateToRoute],
   );
@@ -100,8 +116,15 @@ export function useAppNavigation() {
       window.history.back();
       return;
     }
-    navigateToView(activeView, "replace");
-  }, [activeView, lessonReader, navigateToView]);
+    navigateToRoute(
+      {
+        view: activeView,
+        lessonReader: null,
+        ...(planDayId ? { planDayId } : {}),
+      },
+      "replace",
+    );
+  }, [activeView, lessonReader, navigateToRoute, planDayId]);
 
   const openChat = useCallback(
     (itemId: string | null, context?: AiLessonQuestionContext) => {
@@ -133,12 +156,14 @@ export function useAppNavigation() {
   return {
     activeView,
     lessonReader,
+    planDayId,
     chatOpen,
     chatItemId,
     chatDraftRequest,
     setChatItemId,
     navigateToView,
     navigateToLesson,
+    navigateToPlanDay,
     openLessonReader: navigateToLesson,
     closeLessonReader,
     openChat,
