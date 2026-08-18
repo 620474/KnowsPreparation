@@ -17,7 +17,7 @@
     "typecheck": "npm run typecheck -w @prep/contracts && npm run typecheck -w @prep/api && npm run typecheck -w @prep/client",
     "lint": "eslint .",
     "test": "npm run build -w @prep/contracts && npm run test -w @prep/contracts && npm run test -w @prep/api && npm run test -w @prep/client",
-    "android:sync": "npm run build -w @prep/client && npm run cap:sync -w @prep/client",
+    "android:sync": "npm run build -w @prep/contracts && npm run build -w @prep/client && npm run cap:sync -w @prep/client",
     "android:open": "npm run cap:open -w @prep/client",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run --no-ci",
