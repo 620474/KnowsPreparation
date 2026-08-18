@@ -34,6 +34,7 @@ describe("normalizeBootstrapData", () => {
       yandexLessons: {},
       ozonLessons: {},
       quizProgress: { course: {}, yandex: {}, ozon: {} },
+      practiceProgress: { course: {}, yandex: {}, ozon: {} },
     });
     expect(normalizeBootstrapData(legacyBootstrap).ozonSprint).toEqual([]);
     expect(normalizeBootstrapData(legacyBootstrap).mockInterviews).toEqual([]);
@@ -48,6 +49,7 @@ describe("normalizeBootstrapData", () => {
       yandexLessons: {},
       ozonLessons: {},
       quizProgress: { course: {}, yandex: {}, ozon: {} },
+      practiceProgress: { course: {}, yandex: {}, ozon: {} },
     };
 
     expect(normalizeBootstrapData({ ...legacyBootstrap, ai }).ai).toEqual(ai);
@@ -76,6 +78,7 @@ describe("normalizeBootstrapData", () => {
         yandexLessons: {},
         ozonLessons: {},
         quizProgress: { course: {}, yandex: {}, ozon: {} },
+        practiceProgress: { course: {}, yandex: {}, ozon: {} },
       },
     };
 

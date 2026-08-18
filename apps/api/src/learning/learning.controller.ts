@@ -29,6 +29,7 @@ import {
   SendAiChatMessageDto,
   SubmitLessonQuizDto,
   UpdateMockAnswerDto,
+  UpdatePracticeSolutionDto,
   UpdateQuestionDto,
   UpdateSettingsDto,
   UpdateTaskDto,
@@ -149,6 +150,30 @@ export class LearningController {
     @Body() dto: SubmitLessonQuizDto,
   ) {
     return this.learningService.submitOzonLessonQuiz(blockId, dto);
+  }
+
+  @Put("ai-course/lessons/:itemId/practice")
+  updateAiPracticeSolution(
+    @Param("itemId") itemId: string,
+    @Body() dto: UpdatePracticeSolutionDto,
+  ) {
+    return this.learningService.updateAiPracticeSolution(itemId, dto);
+  }
+
+  @Put("yandex-sprint/blocks/:blockId/practice")
+  updateYandexPracticeSolution(
+    @Param("blockId") blockId: string,
+    @Body() dto: UpdatePracticeSolutionDto,
+  ) {
+    return this.learningService.updateYandexPracticeSolution(blockId, dto);
+  }
+
+  @Put("ozon-sprint/blocks/:blockId/practice")
+  updateOzonPracticeSolution(
+    @Param("blockId") blockId: string,
+    @Body() dto: UpdatePracticeSolutionDto,
+  ) {
+    return this.learningService.updateOzonPracticeSolution(blockId, dto);
   }
 
   @Get("ai-course/lessons/:itemId/chat")

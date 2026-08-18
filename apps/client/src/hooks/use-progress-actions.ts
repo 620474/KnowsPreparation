@@ -1,3 +1,4 @@
+import { useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { learningApi } from "../api";
@@ -6,6 +7,7 @@ import {
   buildOptimisticQuizProgress,
   type BootstrapMutationContext,
   updateQuizProgress,
+  updatePracticeProgress,
 } from "../lib/bootstrap-cache";
 import { synchronizeDailyReminder } from "../lib/notifications";
 import {
@@ -19,6 +21,12 @@ import {
 } from "../lib/offline-mutation-keys";
 import { normalizeQuestionProgress } from "../lib/question-progress";
 import { scheduleQuestionReview } from "../lib/spaced-repetition";
+import {
+  applyPracticeSaveResult,
+  readDirtyPracticeDrafts,
+  type LocalPracticeDraft,
+  writePracticeDraft,
+} from "../lib/practice-drafts";
 import type {
   AiChatScope,
   AppSettings,
@@ -231,6 +239,60 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     },
   });
 
+  const savePracticeDraft = useCallback(
+    async (draft: LocalPracticeDraft) => {
+      if (!draft.dirty || !online) return null;
+      try {
+        const result = await learningApi.savePracticeSolution(
+          draft.scope,
+          draft.itemId,
+          draft.lessonVersion,
+          draft.solution,
+          draft.baseRevision,
+          createOperationId(),
+        );
+        if (result.progress) {
+          queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
+            current
+              ? updatePracticeProgress(
+                  current,
+                  draft.scope,
+                  draft.itemId,
+                  result.progress!,
+                )
+              : current,
+          );
+        }
+        return result;
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось синхронизировать решение",
+        );
+        return null;
+      }
+    },
+    [online, queryClient, setError],
+  );
+
+  useEffect(() => {
+    if (!online) return;
+    let cancelled = false;
+    void readDirtyPracticeDrafts().then(async (drafts) => {
+      for (const draft of drafts) {
+        if (cancelled) return;
+        const result = await savePracticeDraft(draft);
+        if (result) {
+          await writePracticeDraft(applyPracticeSaveResult(draft, result));
+        }
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [online, savePracticeDraft]);
+
   const updateTask = async (taskId: string, progress: TaskProgressPatch) => {
     setError("");
     if (!online) {
@@ -333,6 +395,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     updateQuestion,
     reviewQuestion,
     submitLessonQuiz,
+    savePracticeDraft,
     updateSettings,
   };
 }

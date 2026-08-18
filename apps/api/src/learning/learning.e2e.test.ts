@@ -55,6 +55,7 @@ describe("Learning API", () => {
     );
     await app.init();
     connection = app.get<Connection>(getConnectionToken());
+    await connection.syncIndexes();
     lessonModel = app.get<Model<AiLesson>>(getModelToken(AiLesson.name));
 
     const loginResponse = await request(app.getHttpServer())
@@ -217,6 +218,86 @@ describe("Learning API", () => {
 
     expect(firstResponse.body.attempts).toHaveLength(1);
     expect(duplicateResponse.body).toEqual(firstResponse.body);
+  });
+
+  it("versions generated practice solutions and reports conflicts", async () => {
+    const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;
+    if (!blockId) throw new Error("Yandex sprint must contain a practice-capable block");
+    await lessonModel.create({
+      courseKey: YANDEX_SPRINT_AI_KEY,
+      courseVersion: YANDEX_SPRINT_AI_VERSION,
+      itemId: blockId,
+      title: "Интеграционный урок",
+      goals: [],
+      explanation: "Тест",
+      codeExamples: [],
+      diagrams: [],
+      commonMistakes: [],
+      interviewQuestions: [],
+      practice: {
+        title: "Практика",
+        statement: "Решить задачу",
+        constraints: [],
+        examples: [],
+      },
+      quiz: [],
+      summary: "Итог",
+      resourceIds: [],
+      version: 1,
+      generatedAt: new Date().toISOString(),
+    });
+    const path = `/api/learning/yandex-sprint/blocks/${blockId}/practice`;
+
+    const first = await request(app.getHttpServer())
+      .put(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        lessonVersion: 1,
+        solution: "function solve() { return 1; }",
+        baseRevision: 0,
+        operationId: "practice-operation-1",
+      })
+      .expect(200);
+    expect(first.body).toMatchObject({
+      saved: true,
+      progress: { revision: 1, solution: "function solve() { return 1; }" },
+    });
+
+    const conflict = await request(app.getHttpServer())
+      .put(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        lessonVersion: 1,
+        solution: "function solve() { return 2; }",
+        baseRevision: 0,
+        operationId: "practice-operation-2",
+      })
+      .expect(200);
+    expect(conflict.body).toMatchObject({
+      saved: false,
+      progress: { revision: 1, solution: "function solve() { return 1; }" },
+    });
+
+    const saved = await request(app.getHttpServer())
+      .put(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        lessonVersion: 1,
+        solution: "function solve() { return 3; }",
+        baseRevision: 1,
+        operationId: "practice-operation-3",
+      })
+      .expect(200);
+    expect(saved.body).toMatchObject({ saved: true, progress: { revision: 2 } });
+
+    const bootstrap = await request(app.getHttpServer())
+      .get("/api/learning/bootstrap/progress")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(bootstrap.body.ai.practiceProgress.yandex[blockId]).toMatchObject({
+      revision: 2,
+      solution: "function solve() { return 3; }",
+    });
   });
 
   it("exports and restores all progress without deleting current data", async () => {

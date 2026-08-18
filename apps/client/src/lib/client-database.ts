@@ -1,0 +1,19 @@
+export const CLIENT_DATABASE_NAME = "frontend-sprint-cache";
+export const CLIENT_DATABASE_VERSION = 2;
+export const QUERY_CACHE_STORE = "query-cache";
+export const PRACTICE_DRAFT_STORE = "practice-drafts";
+
+export const openClientDatabase = () =>
+  new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(CLIENT_DATABASE_NAME, CLIENT_DATABASE_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      for (const storeName of [QUERY_CACHE_STORE, PRACTICE_DRAFT_STORE]) {
+        if (!database.objectStoreNames.contains(storeName)) {
+          database.createObjectStore(storeName);
+        }
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+  });

@@ -1,48 +1,24 @@
+import type {
+  LearningResource,
+  ResourceKind,
+  ResourceLanguage,
+  ResourceLevel,
+  ResourcePriority,
+  ResourceStatus,
+  ResourceTopic,
+} from "@prep/contracts";
+
 import resourceCatalog from "./data/resources.json";
 
-export type ResourceLanguage = "ru" | "en";
-export type ResourceKind = "main" | "deep-dive" | "practice" | "reference" | "case-study";
-export type ResourceLevel = "basic" | "beginner" | "intermediate" | "advanced";
-export type ResourceStatus = "current" | "evergreen" | "historical";
-export type ResourcePriority = "must" | "should" | "optional";
-export type ResourceTopic =
-  | "AI"
-  | "JavaScript"
-  | "React"
-  | "TypeScript"
-  | "Algorithms"
-  | "Browser"
-  | "Performance"
-  | "CSS"
-  | "Accessibility"
-  | "Architecture"
-  | "Testing"
-  | "Security"
-  | "Interview";
-
-export interface LearningResource {
-  id: string;
-  title: string;
-  url: string;
-  provider: string;
-  language: ResourceLanguage;
-  kind: ResourceKind;
-  topics: ResourceTopic[];
-  estimatedMinutes: number;
-  description: string;
-  publishedYear?: number;
-  tags?: string[];
-  level?: ResourceLevel;
-  status?: ResourceStatus;
-  paywall?: boolean;
-  registrationRequired?: boolean;
-  learningGoal?: string;
-  whySelected?: string;
-  verifiedAt?: string;
-  priority?: ResourcePriority;
-  practicalTask?: string;
-  interviewQuestions?: string[];
-}
+export type {
+  LearningResource,
+  ResourceKind,
+  ResourceLanguage,
+  ResourceLevel,
+  ResourcePriority,
+  ResourceStatus,
+  ResourceTopic,
+};
 
 interface WeekResourcePlan {
   theory: string[][];
@@ -385,28 +361,22 @@ export const RESOURCE_PLANS: WeekResourcePlan[] = [
   },
   {
     theory: [
-      ["yandex-prep", "frontend-handbook"],
-      ["learn-js", "js-async-habr"],
-      ["react-render-commit", "developer-rerenders"],
-      ["ts-narrowing", "mdn-browser-work"],
-      ["hello-algo", "leetcode-plan"],
-      ["avito-system-design", "patterns-dev"],
-      ["testing-library", "testing-library-guiding", "owasp-xss", "owasp-csp"],
+      ["fowler-beck-design-rules", "google-tests-dry-damp"],
+      ["vitest", "google-tests-dry-damp"],
+      ["testing-library-guiding", "testing-library"],
+      ["vitest", "fowler-beck-design-rules"],
+      ["vitest-browser-mode", "testing-library"],
+      ["playwright", "playwright-writing-tests"],
+      ["vitest", "playwright", "google-tests-dry-damp"],
     ],
     practice: [
-      ["yandex-prep", "frontend-handbook"],
-      ["learn-js", "frontend-handbook"],
-      ["react-devtools", "developer-rerenders"],
-      ["type-challenges", "chrome-performance"],
-      ["leetcode-plan", "yandex-algorithms"],
-      ["avito-system-design"],
-      [
-        "vitest",
-        "vitest-browser-mode",
-        "testing-library",
-        "playwright",
-        "playwright-writing-tests",
-      ],
+      ["fowler-beck-design-rules", "testing-library-guiding"],
+      ["vitest"],
+      ["testing-library", "testing-library-guiding"],
+      ["vitest", "google-tests-dry-damp"],
+      ["vitest-browser-mode", "testing-library"],
+      ["playwright-writing-tests", "playwright"],
+      ["vitest", "playwright", "google-tests-dry-damp"],
     ],
   },
   {

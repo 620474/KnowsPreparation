@@ -20,6 +20,7 @@ const createBackup = (): LearningBackupV1 => ({
     aiCourses: [],
     aiLessons: [],
     aiChatMessages: [],
+    aiPracticeProgresses: [],
     aiQuizProgresses: [],
     mockInterviews: [],
   },
@@ -43,5 +44,14 @@ describe("parseLearningBackup", () => {
     expect(() => parseLearningBackup({ ...incomplete, data: incompleteData })).toThrow(
       BadRequestException,
     );
+  });
+
+  it("accepts backups created before practice drafts were added", () => {
+    const backup = createBackup();
+    const legacyData: Partial<LearningBackupV1["data"]> = { ...backup.data };
+    delete legacyData.aiPracticeProgresses;
+    const legacy = { ...backup, data: legacyData };
+
+    expect(parseLearningBackup(legacy).data.aiPracticeProgresses).toEqual([]);
   });
 });

@@ -12,6 +12,7 @@ import type { ImportBackupDto } from "./dto/learning.dto";
 import { AlgorithmEntry } from "./schemas/algorithm-entry.schema";
 import { AiChatMessage } from "./schemas/ai-chat-message.schema";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
+import { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
@@ -33,6 +34,8 @@ export class LearningBackupService {
     private readonly aiChatMessageModel: Model<AiChatMessage>,
     @InjectModel(AiQuizProgress.name)
     private readonly aiQuizProgressModel: Model<AiQuizProgress>,
+    @InjectModel(AiPracticeProgress.name)
+    private readonly aiPracticeProgressModel: Model<AiPracticeProgress>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
   ) {}
@@ -46,6 +49,7 @@ export class LearningBackupService {
       aiCourses,
       aiLessons,
       aiChatMessages,
+      aiPracticeProgresses,
       aiQuizProgresses,
       mockInterviews,
     ] = await Promise.all([
@@ -56,6 +60,7 @@ export class LearningBackupService {
       this.aiCourseModel.find().lean().exec(),
       this.aiLessonModel.find().lean().exec(),
       this.aiChatMessageModel.find().lean().exec(),
+      this.aiPracticeProgressModel.find().lean().exec(),
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
     ]);
@@ -72,6 +77,7 @@ export class LearningBackupService {
         aiCourses,
         aiLessons,
         aiChatMessages,
+        aiPracticeProgresses,
         aiQuizProgresses,
         mockInterviews,
       },
@@ -104,6 +110,10 @@ export class LearningBackupService {
         this.aiQuizProgressModel,
         backup.data.aiQuizProgresses,
       ),
+      aiPracticeProgresses: await this.validateRecords(
+        this.aiPracticeProgressModel,
+        backup.data.aiPracticeProgresses,
+      ),
       mockInterviews: await this.validateRecords(
         this.mockInterviewModel,
         backup.data.mockInterviews,
@@ -134,6 +144,16 @@ export class LearningBackupService {
       this.mergeRecords(this.aiChatMessageModel, prepared.aiChatMessages, (record) => ({
         _id: record._id,
       })),
+      this.mergeRecords(
+        this.aiPracticeProgressModel,
+        prepared.aiPracticeProgresses,
+        (record) => ({
+          courseKey: record.courseKey,
+          courseVersion: record.courseVersion,
+          itemId: record.itemId,
+          lessonVersion: record.lessonVersion,
+        }),
+      ),
       this.mergeRecords(
         this.aiQuizProgressModel,
         prepared.aiQuizProgresses,

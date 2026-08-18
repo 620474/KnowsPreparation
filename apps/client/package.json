@@ -13,6 +13,7 @@
     "cap:open": "cap open android"
   },
   "dependencies": {
+    "@prep/contracts": "*",
     "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/filesystem": "^8.0.0",

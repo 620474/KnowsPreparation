@@ -65,6 +65,11 @@ export function normalizeBootstrapData(data: BootstrapPayload): BootstrapData {
       yandexLessons: data.ai?.yandexLessons ?? {},
       ozonLessons: data.ai?.ozonLessons ?? {},
       quizProgress: data.ai?.quizProgress ?? { course: {}, yandex: {}, ozon: {} },
+      practiceProgress: data.ai?.practiceProgress ?? {
+        course: {},
+        yandex: {},
+        ozon: {},
+      },
     },
   };
 }

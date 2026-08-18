@@ -1,5 +1,6 @@
 import { QUESTION_BANK } from "./curriculum";
 import type { AiCourse, AiLesson } from "./schemas/ai-course.schema";
+import type { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import type { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import type { MockInterview } from "./schemas/mock-interview.schema";
 import type { QuestionProgress } from "./schemas/question-progress.schema";
@@ -28,7 +29,7 @@ export function serializeAiCourse(course: AiCourse) {
 }
 
 export function serializeAiLesson(lesson: AiLesson) {
-  return {
+  return aiLessonSchema.parse({
     itemId: lesson.itemId,
     title: lesson.title,
     goals: lesson.goals,
@@ -41,9 +42,48 @@ export function serializeAiLesson(lesson: AiLesson) {
     quiz: lesson.quiz ?? [],
     summary: lesson.summary,
     resourceIds: lesson.resourceIds,
+    courseVersion: lesson.courseVersion,
     version: lesson.version,
     generatedAt: lesson.generatedAt,
+  });
+}
+
+export function serializePracticeProgress(progress: AiPracticeProgress) {
+  return practiceSolutionProgressSchema.parse({
+    itemId: progress.itemId,
+    courseVersion: progress.courseVersion,
+    lessonVersion: progress.lessonVersion,
+    solution: progress.solution,
+    revision: progress.revision,
+    updatedAt: progress.updatedAt.toISOString(),
+  });
+}
+
+export function serializePracticeProgressCollection(
+  progresses: AiPracticeProgress[],
+  aiCourse: AiCourse | null,
+) {
+  const result = {
+    course: {} as Record<string, ReturnType<typeof serializePracticeProgress>>,
+    yandex: {} as Record<string, ReturnType<typeof serializePracticeProgress>>,
+    ozon: {} as Record<string, ReturnType<typeof serializePracticeProgress>>,
   };
+  for (const progress of progresses) {
+    const sprintTrack = findSprintTrackByCourse(
+      progress.courseKey,
+      progress.courseVersion,
+    );
+    const scope = sprintTrack
+      ? sprintTrack.scope
+      : aiCourse &&
+          progress.courseKey === aiCourse.key &&
+          progress.courseVersion === aiCourse.version
+        ? "course"
+        : null;
+    if (!scope || result[scope][progress.itemId]) continue;
+    result[scope][progress.itemId] = serializePracticeProgress(progress);
+  }
+  return result;
 }
 
 export function serializeQuestionProgress(question: QuestionProgress) {
@@ -131,3 +171,7 @@ export function serializeMockInterview(interview: MockInterview & { _id: unknown
       : null,
   };
 }
+import {
+  aiLessonSchema,
+  practiceSolutionProgressSchema,
+} from "@prep/contracts";

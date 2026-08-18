@@ -16,6 +16,8 @@ import {
 } from "./ai-chat";
 import { selectResourcesForCourseItem, type GeneratedLesson } from "./ai-course";
 import {
+  CURRICULUM_BUFFER_WEEKS,
+  CURRICULUM_CORE_WEEKS,
   QUESTION_BANK,
   QUESTION_IDS,
   TASK_IDS,
@@ -28,6 +30,7 @@ import {
   SendAiChatMessageDto,
   SubmitLessonQuizDto,
   UpdateMockAnswerDto,
+  UpdatePracticeSolutionDto,
   UpdateQuestionDto,
   UpdateSettingsDto,
   UpdateTaskDto,
@@ -41,12 +44,14 @@ import {
   serializeAiCourse,
   serializeAiLesson,
   serializeMockInterview,
+  serializePracticeProgress,
   serializeQuestionProgress,
   serializeQuizProgress,
 } from "./learning-serialization";
 import { AlgorithmEntry } from "./schemas/algorithm-entry.schema";
 import { AiChatMessage } from "./schemas/ai-chat-message.schema";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
+import { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
@@ -92,6 +97,8 @@ export class LearningService {
     private readonly aiChatMessageModel: Model<AiChatMessage>,
     @InjectModel(AiQuizProgress.name)
     private readonly aiQuizProgressModel: Model<AiQuizProgress>,
+    @InjectModel(AiPracticeProgress.name)
+    private readonly aiPracticeProgressModel: Model<AiPracticeProgress>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
     private readonly aiContent: AiContentService,
@@ -474,8 +481,6 @@ export class LearningService {
       key: "main",
       startDate: new Date().toISOString().slice(0, 10),
       dailyMinutes: 120,
-      coreWeeks: 10,
-      bufferWeeks: 2,
       reminderEnabled: false,
       reminderTime: "19:00",
     };
@@ -484,7 +489,11 @@ export class LearningService {
       .findOneAndUpdate(
         { key: "main" },
         {
-          $set: update,
+          $set: {
+            ...update,
+            coreWeeks: CURRICULUM_CORE_WEEKS,
+            bufferWeeks: CURRICULUM_BUFFER_WEEKS,
+          },
           $setOnInsert: insertDefaults,
         },
         { upsert: true, returnDocument: "after", lean: true },
@@ -662,6 +671,136 @@ export class LearningService {
 
   async submitOzonLessonQuiz(blockId: string, dto: SubmitLessonQuizDto) {
     return this.submitSprintLessonQuiz("ozon", blockId, dto);
+  }
+
+  async updateAiPracticeSolution(
+    itemId: string,
+    dto: UpdatePracticeSolutionDto,
+  ) {
+    const course = await this.aiCourseModel.findOne({ key: "main" }).lean().exec();
+    if (!course) throw new NotFoundException("Сначала создай AI-курс");
+    if (!course.items.some((item) => item.id === itemId)) {
+      throw new NotFoundException("Тема AI-курса не найдена");
+    }
+    return this.savePracticeSolution(course.key, course.version, itemId, dto);
+  }
+
+  async updateYandexPracticeSolution(
+    blockId: string,
+    dto: UpdatePracticeSolutionDto,
+  ) {
+    return this.updateSprintPracticeSolution("yandex", blockId, dto);
+  }
+
+  async updateOzonPracticeSolution(
+    blockId: string,
+    dto: UpdatePracticeSolutionDto,
+  ) {
+    return this.updateSprintPracticeSolution("ozon", blockId, dto);
+  }
+
+  private async updateSprintPracticeSolution(
+    trackScope: SprintTrackScope,
+    blockId: string,
+    dto: UpdatePracticeSolutionDto,
+  ) {
+    const { track, block } = getSprintBlock(trackScope, blockId);
+    if (block.kind === "review") {
+      throw new BadRequestException("Для блока разбора нет практического решения");
+    }
+    return this.savePracticeSolution(
+      track.courseKey,
+      track.courseVersion,
+      blockId,
+      dto,
+    );
+  }
+
+  private async savePracticeSolution(
+    courseKey: string,
+    courseVersion: number,
+    itemId: string,
+    dto: UpdatePracticeSolutionDto,
+  ) {
+    const lesson = await this.aiLessonModel
+      .findOne({ courseKey, courseVersion, itemId })
+      .lean()
+      .exec();
+    if (!lesson) throw new NotFoundException("AI-урок не найден");
+    if (lesson.version !== dto.lessonVersion) {
+      throw new BadRequestException("Урок обновился. Открой его заново перед сохранением");
+    }
+    const progressFilter = {
+      courseKey,
+      courseVersion,
+      itemId,
+      lessonVersion: lesson.version,
+    };
+    const current = await this.aiPracticeProgressModel
+      .findOne(progressFilter)
+      .lean()
+      .exec();
+    if (
+      current?.lastOperationId === dto.operationId ||
+      (current && current.solution === dto.solution)
+    ) {
+      return { saved: true, progress: serializePracticeProgress(current) };
+    }
+    if (current && current.revision !== dto.baseRevision) {
+      return { saved: false, progress: serializePracticeProgress(current) };
+    }
+    if (!current && dto.baseRevision !== 0) {
+      return { saved: false, progress: null };
+    }
+
+    if (!current) {
+      try {
+        const created = await this.aiPracticeProgressModel.create({
+          ...progressFilter,
+          solution: dto.solution,
+          revision: 1,
+          lastOperationId: dto.operationId,
+        });
+        return {
+          saved: true,
+          progress: serializePracticeProgress(created.toObject()),
+        };
+      } catch (error) {
+        const conflict = await this.aiPracticeProgressModel
+          .findOne(progressFilter)
+          .lean()
+          .exec();
+        if (conflict) {
+          return { saved: false, progress: serializePracticeProgress(conflict) };
+        }
+        throw error;
+      }
+    }
+
+    const updated = await this.aiPracticeProgressModel
+      .findOneAndUpdate(
+        { ...progressFilter, revision: dto.baseRevision },
+        {
+          $set: {
+            solution: dto.solution,
+            lastOperationId: dto.operationId,
+          },
+          $inc: { revision: 1 },
+        },
+        { returnDocument: "after", lean: true },
+      )
+      .exec();
+    if (updated) {
+      return { saved: true, progress: serializePracticeProgress(updated) };
+    }
+    const conflict = await this.aiPracticeProgressModel
+      .findOne(progressFilter)
+      .lean()
+      .exec();
+    return {
+      saved: false,
+      progress: conflict ? serializePracticeProgress(conflict) : null,
+    };
   }
 
   private async submitSprintLessonQuiz(

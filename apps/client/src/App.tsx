@@ -100,6 +100,7 @@ export default function App() {
     updateTask,
     updateQuestion,
     reviewQuestion,
+    savePracticeDraft,
     submitLessonQuiz,
     updateSettings,
   } = useProgressActions({ online, setError: setSyncError });
@@ -175,6 +176,7 @@ export default function App() {
   const data = bootstrapQuery.data;
   const {
     readerLesson,
+    readerPracticeProgress,
     readerQuizProgress,
     readerMetadata,
     chatScope,
@@ -351,10 +353,12 @@ export default function App() {
             generatingLesson.itemId === lessonReader.itemId
           }
           lesson={readerLesson}
+          practiceProgress={readerPracticeProgress}
           quizProgress={readerQuizProgress}
           resourceIds={readerMetadata.resourceIds}
           resources={data.resources}
           title={readerMetadata.title}
+          scope={lessonReader.scope}
           onAsk={(context) => openChat(lessonReader.itemId, context)}
           onBack={closeLessonReader}
           onOpenChat={() => openChat(lessonReader.itemId)}
@@ -362,6 +366,7 @@ export default function App() {
             setSyncError("");
             generateLesson(lessonReader.scope, lessonReader.itemId);
           }}
+          onSavePractice={savePracticeDraft}
           onSubmitQuiz={(answers) =>
             submitLessonQuiz(lessonReader.scope, lessonReader.itemId, answers)
           }

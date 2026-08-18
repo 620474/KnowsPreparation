@@ -1,15 +1,35 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Textarea } from "@mantine/core";
 import { Code2, MessageCircle } from "lucide-react";
 
 import { AiLessonDiagram } from "./AiLessonDiagram";
 import { CodePlayground } from "./CodePlayground";
 import { LessonMarkdown } from "./LessonMarkdown";
-import type { AiLesson, AiLessonQuestionContext } from "../types";
+import {
+  buildPracticeDraftKey,
+  markPracticeDraftEdited,
+  readPracticeDraft,
+  reconcilePracticeDraft,
+  reconcilePracticeSaveResult,
+  type LocalPracticeDraft,
+  writePracticeDraft,
+} from "../lib/practice-drafts";
+import type {
+  AiChatScope,
+  AiLesson,
+  AiLessonQuestionContext,
+  PracticeSolutionProgress,
+  PracticeSolutionSaveResult,
+} from "../types";
 
 interface AiLessonContentProps {
   lesson: AiLesson;
+  scope: AiChatScope;
+  practiceProgress?: PracticeSolutionProgress;
   onAsk?: (context: AiLessonQuestionContext) => void;
+  onSavePractice: (
+    draft: LocalPracticeDraft,
+  ) => Promise<PracticeSolutionSaveResult | null>;
 }
 
 interface AskButtonProps {
@@ -41,20 +61,88 @@ function AskButton({ section, excerpt, onAsk }: AskButtonProps) {
   );
 }
 
-export function AiLessonContent({ lesson, onAsk }: AiLessonContentProps) {
+export function AiLessonContent({
+  lesson,
+  scope,
+  practiceProgress,
+  onAsk,
+  onSavePractice,
+}: AiLessonContentProps) {
   const diagrams = lesson.diagrams ?? [];
   const runner = lesson.practice.runner;
-  const practiceKey = `${lesson.itemId}:${lesson.version}`;
+  const practiceKey = buildPracticeDraftKey(
+    scope,
+    lesson.courseVersion,
+    lesson.itemId,
+    lesson.version,
+  );
   const rootRef = useRef<HTMLDivElement>(null);
-  const [practiceDraft, setPracticeDraft] = useState({
-    key: practiceKey,
-    code: runner?.starterCode ?? "",
-  });
+  const saveTimeoutRef = useRef<number | undefined>(undefined);
+  const initialPracticeDraft = reconcilePracticeDraft(
+    scope,
+    lesson,
+    undefined,
+    practiceProgress,
+  ).draft;
+  const draftRef = useRef(initialPracticeDraft);
+  const [practiceDraft, setPracticeDraft] = useState(initialPracticeDraft);
   const [selectedContext, setSelectedContext] = useState<AiLessonQuestionContext | null>(null);
-  const practiceCode =
-    practiceDraft.key === practiceKey
-      ? practiceDraft.code
-      : runner?.starterCode ?? "";
+
+  const setCurrentDraft = useCallback((draft: LocalPracticeDraft) => {
+    draftRef.current = draft;
+    setPracticeDraft(draft);
+    void writePracticeDraft(draft).catch(() => undefined);
+  }, []);
+
+  const persistPracticeDraft = useCallback(async (submitted: LocalPracticeDraft) => {
+    let pending = submitted;
+    while (true) {
+      const result = await onSavePractice(pending);
+      if (!result) return;
+      const reconciled = reconcilePracticeSaveResult(
+        draftRef.current,
+        pending,
+        result,
+      );
+      setCurrentDraft(reconciled.draft);
+      if (!reconciled.shouldSync) return;
+      pending = reconciled.draft;
+    }
+  }, [onSavePractice, setCurrentDraft]);
+
+  const schedulePracticeSave = useCallback((draft: LocalPracticeDraft, delay = 700) => {
+    window.clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = window.setTimeout(() => {
+      void persistPracticeDraft(draft);
+    }, delay);
+  }, [persistPracticeDraft]);
+
+  useEffect(() => {
+    let cancelled = false;
+    window.clearTimeout(saveTimeoutRef.current);
+    const fallback = reconcilePracticeDraft(
+      scope,
+      lesson,
+      undefined,
+      practiceProgress,
+    ).draft;
+    draftRef.current = fallback;
+    void readPracticeDraft(practiceKey).catch(() => undefined).then((local) => {
+      if (cancelled) return;
+      const reconciled = reconcilePracticeDraft(
+        scope,
+        lesson,
+        local,
+        practiceProgress,
+      );
+      setCurrentDraft(reconciled.draft);
+      if (reconciled.shouldSync) schedulePracticeSave(reconciled.draft, 0);
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(saveTimeoutRef.current);
+    };
+  }, [lesson, practiceKey, practiceProgress, schedulePracticeSave, scope, setCurrentDraft]);
 
   useEffect(() => {
     if (!onAsk) return;
@@ -198,13 +286,48 @@ export function AiLessonContent({ lesson, onAsk }: AiLessonContentProps) {
               className="task-solution"
               label="Решение"
               minRows={10}
-              value={practiceCode}
-              onChange={(event) => setPracticeDraft({
-                key: practiceKey,
-                code: event.currentTarget.value,
-              })}
+              value={practiceDraft.solution}
+              onChange={(event) => {
+                const next = markPracticeDraftEdited(
+                  draftRef.current,
+                  event.currentTarget.value,
+                );
+                setCurrentDraft(next);
+                schedulePracticeSave(next);
+              }}
             />
-            <CodePlayground code={practiceCode} runner={runner} />
+            <div className="ai-practice-sync-status">
+              {practiceDraft.dirty
+                ? "Сохранено локально · ожидает синхронизации"
+                : practiceDraft.revision > 0
+                  ? `Синхронизировано · версия ${practiceDraft.revision}`
+                  : "Локальный черновик"}
+            </div>
+            {practiceDraft.conflictSolution !== undefined ? (
+              <div className="ai-practice-conflict" role="alert">
+                <span>
+                  На сервере была более новая версия. Локальный вариант сохранён отдельно.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const restored = markPracticeDraftEdited(
+                      {
+                        ...draftRef.current,
+                        conflictSolution: undefined,
+                        conflictUpdatedAt: undefined,
+                      },
+                      draftRef.current.conflictSolution ?? "",
+                    );
+                    setCurrentDraft(restored);
+                    schedulePracticeSave(restored, 0);
+                  }}
+                >
+                  Восстановить локальный черновик
+                </button>
+              </div>
+            ) : null}
+            <CodePlayground code={practiceDraft.solution} runner={runner} />
           </div>
         ) : null}
       </section>

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { bootstrapDataSchema } from "@prep/contracts";
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
@@ -8,18 +9,22 @@ import { AiContentService } from "./ai-content.service";
 import {
   ALGORITHM_PATTERNS,
   CURRICULUM,
+  CURRICULUM_BUFFER_WEEKS,
+  CURRICULUM_CORE_WEEKS,
   QUESTION_BANK,
 } from "./curriculum";
 import {
   serializeAiCourse,
   serializeAiLesson,
   serializeMockInterview,
+  serializePracticeProgressCollection,
   serializeQuestionProgress,
   serializeQuizProgressCollection,
 } from "./learning-serialization";
 import { RESOURCES } from "./resources";
 import { AlgorithmEntry } from "./schemas/algorithm-entry.schema";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
+import { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
@@ -54,6 +59,8 @@ export class LearningBootstrapService {
     private readonly algorithmModel: Model<AlgorithmEntry>,
     @InjectModel(AiCourse.name) private readonly aiCourseModel: Model<AiCourse>,
     @InjectModel(AiLesson.name) private readonly aiLessonModel: Model<AiLesson>,
+    @InjectModel(AiPracticeProgress.name)
+    private readonly aiPracticeProgressModel: Model<AiPracticeProgress>,
     @InjectModel(AiQuizProgress.name)
     private readonly aiQuizProgressModel: Model<AiQuizProgress>,
     @InjectModel(MockInterview.name)
@@ -71,12 +78,14 @@ export class LearningBootstrapService {
       .findOneAndUpdate(
         { key: "main" },
         {
+          $set: {
+            coreWeeks: CURRICULUM_CORE_WEEKS,
+            bufferWeeks: CURRICULUM_BUFFER_WEEKS,
+          },
           $setOnInsert: {
             key: "main",
             startDate: today,
             dailyMinutes: 120,
-            coreWeeks: 10,
-            bufferWeeks: 2,
             reminderEnabled: false,
             reminderTime: "19:00",
           },
@@ -91,7 +100,7 @@ export class LearningBootstrapService {
       this.aiCourseModel.findOne({ key: "main" }).lean().exec(),
       this.mockInterviewModel.find().sort({ updatedAt: -1 }).limit(20).lean().exec(),
     ]);
-    const [aiLessons, sprintLessonCollections, quizProgresses] = await Promise.all([
+    const [aiLessons, sprintLessonCollections, quizProgresses, practiceProgresses] = await Promise.all([
       aiCourse
         ? this.aiLessonModel
             .find({ courseKey: aiCourse.key, courseVersion: aiCourse.version })
@@ -110,6 +119,7 @@ export class LearningBootstrapService {
         ),
       ),
       this.aiQuizProgressModel.find().sort({ updatedAt: -1 }).lean().exec(),
+      this.aiPracticeProgressModel.find().sort({ updatedAt: -1 }).lean().exec(),
     ]);
 
     if (!settings) {
@@ -175,12 +185,16 @@ export class LearningBootstrapService {
         yandexLessons: sprintLessons.yandex,
         ozonLessons: sprintLessons.ozon,
         quizProgress: serializeQuizProgressCollection(quizProgresses, aiCourse),
+        practiceProgress: serializePracticeProgressCollection(
+          practiceProgresses,
+          aiCourse,
+        ),
       },
     };
   }
 
   async getLegacyBootstrap() {
     const [content, progress] = await Promise.all([this.getContent(), this.getProgress()]);
-    return { ...content, ...progress };
+    return bootstrapDataSchema.parse({ ...content, ...progress });
   }
 }

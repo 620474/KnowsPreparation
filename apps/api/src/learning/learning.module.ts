@@ -19,6 +19,10 @@ import {
   AiLessonSchema,
 } from "./schemas/ai-course.schema";
 import {
+  AiPracticeProgress,
+  AiPracticeProgressSchema,
+} from "./schemas/ai-practice-progress.schema";
+import {
   AiQuizProgress,
   AiQuizProgressSchema,
 } from "./schemas/ai-quiz-progress.schema";
@@ -44,6 +48,7 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
       { name: AiCourse.name, schema: AiCourseSchema },
       { name: AiLesson.name, schema: AiLessonSchema },
       { name: AiChatMessage.name, schema: AiChatMessageSchema },
+      { name: AiPracticeProgress.name, schema: AiPracticeProgressSchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
     ]),

@@ -57,6 +57,9 @@ export function buildLessonWorkspace(
   const readerQuizProgress = lessonReader
     ? data.ai.quizProgress[lessonReader.scope]?.[lessonReader.itemId]
     : undefined;
+  const readerPracticeProgress = lessonReader
+    ? data.ai.practiceProgress[lessonReader.scope]?.[lessonReader.itemId]
+    : undefined;
   const readerMetadata = readerCourseItem
     ? {
         eyebrow: "Персональный AI-курс",
@@ -117,6 +120,7 @@ export function buildLessonWorkspace(
   return {
     readerLesson,
     readerQuizProgress,
+    readerPracticeProgress,
     readerMetadata,
     chatScope,
     chatTopics,

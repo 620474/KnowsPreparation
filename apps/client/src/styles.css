@@ -2914,6 +2914,36 @@ p {
   line-height: 1.55;
 }
 
+.ai-practice-sync-status {
+  margin-top: -8px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.ai-practice-conflict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 173, 115, 0.38);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text-secondary);
+  background: rgba(255, 173, 115, 0.08);
+  font-size: 0.8rem;
+}
+
+.ai-practice-conflict button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #08130f;
+  background: var(--orange);
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .ai-practice-example code {
   color: var(--orange-code);
   overflow-wrap: anywhere;
@@ -3954,6 +3984,15 @@ p {
 }
 
 @media (max-width: 520px) {
+  .ai-practice-conflict {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-practice-conflict button {
+    width: 100%;
+  }
+
   h1 {
     font-size: 2.35rem;
   }

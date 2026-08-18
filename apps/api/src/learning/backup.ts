@@ -11,6 +11,7 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "aiCourses",
   "aiLessons",
   "aiChatMessages",
+  "aiPracticeProgresses",
   "aiQuizProgresses",
   "mockInterviews",
 ] as const;
@@ -54,7 +55,8 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
   let totalRecords = 0;
   const data = {} as LearningBackupV1["data"];
   for (const collection of LEARNING_BACKUP_COLLECTIONS) {
-    const records = value.data[collection];
+    const records = value.data[collection] ??
+      (collection === "aiPracticeProgresses" ? [] : undefined);
     if (!Array.isArray(records)) {
       throw new BadRequestException(`Раздел ${collection} должен быть массивом`);
     }

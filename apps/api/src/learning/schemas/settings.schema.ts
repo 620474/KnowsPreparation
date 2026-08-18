@@ -14,10 +14,10 @@ export class Settings {
   @Prop({ required: true, default: 120 })
   dailyMinutes!: number;
 
-  @Prop({ required: true, default: 10 })
+  @Prop({ required: true, default: 11 })
   coreWeeks!: number;
 
-  @Prop({ required: true, default: 2 })
+  @Prop({ required: true, default: 1 })
   bufferWeeks!: number;
 
   @Prop({ required: true, default: false })

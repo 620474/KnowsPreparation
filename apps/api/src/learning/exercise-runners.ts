@@ -19,7 +19,7 @@ const groupAnagramsRunner = runner(
   ],
 );
 
-const runners: Record<string, StudyExerciseRunner> = {
+const runners = {
   "yandex-d01-algorithms": runner(
     `function findMostFrequent(numbers) {
   // Верни самый частый элемент или null
@@ -308,7 +308,7 @@ const nine = number(9);`,
 }`,
     [
       { title: "Сохраняет результаты", expression: "parallelLimit([() => Promise.resolve(1), () => Promise.resolve(2), () => Promise.resolve(3)], 2)", expected: [1, 2, 3] },
-      { title: "Соблюдает лимит", expression: "(async () => { let active = 0; let maximum = 0; const task = (value) => async () => { active += 1; maximum = Math.max(maximum, active); await new Promise(resolve => setTimeout(resolve, 5)); active -= 1; return value; }; const values = await parallelLimit([task(1),task(2),task(3),task(4)], 2); return { values, maximum }; })()", expected: { values: [1, 2, 3, 4], maximum: 2 } },
+      { title: "Соблюдает лимит", expression: "(async () => { let active = 0; let maximum = 0; const task = (value) => async () => { active += 1; maximum = Math.max(maximum, active); await Promise.resolve(); active -= 1; return value; }; const values = await parallelLimit([task(1),task(2),task(3),task(4)], 2); return { values, maximum }; })()", expected: { values: [1, 2, 3, 4], maximum: 2 } },
     ],
   ),
   "ozon-d14-practice": runner(
@@ -330,6 +330,370 @@ const nine = number(9);`,
       { title: "Обновляет существующий ключ", expression: "(() => { const cache = new LruCache(1); cache.put('a',1); cache.put('a',2); return cache.get('a'); })()", expected: 2 },
     ],
   ),
+} satisfies Record<string, StudyExerciseRunner>;
+
+type StaticRunnerId = keyof typeof runners;
+
+const groupAnagramsSolution = `function groupAnagrams(words) {
+  const groups = new Map();
+  for (const word of words) {
+    const key = [...word].sort().join("");
+    const group = groups.get(key) ?? [];
+    group.push(word);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}`;
+
+const referenceSolutions: Record<StaticRunnerId, string> = {
+  "yandex-d01-algorithms": `function findMostFrequent(numbers) {
+  if (numbers.length === 0) return null;
+  const counts = new Map();
+  let answer = numbers[0];
+  let maximum = 0;
+  for (const number of numbers) {
+    const count = (counts.get(number) ?? 0) + 1;
+    counts.set(number, count);
+    if (count > maximum) {
+      maximum = count;
+      answer = number;
+    }
+  }
+  return answer;
+}`,
+  "yandex-d02-algorithms": `function countWords(words) {
+  const counts = {};
+  for (const word of words) counts[word] = (counts[word] ?? 0) + 1;
+  return counts;
+}
+
+function firstUniqueChar(text) {
+  const counts = new Map();
+  for (const character of text) counts.set(character, (counts.get(character) ?? 0) + 1);
+  for (let index = 0; index < text.length; index += 1) {
+    if (counts.get(text[index]) === 1) return index;
+  }
+  return -1;
+}`,
+  "yandex-d03-algorithms": `function twoSum(numbers, target) {
+  const indices = new Map();
+  for (let index = 0; index < numbers.length; index += 1) {
+    const complement = target - numbers[index];
+    if (indices.has(complement)) return [indices.get(complement), index];
+    indices.set(numbers[index], index);
+  }
+  return [-1, -1];
+}`,
+  "yandex-d04-algorithms": groupAnagramsSolution,
+  "yandex-d05-algorithms": `function findSortedPair(numbers, target) {
+  let left = 0;
+  let right = numbers.length - 1;
+  while (left < right) {
+    const sum = numbers[left] + numbers[right];
+    if (sum === target) return [left, right];
+    if (sum < target) left += 1;
+    else right -= 1;
+  }
+  return [-1, -1];
+}`,
+  "yandex-d06-algorithms": `function longestUniqueSubstring(text) {
+  const lastSeen = new Map();
+  let left = 0;
+  let maximum = 0;
+  for (let right = 0; right < text.length; right += 1) {
+    const previous = lastSeen.get(text[right]);
+    if (previous !== undefined && previous >= left) left = previous + 1;
+    lastSeen.set(text[right], right);
+    maximum = Math.max(maximum, right - left + 1);
+  }
+  return maximum;
+}`,
+  "yandex-d07-algorithms": `function topKFrequentWords(words, k) {
+  const counts = new Map();
+  for (const word of words) counts.set(word, (counts.get(word) ?? 0) + 1);
+  return [...counts.keys()]
+    .sort((left, right) => counts.get(right) - counts.get(left) || left.localeCompare(right))
+    .slice(0, k);
+}`,
+  "yandex-d08-algorithms": `class RecentCounter {
+  constructor() {
+    this.timestamps = [];
+  }
+
+  ping(timestamp) {
+    this.timestamps.push(timestamp);
+    while (this.timestamps[0] < timestamp - 3000) this.timestamps.shift();
+    return this.timestamps.length;
+  }
+}`,
+  "yandex-d09-algorithms": `function isValidBrackets(text) {
+  const pairs = { ")": "(", "]": "[", "}": "{" };
+  const stack = [];
+  for (const character of text) {
+    if (character === "(" || character === "[" || character === "{") stack.push(character);
+    else if (stack.pop() !== pairs[character]) return false;
+  }
+  return stack.length === 0;
+}`,
+  "yandex-d10-algorithms": `async function fetchWithRetry(request, retries) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await request();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}`,
+  "yandex-d11-algorithms": `function splitWordsBySeparator(words, separator) {
+  return words.flatMap((word) => word.split(separator)).filter(Boolean);
+}`,
+  "yandex-d12-algorithms": `function createCounter(initialValue) {
+  let value = initialValue;
+  return {
+    increment() { value += 1; return value; },
+    decrement() { value -= 1; return value; },
+    reset() { value = initialValue; return value; },
+    getValue() { return value; },
+  };
+}`,
+  "yandex-d13-algorithms": `async function promiseSum(first, second) {
+  const [left, right] = await Promise.all([first, second]);
+  return left + right;
+}`,
+  "yandex-d14-algorithms": `function minWindow(source, target) {
+  if (!target || target.length > source.length) return "";
+  const required = new Map();
+  for (const character of target) required.set(character, (required.get(character) ?? 0) + 1);
+  const windowCounts = new Map();
+  let formed = 0;
+  let left = 0;
+  let bestStart = 0;
+  let bestLength = Infinity;
+  for (let right = 0; right < source.length; right += 1) {
+    const character = source[right];
+    windowCounts.set(character, (windowCounts.get(character) ?? 0) + 1);
+    if (required.has(character) && windowCounts.get(character) === required.get(character)) formed += 1;
+    while (formed === required.size) {
+      if (right - left + 1 < bestLength) {
+        bestStart = left;
+        bestLength = right - left + 1;
+      }
+      const removed = source[left];
+      windowCounts.set(removed, windowCounts.get(removed) - 1);
+      if (required.has(removed) && windowCounts.get(removed) < required.get(removed)) formed -= 1;
+      left += 1;
+    }
+  }
+  return bestLength === Infinity ? "" : source.slice(bestStart, bestStart + bestLength);
+}`,
+  "yandex-d15-algorithms": `function memoize(fn) {
+  const root = new Map();
+  const resultKey = Symbol("result");
+  return (...args) => {
+    let node = root;
+    for (const argument of args) {
+      if (!node.has(argument)) node.set(argument, new Map());
+      node = node.get(argument);
+    }
+    if (!node.has(resultKey)) node.set(resultKey, fn(...args));
+    return node.get(resultKey);
+  };
+}`,
+  "yandex-d16-algorithms": `function maximumStringValue(values) {
+  return Math.max(...values.map((value) => /^\\d+$/.test(value) ? Number(value) : value.length));
+}`,
+  "yandex-d17-algorithms": `function restoreRoute(tickets) {
+  const next = new Map(tickets);
+  const destinations = new Set(tickets.map((ticket) => ticket[1]));
+  let city = tickets.find((ticket) => !destinations.has(ticket[0]))[0];
+  const route = [city];
+  while (next.has(city)) {
+    city = next.get(city);
+    route.push(city);
+  }
+  return route;
+}`,
+  "yandex-d18-algorithms": `function replaceAll(source, search, replacement) {
+  if (search === "") return source;
+  return source.split(search).join(replacement);
+}`,
+  "yandex-d19-algorithms": `function mergeSorted(first, second) {
+  const result = [];
+  let left = 0;
+  let right = 0;
+  while (left < first.length || right < second.length) {
+    if (right >= second.length || (left < first.length && first[left] <= second[right])) {
+      result.push(first[left]);
+      left += 1;
+    } else {
+      result.push(second[right]);
+      right += 1;
+    }
+  }
+  return result;
+}
+
+function binarySearch(numbers, target) {
+  let left = 0;
+  let right = numbers.length - 1;
+  while (left <= right) {
+    const middle = Math.floor((left + right) / 2);
+    if (numbers[middle] === target) return middle;
+    if (numbers[middle] < target) left = middle + 1;
+    else right = middle - 1;
+  }
+  return -1;
+}`,
+  "yandex-d20-algorithms": `function minMeetingRooms(intervals) {
+  if (intervals.length === 0) return 0;
+  const starts = intervals.map((interval) => interval[0]).sort((a, b) => a - b);
+  const ends = intervals.map((interval) => interval[1]).sort((a, b) => a - b);
+  let endIndex = 0;
+  let active = 0;
+  let maximum = 0;
+  for (const start of starts) {
+    while (endIndex < ends.length && ends[endIndex] <= start) {
+      active -= 1;
+      endIndex += 1;
+    }
+    active += 1;
+    maximum = Math.max(maximum, active);
+  }
+  return maximum;
+}`,
+  "yandex-d21-algorithms": `function longestConsecutive(numbers) {
+  const values = new Set(numbers);
+  let maximum = 0;
+  for (const value of values) {
+    if (values.has(value - 1)) continue;
+    let length = 1;
+    while (values.has(value + length)) length += 1;
+    maximum = Math.max(maximum, length);
+  }
+  return maximum;
+}`,
+  "ozon-d01-practice": `function reverseInteger(value) {
+  const reversed = Number(String(Math.abs(value)).split("").reverse().join("")) * Math.sign(value);
+  return reversed < -(2 ** 31) || reversed > 2 ** 31 - 1 ? 0 : reversed;
+}`,
+  "ozon-d02-practice": `function findInvalidCharacters(text) {
+  const indices = [];
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code < 32 || code > 126) indices.push(index);
+  }
+  return indices;
+}`,
+  "ozon-d03-practice": `const operation = (handler) => (right) => (left) => handler(left, right);
+const plus = operation((left, right) => left + right);
+const minus = operation((left, right) => left - right);
+const times = operation((left, right) => left * right);
+const dividedBy = operation((left, right) => Math.floor(left / right));
+
+function number(value) {
+  return (handler) => handler ? handler(value) : value;
+}
+
+const zero = number(0);
+const one = number(1);
+const two = number(2);
+const three = number(3);
+const four = number(4);
+const five = number(5);
+const six = number(6);
+const seven = number(7);
+const eight = number(8);
+const nine = number(9);`,
+  "ozon-d04-practice": `function customObjectCreate(proto, descriptors) {
+  function Temporary() {}
+  Temporary.prototype = proto;
+  const value = new Temporary();
+  if (proto === null) Object.setPrototypeOf(value, null);
+  if (descriptors) Object.defineProperties(value, descriptors);
+  return value;
+}`,
+  "ozon-d05-practice": groupAnagramsSolution,
+  "ozon-d06-practice": `function executionOrder(operations) {
+  const order = { sync: 0, microtask: 1, task: 2 };
+  return operations
+    .map((operation, index) => ({ ...operation, index }))
+    .sort((left, right) => order[left.type] - order[right.type] || left.index - right.index)
+    .map((operation) => operation.label);
+}`,
+  "ozon-d07-practice": `async function firstPositive(factory, maxAttempts) {
+  let lastError = new Error("Положительный результат не получен");
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const value = await factory();
+      if (value > 0) return value;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}`,
+  "ozon-d08-practice": `function promiseAll(values) {
+  return new Promise((resolve, reject) => {
+    const items = Array.from(values);
+    if (items.length === 0) return resolve([]);
+    const result = new Array(items.length);
+    let completed = 0;
+    items.forEach((item, index) => {
+      Promise.resolve(item).then((value) => {
+        result[index] = value;
+        completed += 1;
+        if (completed === items.length) resolve(result);
+      }, reject);
+    });
+  });
+}`,
+  "ozon-d09-practice": `async function parallelLimit(tasks, concurrency) {
+  const results = new Array(tasks.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < tasks.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await tasks[index]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, worker));
+  return results;
+}`,
+  "ozon-d14-practice": `class LruCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.values = new Map();
+  }
+
+  get(key) {
+    if (!this.values.has(key)) return undefined;
+    const value = this.values.get(key);
+    this.values.delete(key);
+    this.values.set(key, value);
+    return value;
+  }
+
+  put(key, value) {
+    if (this.values.has(key)) this.values.delete(key);
+    this.values.set(key, value);
+    if (this.values.size > this.capacity) {
+      this.values.delete(this.values.keys().next().value);
+    }
+  }
+}`,
 };
 
-export const getExerciseRunner = (blockId: string) => runners[blockId];
+export const STATIC_EXERCISE_RUNNER_COUNT = Object.keys(runners).length;
+
+export const getStaticRunnerValidationCases = () =>
+  (Object.keys(runners) as StaticRunnerId[]).map((id) => ({
+    id,
+    runner: runners[id],
+    referenceSolution: referenceSolutions[id],
+  }));
+
+export const getExerciseRunner = (blockId: string) =>
+  (runners as Record<string, StudyExerciseRunner>)[blockId];

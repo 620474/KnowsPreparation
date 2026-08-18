@@ -28,8 +28,21 @@ interface RunnerResult {
   error?: string;
 }
 
-function buildRunnerSource(lesson: GeneratedLesson, solution: string) {
-  const testCases = JSON.stringify(lesson.practice.runner.testCases);
+interface ValidatableTestCase {
+  title: string;
+  expression: string;
+  expected?: unknown;
+  expectedError?: string;
+}
+
+interface ValidatableRunner {
+  starterCode: string;
+  testCases: ValidatableTestCase[];
+  referenceSolution: string;
+}
+
+function buildRunnerSource(runner: ValidatableRunner, solution: string) {
+  const testCases = JSON.stringify(runner.testCases);
   return [
     '"use strict";',
     "const __prepObjectKeys = Object.keys;",
@@ -51,22 +64,67 @@ function buildRunnerSource(lesson: GeneratedLesson, solution: string) {
       return false;
     };`,
     solution,
-    `__prepTests.map((testCase) => {
+    `(async () => {
+      const results = [];
+      for (const testCase of __prepTests) {
       try {
-        const actual = eval(testCase.expression);
-        return {
+        const actual = await eval(testCase.expression);
+        const expectedError = testCase.expectedError;
+        results.push({
           title: testCase.title,
-          passed: __prepEqual(actual, testCase.expected),
-        };
+          passed: expectedError === undefined && __prepEqual(actual, testCase.expected),
+        });
       } catch (error) {
-        return {
+        const message = error instanceof Error ? error.message : String(error);
+        const expectedError = testCase.expectedError;
+        results.push({
           title: testCase.title,
-          passed: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
+          passed: expectedError !== undefined && message.includes(expectedError),
+          error: message,
+        });
       }
-    });`,
+      }
+      return results;
+    })();`,
   ].join("\n");
+}
+
+async function evaluateRunnerSource(source: string, timeoutMs: number) {
+  const quickJs = await getQuickJS();
+  const runtime = quickJs.newRuntime();
+  runtime.setMemoryLimit(RUNNER_MEMORY_LIMIT_BYTES);
+  runtime.setMaxStackSize(512 * 1024);
+  runtime.setInterruptHandler(
+    shouldInterruptAfterDeadline(Date.now() + timeoutMs),
+  );
+  const context = runtime.newContext();
+  try {
+    const evaluation = context.evalCode(source);
+    const handle = context.unwrapResult(evaluation);
+    try {
+      while (true) {
+        const state = context.getPromiseState(handle);
+        if (state.type === "fulfilled") {
+          const value = context.dump(state.value) as unknown;
+          if (!state.notAPromise) state.value.dispose();
+          return value;
+        }
+        if (state.type === "rejected") {
+          const error = context.dump(state.error) as { message?: string } | string;
+          state.error.dispose();
+          throw new Error(
+            typeof error === "string" ? error : error.message ?? "runner promise rejected",
+          );
+        }
+        context.unwrapResult(runtime.executePendingJobs());
+      }
+    } finally {
+      handle.dispose();
+    }
+  } finally {
+    context.dispose();
+    runtime.dispose();
+  }
 }
 
 export async function validateGeneratedRunner(
@@ -74,20 +132,17 @@ export async function validateGeneratedRunner(
   timeoutMs = RUNNER_TIMEOUT_MS,
 ): Promise<GeneratedRunnerValidation> {
   try {
-    const quickJs = await getQuickJS();
-    const evaluationOptions = () => ({
-      shouldInterrupt: shouldInterruptAfterDeadline(Date.now() + timeoutMs),
-      memoryLimitBytes: RUNNER_MEMORY_LIMIT_BYTES,
-      maxStackSizeBytes: 512 * 1024,
-    });
-    quickJs.evalCode(lesson.practice.runner.starterCode, evaluationOptions());
-    const starterResult = quickJs.evalCode(
-      buildRunnerSource(lesson, lesson.practice.runner.starterCode),
-      evaluationOptions(),
+    const runner = {
+      ...lesson.practice.runner,
+      referenceSolution: lesson.practice.referenceSolution,
+    };
+    const starterResult = await evaluateRunnerSource(
+      buildRunnerSource(runner, runner.starterCode),
+      timeoutMs,
     );
     if (
       Array.isArray(starterResult) &&
-      starterResult.length === lesson.practice.runner.testCases.length &&
+      starterResult.length === runner.testCases.length &&
       starterResult.every(
         (item) =>
           typeof item === "object" &&
@@ -98,9 +153,9 @@ export async function validateGeneratedRunner(
     ) {
       return { valid: false, failures: ["starterCode already passes every test"] };
     }
-    const result = quickJs.evalCode(
-      buildRunnerSource(lesson, lesson.practice.referenceSolution),
-      evaluationOptions(),
+    const result = await evaluateRunnerSource(
+      buildRunnerSource(runner, runner.referenceSolution),
+      timeoutMs,
     );
     if (!Array.isArray(result)) {
       return { valid: false, failures: ["runner returned an invalid result"] };
@@ -112,7 +167,7 @@ export async function validateGeneratedRunner(
         typeof item.title === "string" &&
         typeof item.passed === "boolean",
     );
-    if (tests.length !== lesson.practice.runner.testCases.length) {
+    if (tests.length !== runner.testCases.length) {
       return { valid: false, failures: ["runner returned an incomplete result"] };
     }
     const failures = tests

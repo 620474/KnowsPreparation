@@ -17,6 +17,7 @@ import type {
   LessonQuizProgress,
   LearningBackup,
   MockInterview,
+  PracticeSolutionSaveResult,
   QuestionProgress,
   ReviewRating,
   TaskProgress,
@@ -48,6 +49,13 @@ const getLessonQuizPath = (scope: AiChatScope, itemId: string) => {
   if (scope === "yandex") return `/learning/yandex-sprint/blocks/${encodedId}/quiz`;
   if (scope === "ozon") return `/learning/ozon-sprint/blocks/${encodedId}/quiz`;
   return `/learning/ai-course/lessons/${encodedId}/quiz`;
+};
+
+const getPracticePath = (scope: AiChatScope, itemId: string) => {
+  const encodedId = encodeURIComponent(itemId);
+  if (scope === "yandex") return `/learning/yandex-sprint/blocks/${encodedId}/practice`;
+  if (scope === "ozon") return `/learning/ozon-sprint/blocks/${encodedId}/practice`;
+  return `/learning/ai-course/lessons/${encodedId}/practice`;
 };
 
 const API_URL_KEY = "prep-api-url";
@@ -188,9 +196,13 @@ export const learningApi = {
     Promise.all([
       request<BootstrapContentPayload>("/learning/bootstrap/content"),
       request<BootstrapProgressPayload>("/learning/bootstrap/progress"),
-    ]).then(([content, progress]) => mergeBootstrapPayloads(content, progress)),
+    ])
+      .then(([content, progress]) => mergeBootstrapPayloads(content, progress))
+      .then((data) => bootstrapDataSchema.parse(data)),
   legacyBootstrap: () =>
-    request<BootstrapPayload>("/learning/bootstrap").then(normalizeBootstrapData),
+    request<BootstrapPayload>("/learning/bootstrap")
+      .then(normalizeBootstrapData)
+      .then((data) => bootstrapDataSchema.parse(data)),
   exportBackup: () => request<LearningBackup>("/learning/backup"),
   importBackup: (backup: LearningBackup) =>
     request<{ imported: Record<string, number>; total: number }>("/learning/backup/import", {
@@ -205,17 +217,17 @@ export const learningApi = {
   generateAiLesson: (itemId: string) =>
     request<AiLesson>(`/learning/ai-course/lessons/${itemId}/generate`, {
       method: "POST",
-    }),
+    }).then((lesson) => aiLessonSchema.parse(lesson)),
   generateYandexLesson: (blockId: string) =>
     request<AiLesson>(
       `/learning/yandex-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
       { method: "POST" },
-    ),
+    ).then((lesson) => aiLessonSchema.parse(lesson)),
   generateOzonLesson: (blockId: string) =>
     request<AiLesson>(
       `/learning/ozon-sprint/blocks/${encodeURIComponent(blockId)}/lesson/generate`,
       { method: "POST" },
-    ),
+    ).then((lesson) => aiLessonSchema.parse(lesson)),
   generateAiLessonStream: (
     scope: AiChatScope,
     itemId: string,
@@ -223,7 +235,7 @@ export const learningApi = {
   ) =>
     streamRequest<AiLesson>(`${getLessonGeneratePath(scope, itemId)}/stream`, {
       method: "POST",
-    }, onDelta),
+    }, onDelta).then((lesson) => aiLessonSchema.parse(lesson)),
   getAiChat: (scope: AiChatScope, itemId: string) =>
     request<AiChatHistory>(getAiChatPath(scope, itemId)),
   sendAiChatMessage: (scope: AiChatScope, itemId: string, content: string) =>
@@ -279,6 +291,23 @@ export const learningApi = {
       method: "POST",
       body: JSON.stringify({ answers, operationId }),
     }),
+  savePracticeSolution: (
+    scope: AiChatScope,
+    itemId: string,
+    lessonVersion: number,
+    solution: string,
+    baseRevision: number,
+    operationId: string,
+  ) =>
+    request<PracticeSolutionSaveResult>(getPracticePath(scope, itemId), {
+      method: "PUT",
+      body: JSON.stringify({
+        lessonVersion,
+        solution,
+        baseRevision,
+        operationId,
+      }),
+    }).then((result) => practiceSolutionSaveResultSchema.parse(result)),
   getCurrentMockInterview: () =>
     request<MockInterview | null>("/learning/mock-interviews/current"),
   startMockInterview: () =>
@@ -315,3 +344,8 @@ export const difficultyLabels: Record<Difficulty, string> = {
   medium: "Medium",
   hard: "Hard",
 };
+import {
+  aiLessonSchema,
+  bootstrapDataSchema,
+  practiceSolutionSaveResultSchema,
+} from "@prep/contracts";

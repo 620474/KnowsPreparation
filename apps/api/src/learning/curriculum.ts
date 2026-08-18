@@ -1,62 +1,31 @@
+import type {
+  StudyBlock,
+  StudyBlockKind,
+  StudyDay,
+  StudyExercise,
+  StudyExerciseExample,
+  StudyExerciseRunner,
+  StudyExerciseTestCase,
+  StudyWeek,
+} from "@prep/contracts";
+
 import { getResourceIdsForBlock } from "./resources";
 
-export type StudyBlockKind = "theory" | "practice" | "ai" | "review";
-
-export interface StudyExerciseExample {
-  input: string;
-  output: string;
-  explanation?: string;
-}
-
-export interface StudyExerciseTestCase {
-  title: string;
-  expression: string;
-  expected?: unknown;
-  expectedError?: string;
-}
-
-export interface StudyExerciseRunner {
-  starterCode: string;
-  testCases: StudyExerciseTestCase[];
-}
-
-export interface StudyExercise {
-  statement: string;
-  signature?: string;
-  constraints: string[];
-  examples: StudyExerciseExample[];
-  runner?: StudyExerciseRunner;
-}
-
-export interface StudyBlock {
-  id: string;
-  kind: StudyBlockKind;
-  title: string;
-  description: string;
-  minutes: number;
-  resourceIds: string[];
-  exercise?: StudyExercise;
-}
-
-export interface StudyDay {
-  id: string;
-  dayNumber: number;
-  offset: number;
-  title: string;
-  blocks: StudyBlock[];
-}
-
-export interface StudyWeek {
-  number: number;
-  title: string;
-  outcome: string;
-  isBuffer: boolean;
-  days: StudyDay[];
-}
+export type {
+  StudyBlock,
+  StudyBlockKind,
+  StudyDay,
+  StudyExercise,
+  StudyExerciseExample,
+  StudyExerciseRunner,
+  StudyExerciseTestCase,
+  StudyWeek,
+};
 
 interface WeekDefinition {
   title: string;
   outcome: string;
+  taskKey?: string;
   isBuffer?: boolean;
   theory: string[];
   practice: string[];
@@ -284,26 +253,26 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
     ],
   },
   {
-    title: "Буфер: закрытие пробелов",
-    outcome: "Закрыть пропуски и довести нестабильные темы до критерия готовности.",
-    isBuffer: true,
+    title: "Тестирование frontend-приложений",
+    outcome: "Выбирать уровень тестирования и уверенно проверять функции, React-компоненты и пользовательские сценарии.",
+    taskKey: "testing",
     theory: [
-      "Аудит пропущенных дней",
-      "Повтор слабого блока JS",
-      "Повтор слабого блока React",
-      "Повтор TypeScript и браузера",
-      "Повтор алгоритмических паттернов",
-      "Повтор System Design",
-      "Актуализация карты пробелов",
+      "Пирамида тестирования и выбор уровня",
+      "Unit-тесты и Vitest",
+      "React Testing Library и поведение пользователя",
+      "Test doubles: mock, stub, spy и fake",
+      "Интеграционные тесты асинхронного UI",
+      "E2E с Playwright и устойчивые локаторы",
+      "Покрытие, flaky-тесты и тесты в CI",
     ],
     practice: [
-      "Закрыть два пропущенных задания",
-      "Решить слабую JS-задачу",
-      "Провести React-мини-мок",
-      "Провести TS/browser-мини-мок",
-      "Повторить пять алгоритмов",
-      "Защитить один дизайн под таймер",
-      "Контрольный смешанный мок",
+      "Составить стратегию тестов для frontend-фичи",
+      "Написать unit-тесты чистой функции",
+      "Протестировать React-компонент через роль и текст",
+      "Изолировать API и таймеры тестовыми дублями",
+      "Проверить loading, success и error состояния",
+      "Написать E2E критического пользовательского пути",
+      "Найти причины flaky-теста и защитить решение",
     ],
   },
   {
@@ -486,6 +455,7 @@ const dayNames = [
 
 export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekIndex) => {
   const weekNumber = weekIndex + 1;
+  const taskSuffix = definition.taskKey ? `-${definition.taskKey}` : "";
   return {
     number: weekNumber,
     title: definition.title,
@@ -504,7 +474,7 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
         title: dayName,
         blocks: [
           {
-            id: `${dayId}-theory`,
+            id: `${dayId}-theory${taskSuffix}`,
             kind: "theory" as const,
             title: definition.theory[dayIndex] ?? "Повтор теории",
             description: `${mainBlockMinutes} минут: изучить механику и подготовить объяснение на 3–5 минут.`,
@@ -512,7 +482,7 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
             resourceIds: getResourceIdsForBlock(weekIndex, dayIndex, "theory"),
           },
           {
-            id: `${dayId}-practice`,
+            id: `${dayId}-practice${taskSuffix}`,
             kind: "practice" as const,
             title: definition.practice[dayIndex] ?? "Практическая задача",
             description: `${mainBlockMinutes} минут: решить самостоятельно, затем разобрать альтернативы и Big-O.`,
@@ -532,7 +502,7 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
               ]
             : []),
           {
-            id: `${dayId}-review`,
+            id: `${dayId}-review${taskSuffix}`,
             kind: "review" as const,
             title: "Короткое повторение и журнал",
             description: `${reviewMinutes} минут: зафиксировать выводы и проверить результат недели «${definition.title}».`,
@@ -544,6 +514,9 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
     }),
   };
 });
+
+export const CURRICULUM_CORE_WEEKS = CURRICULUM.filter((week) => !week.isBuffer).length;
+export const CURRICULUM_BUFFER_WEEKS = CURRICULUM.filter((week) => week.isBuffer).length;
 
 export interface InterviewQuestion {
   id: string;

@@ -88,6 +88,7 @@ const data: BootstrapData = {
       yandex: {},
       ozon: {},
     },
+    practiceProgress: { course: {}, yandex: {}, ozon: {} },
   },
 };
 

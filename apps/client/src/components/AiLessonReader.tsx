@@ -5,14 +5,19 @@ import { AiLessonContent } from "./AiLessonContent";
 import { LessonQuiz } from "./LessonQuiz";
 import { ResourceLinks } from "./ResourceLinks";
 import type {
+  AiChatScope,
   AiLesson,
   AiLessonQuestionContext,
   LearningResource,
   LessonQuizProgress,
+  PracticeSolutionProgress,
+  PracticeSolutionSaveResult,
 } from "../types";
+import type { LocalPracticeDraft } from "../lib/practice-drafts";
 
 interface AiLessonReaderProps {
   lesson: AiLesson;
+  scope: AiChatScope;
   eyebrow: string;
   title: string;
   description: string;
@@ -20,10 +25,14 @@ interface AiLessonReaderProps {
   resources: LearningResource[];
   isRegenerating: boolean;
   quizProgress?: LessonQuizProgress;
+  practiceProgress?: PracticeSolutionProgress;
   onAsk: (context: AiLessonQuestionContext) => void;
   onBack: () => void;
   onOpenChat: () => void;
   onRegenerate: () => void;
+  onSavePractice: (
+    draft: LocalPracticeDraft,
+  ) => Promise<PracticeSolutionSaveResult | null>;
   onSubmitQuiz: (
     answers: Array<{ questionId: string; selectedOptionIndex: number }>,
   ) => Promise<LessonQuizProgress | null>;
@@ -31,6 +40,7 @@ interface AiLessonReaderProps {
 
 export function AiLessonReader({
   lesson,
+  scope,
   eyebrow,
   title,
   description,
@@ -38,10 +48,12 @@ export function AiLessonReader({
   resources,
   isRegenerating,
   quizProgress,
+  practiceProgress,
   onAsk,
   onBack,
   onOpenChat,
   onRegenerate,
+  onSavePractice,
   onSubmitQuiz,
 }: AiLessonReaderProps) {
   return (
@@ -90,7 +102,13 @@ export function AiLessonReader({
             <p>{description}</p>
           </header>
 
-          <AiLessonContent lesson={lesson} onAsk={onAsk} />
+          <AiLessonContent
+            lesson={lesson}
+            practiceProgress={practiceProgress}
+            scope={scope}
+            onAsk={onAsk}
+            onSavePractice={onSavePractice}
+          />
 
           <LessonQuiz lesson={lesson} progress={quizProgress} onSubmit={onSubmitQuiz} />
 

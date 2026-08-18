@@ -6,9 +6,8 @@ import {
 } from "@tanstack/react-query";
 
 import { isOfflineMutationKey } from "./offline-mutation-keys";
+import { openClientDatabase, QUERY_CACHE_STORE } from "./client-database";
 
-const DATABASE_NAME = "frontend-sprint-cache";
-const STORE_NAME = "query-cache";
 const CACHE_KEY = "main";
 const MAX_AGE = 7 * 24 * 60 * 60 * 1_000;
 
@@ -20,24 +19,11 @@ interface PersistedQueryCache {
 export const isFreshQueryCache = (timestamp: number, now = Date.now()) =>
   now - timestamp <= MAX_AGE;
 
-const openDatabase = () =>
-  new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, 1);
-    request.onerror = () => reject(request.error);
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-  });
-
 const readCache = async () => {
-  const database = await openDatabase();
+  const database = await openClientDatabase();
   return new Promise<PersistedQueryCache | undefined>((resolve, reject) => {
-    const transaction = database.transaction(STORE_NAME, "readonly");
-    const request = transaction.objectStore(STORE_NAME).get(CACHE_KEY);
+    const transaction = database.transaction(QUERY_CACHE_STORE, "readonly");
+    const request = transaction.objectStore(QUERY_CACHE_STORE).get(CACHE_KEY);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result as PersistedQueryCache | undefined);
     transaction.oncomplete = () => database.close();
@@ -45,10 +31,10 @@ const readCache = async () => {
 };
 
 const writeCache = async (cache: PersistedQueryCache) => {
-  const database = await openDatabase();
+  const database = await openClientDatabase();
   await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction(STORE_NAME, "readwrite");
-    transaction.objectStore(STORE_NAME).put(cache, CACHE_KEY);
+    const transaction = database.transaction(QUERY_CACHE_STORE, "readwrite");
+    transaction.objectStore(QUERY_CACHE_STORE).put(cache, CACHE_KEY);
     transaction.onerror = () => reject(transaction.error);
     transaction.oncomplete = () => resolve();
   });
@@ -93,10 +79,10 @@ export function subscribeToQueryCache(queryClient: QueryClient) {
 export async function clearPersistedQueryCache() {
   if (!("indexedDB" in window)) return;
   try {
-    const database = await openDatabase();
+    const database = await openClientDatabase();
     await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(STORE_NAME, "readwrite");
-      transaction.objectStore(STORE_NAME).delete(CACHE_KEY);
+      const transaction = database.transaction(QUERY_CACHE_STORE, "readwrite");
+      transaction.objectStore(QUERY_CACHE_STORE).delete(CACHE_KEY);
       transaction.onerror = () => reject(transaction.error);
       transaction.oncomplete = () => resolve();
     });

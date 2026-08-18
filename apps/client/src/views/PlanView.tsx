@@ -20,7 +20,9 @@ export function PlanView({ data, onUpdateTask }: PlanViewProps) {
     <div className="page-stack">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Маршрут · 10 недель + 2 буферные</p>
+          <p className="eyebrow">
+            Маршрут · {data.settings.coreWeeks} основных недель + {data.settings.bufferWeeks} буферная
+          </p>
           <h1>Учебный план</h1>
           <p>Каждый день — 50 минут теории, 50 минут практики и 20 минут повторения.</p>
         </div>

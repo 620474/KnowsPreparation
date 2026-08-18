@@ -156,6 +156,25 @@ export class SubmitLessonQuizDto {
   operationId?: string;
 }
 
+export class UpdatePracticeSolutionDto {
+  @IsInt()
+  @Min(1)
+  lessonVersion!: number;
+
+  @IsString()
+  @MaxLength(12_000)
+  solution!: string;
+
+  @IsInt()
+  @Min(0)
+  baseRevision!: number;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  operationId!: string;
+}
+
 export class UpdateMockAnswerDto {
   @IsString()
   @MinLength(1)

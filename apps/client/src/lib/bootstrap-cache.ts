@@ -4,6 +4,7 @@ import type {
   BootstrapData,
   LessonQuizProgress,
   MockInterview,
+  PracticeSolutionProgress,
 } from "../types";
 import type { QuizMutationVariables } from "./offline-mutation-keys";
 
@@ -34,6 +35,25 @@ export const updateQuizProgress = (
       ...current.ai.quizProgress,
       [scope]: {
         ...current.ai.quizProgress[scope],
+        [itemId]: progress,
+      },
+    },
+  },
+});
+
+export const updatePracticeProgress = (
+  current: BootstrapData,
+  scope: AiChatScope,
+  itemId: string,
+  progress: PracticeSolutionProgress,
+): BootstrapData => ({
+  ...current,
+  ai: {
+    ...current.ai,
+    practiceProgress: {
+      ...current.ai.practiceProgress,
+      [scope]: {
+        ...current.ai.practiceProgress[scope],
         [itemId]: progress,
       },
     },

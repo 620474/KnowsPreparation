@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { AI_SPRINT_DAYS, CURRICULUM, QUESTION_BANK, TASK_IDS } from "./curriculum";
+import {
+  AI_SPRINT_DAYS,
+  CURRICULUM,
+  CURRICULUM_BUFFER_WEEKS,
+  CURRICULUM_CORE_WEEKS,
+  QUESTION_BANK,
+  TASK_IDS,
+} from "./curriculum";
 import {
   AI_RESOURCE_CATALOG_VERIFIED_AT,
   PRINCIPLES_RESOURCE_CATALOG_VERIFIED_AT,
@@ -14,10 +21,24 @@ import { YANDEX_SPRINT, YANDEX_TASK_IDS } from "./yandex-sprint";
 import { OZON_SPRINT, OZON_TASK_IDS } from "./ozon-sprint";
 
 describe("curriculum", () => {
-  it("contains ten core weeks and two buffer weeks", () => {
+  it("contains eleven core weeks and one buffer week", () => {
     expect(CURRICULUM).toHaveLength(12);
-    expect(CURRICULUM.filter((week) => !week.isBuffer)).toHaveLength(10);
-    expect(CURRICULUM.filter((week) => week.isBuffer)).toHaveLength(2);
+    expect(CURRICULUM_CORE_WEEKS).toBe(11);
+    expect(CURRICULUM_BUFFER_WEEKS).toBe(1);
+  });
+
+  it("provides a dedicated testing week without reusing old buffer task ids", () => {
+    const testingWeek = CURRICULUM[10];
+    if (!testingWeek) throw new Error("Testing week is missing");
+
+    expect(testingWeek.title).toBe("Тестирование frontend-приложений");
+    expect(testingWeek.isBuffer).toBe(false);
+    expect(testingWeek.days).toHaveLength(7);
+    expect(
+      testingWeek.days.flatMap((day) => day.blocks).every((block) =>
+        block.id.endsWith("-testing"),
+      ),
+    ).toBe(true);
   });
 
   it("allocates exactly two hours per study day", () => {
