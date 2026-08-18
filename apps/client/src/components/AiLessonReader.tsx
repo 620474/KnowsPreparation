@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Button } from "@mantine/core";
-import { ArrowLeft, MessageCircle, RefreshCw } from "lucide-react";
+import { Alert, Button } from "@mantine/core";
+import { AlertTriangle, ArrowLeft, MessageCircle, RefreshCw } from "lucide-react";
 
 import { AiLessonContent } from "./AiLessonContent";
 import { LessonQuiz } from "./LessonQuiz";
@@ -26,6 +26,9 @@ interface AiLessonReaderProps {
   resources: LearningResource[];
   isRegenerating: boolean;
   focusQuiz?: boolean;
+  /** Читалка перекрывает страницу целиком, поэтому ошибку показываем внутри неё. */
+  error?: string;
+  onDismissError?: () => void;
   quizProgress?: LessonQuizProgress;
   practiceProgress?: PracticeSolutionProgress;
   onAsk: (context: AiLessonQuestionContext) => void;
@@ -50,6 +53,8 @@ export function AiLessonReader({
   resources,
   isRegenerating,
   focusQuiz = false,
+  error,
+  onDismissError,
   quizProgress,
   practiceProgress,
   onAsk,
@@ -109,6 +114,20 @@ export function AiLessonReader({
 
       <main className="ai-lesson-reader-scroll">
         <div className="ai-lesson-reader-content">
+          {error ? (
+            <Alert
+              className="ai-lesson-reader-error"
+              color="red"
+              icon={<AlertTriangle size={17} />}
+              variant="light"
+              withCloseButton
+              closeButtonLabel="Закрыть сообщение"
+              onClose={onDismissError}
+            >
+              {error}
+            </Alert>
+          ) : null}
+
           <header className="ai-lesson-reader-heading">
             <span>{eyebrow}</span>
             <h1>{title}</h1>

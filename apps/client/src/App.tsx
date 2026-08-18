@@ -494,6 +494,8 @@ export default function App() {
           onAsk={(context) => openChat(lessonReader.itemId, context)}
           onBack={closeLessonReader}
           onOpenChat={() => openChat(lessonReader.itemId)}
+          error={syncError}
+          onDismissError={() => setSyncError("")}
           onRegenerate={() => {
             setSyncError("");
             generateLesson(lessonReader.track, lessonReader.itemId);

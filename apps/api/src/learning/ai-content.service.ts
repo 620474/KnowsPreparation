@@ -754,6 +754,9 @@ export class AiContentService {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        // Любой байт от OpenAI означает, что генерация идёт: продлеваем окно,
+        // иначе длинный, но живой поток обрывается на общем дедлайне.
+        abortContext.keepAlive();
         handleEvents(parser.push(decoder.decode(value, { stream: true })));
       }
       handleEvents(parser.push(decoder.decode()));
@@ -770,7 +773,9 @@ export class AiContentService {
       }
       if (abortContext.timedOut() || isAbortError(error)) {
         this.logOpenAiTimeout(operation, true);
-        throw new BadGatewayException("OpenAI не ответил за 90 секунд. Попробуй ещё раз.");
+        throw new BadGatewayException(
+          "OpenAI замолчал на 90 секунд и поток оборвался. Попробуй ещё раз.",
+        );
       }
       this.logOpenAiUnexpectedError(operation, error, true);
       throw new BadGatewayException("Не удалось прочитать поток OpenAI.");

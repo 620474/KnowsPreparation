@@ -2596,6 +2596,18 @@ p {
   padding: 46px clamp(20px, 5vw, 64px) 90px;
 }
 
+.ai-lesson-reader-error {
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 123, 123, 0.28);
+  color: #ffd0d0;
+  background: rgba(79, 20, 20, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.ai-lesson-reader-error .mantine-Alert-closeButton {
+  color: #ffd0d0;
+}
+
 .ai-lesson-reader-heading {
   margin-bottom: 28px;
 }
