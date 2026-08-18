@@ -25,6 +25,9 @@ export class Settings {
 
   @Prop({ required: true, default: "19:00" })
   reminderTime!: string;
+
+  @Prop({ required: true, default: true })
+  adaptiveTodayEnabled!: boolean;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(Settings);

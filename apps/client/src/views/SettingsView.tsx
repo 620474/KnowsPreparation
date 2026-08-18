@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button, Switch, TextInput } from "@mantine/core";
 import {
   Bell,
+  BrainCircuit,
   Building2,
   CalendarClock,
   Download,
@@ -36,7 +37,12 @@ export function SettingsView({
   const [startDate, setStartDate] = useState(data.settings.startDate);
   const [reminderEnabled, setReminderEnabled] = useState(data.settings.reminderEnabled);
   const [reminderTime, setReminderTime] = useState(data.settings.reminderTime);
-  const [busy, setBusy] = useState<"date" | "reminder" | "export" | "import" | null>(null);
+  const [adaptiveTodayEnabled, setAdaptiveTodayEnabled] = useState(
+    data.settings.adaptiveTodayEnabled,
+  );
+  const [busy, setBusy] = useState<
+    "date" | "reminder" | "adaptive" | "export" | "import" | null
+  >(null);
   const [status, setStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nativeReminders = remindersAvailable();
@@ -62,6 +68,16 @@ export function SettingsView({
   async function handleReminderToggle(enabled: boolean) {
     setReminderEnabled(enabled);
     if (!(await saveReminder(enabled))) setReminderEnabled(!enabled);
+  }
+
+  async function handleAdaptiveToggle(enabled: boolean) {
+    setAdaptiveTodayEnabled(enabled);
+    setBusy("adaptive");
+    setStatus("");
+    const saved = await onUpdateSettings({ adaptiveTodayEnabled: enabled });
+    setBusy(null);
+    if (!saved) setAdaptiveTodayEnabled(!enabled);
+    else setStatus(enabled ? "Адаптивный план включён." : "Включён план по календарю.");
   }
 
   async function handleExport() {
@@ -109,6 +125,22 @@ export function SettingsView({
           <Button className="primary-button" type="button" onClick={onOpenOzon}>
             Открыть Ozon-спринт
           </Button>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-icon"><BrainCircuit /></div>
+        <div>
+          <h2>Адаптивное «Сегодня»</h2>
+          <p>Собирает 120 минут из слабых тем, повторений, практики и следующего блока программы. Обычный календарный план остаётся ниже.</p>
+          <Switch
+            checked={adaptiveTodayEnabled}
+            disabled={busy === "adaptive"}
+            label="Подбирать задания по результатам"
+            onChange={(event) =>
+              void handleAdaptiveToggle(event.currentTarget.checked)
+            }
+          />
         </div>
       </section>
 

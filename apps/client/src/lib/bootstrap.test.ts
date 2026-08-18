@@ -27,6 +27,7 @@ const progress: BootstrapProgress = {
     bufferWeeks: 0,
     reminderEnabled: false,
     reminderTime: "19:00",
+    adaptiveTodayEnabled: true,
   },
   progress: { tasks: {}, questions: {} },
   algorithms: [],

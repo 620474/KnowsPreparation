@@ -21,6 +21,8 @@ const createBackup = (): LearningBackupV1 => ({
     aiLessons: [],
     aiChatMessages: [],
     aiPracticeProgresses: [],
+    practiceAttempts: [],
+    learningSignals: [],
     aiQuizProgresses: [],
     mockInterviews: [],
   },
@@ -53,5 +55,23 @@ describe("parseLearningBackup", () => {
     const legacy = { ...backup, data: legacyData };
 
     expect(parseLearningBackup(legacy).data.aiPracticeProgresses).toEqual([]);
+  });
+
+  it("accepts backups created before verified attempts were added", () => {
+    const backup = createBackup();
+    const legacyData: Partial<LearningBackupV1["data"]> = { ...backup.data };
+    delete legacyData.practiceAttempts;
+
+    expect(parseLearningBackup({ ...backup, data: legacyData }).data.practiceAttempts)
+      .toEqual([]);
+  });
+
+  it("accepts backups created before learning signals were added", () => {
+    const backup = createBackup();
+    const legacyData: Partial<LearningBackupV1["data"]> = { ...backup.data };
+    delete legacyData.learningSignals;
+
+    expect(parseLearningBackup({ ...backup, data: legacyData }).data.learningSignals)
+      .toEqual([]);
   });
 });

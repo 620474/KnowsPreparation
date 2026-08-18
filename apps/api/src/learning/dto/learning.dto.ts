@@ -17,6 +17,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
+import type { PracticeAttemptSource } from "@prep/contracts";
 
 import { DIFFICULTIES, type Difficulty } from "../schemas/algorithm-entry.schema";
 import { AI_LEVELS, type AiLevel } from "../schemas/ai-course.schema";
@@ -40,6 +41,30 @@ export class UpdateSettingsDto {
   @IsString()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   reminderTime?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  adaptiveTodayEnabled?: boolean;
+}
+
+export class GetLearningAnalyticsDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsIn([7, 30])
+  days = 30;
+}
+
+export class SkipAdaptiveRecommendationDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(240)
+  recommendationId!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  operationId!: string;
 }
 
 export class ImportBackupDto {
@@ -173,6 +198,38 @@ export class UpdatePracticeSolutionDto {
   @MinLength(1)
   @MaxLength(80)
   operationId!: string;
+}
+
+export class SubmitPracticeAttemptDto {
+  @IsIn(["task", "lesson"])
+  source!: PracticeAttemptSource;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  lessonVersion?: number;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50_000)
+  solution!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  operationId!: string;
+}
+
+export class ListPracticeAttemptsDto {
+  @IsIn(["task", "lesson"])
+  source!: PracticeAttemptSource;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  limit = 10;
 }
 
 export class UpdateMockAnswerDto {

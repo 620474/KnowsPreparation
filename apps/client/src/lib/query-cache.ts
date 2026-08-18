@@ -105,7 +105,12 @@ export function subscribeToQueryCache(queryClient: QueryClient) {
           mutation.state.isPaused && isOfflineMutationKey(mutation.options.mutationKey),
         shouldDehydrateQuery: (query) => {
           const rootKey = query.queryKey[0];
-          return Boolean(query.state.data) && (rootKey === "bootstrap" || rootKey === "ai-chat");
+          return Boolean(query.state.data) &&
+            (rootKey === "bootstrap" ||
+              rootKey === "ai-chat" ||
+              rootKey === "practice-attempts" ||
+              rootKey === "adaptive-today" ||
+              rootKey === "learning-analytics");
         },
       });
       void writeCache({ version: CACHE_VERSION, timestamp: Date.now(), state }).catch(

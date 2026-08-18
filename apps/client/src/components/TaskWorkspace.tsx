@@ -2,7 +2,12 @@ import { useState, type FormEvent } from "react";
 import { Button, Textarea } from "@mantine/core";
 import { Save } from "lucide-react";
 
-import type { StudyExerciseRunner, TaskProgress, TaskUpdateHandler } from "../types";
+import type {
+  StudyExerciseRunner,
+  TaskProgress,
+  TaskUpdateHandler,
+  TrackKey,
+} from "../types";
 import { CodePlayground } from "./CodePlayground";
 
 interface TaskWorkspaceProps {
@@ -11,6 +16,7 @@ interface TaskWorkspaceProps {
   progress: TaskProgress;
   includeCustomTask: boolean;
   runner?: StudyExerciseRunner;
+  track: TrackKey;
   onUpdateTask: TaskUpdateHandler;
 }
 
@@ -20,6 +26,7 @@ export function TaskWorkspace({
   progress,
   includeCustomTask,
   runner,
+  track,
   onUpdateTask,
 }: TaskWorkspaceProps) {
   const [customTask, setCustomTask] = useState(progress.customTask);
@@ -79,7 +86,13 @@ export function TaskWorkspace({
             setSaveStatus("idle");
           }}
         />
-        {runner ? <CodePlayground code={solution} runner={runner} /> : null}
+        {runner ? (
+          <CodePlayground
+            attemptTarget={{ track, itemId: taskId, source: "task" }}
+            code={solution}
+            runner={runner}
+          />
+        ) : null}
         <div className="task-workspace-actions">
           <Button
             className="primary-button"

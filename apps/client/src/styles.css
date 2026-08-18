@@ -1574,6 +1574,43 @@ p {
   white-space: pre-wrap;
 }
 
+.practice-attempt-status {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.practice-attempt-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.practice-attempt-status > small,
+.practice-attempt-history {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.practice-attempt-history summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.practice-attempt-history > div {
+  display: grid;
+  gap: 5px;
+  padding-top: 8px;
+}
+
+.practice-attempt-history span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .save-success,
 .save-error {
   font-size: 0.7rem;
@@ -3229,6 +3266,15 @@ p {
   box-shadow: var(--shadow);
 }
 
+.view-loader {
+  display: flex;
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
 .today-training-grid,
 .analytics-stat-grid,
 .mock-evaluation-summary {
@@ -3279,6 +3325,158 @@ p {
 .today-training-grid article span {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.adaptive-today-panel {
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  padding: clamp(22px, 4vw, 36px);
+  background:
+    radial-gradient(circle at top right, rgba(107, 245, 176, 0.1), transparent 34%),
+    var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.adaptive-today-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.adaptive-today-list article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--surface-subtle);
+}
+
+.adaptive-today-list h3,
+.adaptive-today-list p {
+  margin: 0;
+}
+
+.adaptive-today-list p {
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.adaptive-today-index {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--bg);
+  background: var(--accent);
+  font-weight: 900;
+}
+
+.adaptive-today-meta,
+.adaptive-today-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adaptive-today-meta {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.analytics-dynamics-heading {
+  align-items: center;
+}
+
+.analytics-loading,
+.analytics-signal-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.analytics-signal-summary {
+  flex-wrap: wrap;
+}
+
+.analytics-signal-summary span {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--muted);
+  background: var(--surface-subtle);
+}
+
+.analytics-signal-summary strong {
+  color: var(--text-strong);
+}
+
+.analytics-timeline {
+  display: grid;
+  grid-auto-columns: minmax(22px, 1fr);
+  grid-auto-flow: column;
+  align-items: end;
+  gap: 6px;
+  height: 190px;
+  margin-top: 26px;
+  overflow-x: auto;
+}
+
+.analytics-timeline > div {
+  display: grid;
+  min-width: 22px;
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 7px;
+}
+
+.analytics-timeline > div > span {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(180deg, var(--accent), rgba(107, 245, 176, 0.35));
+}
+
+.analytics-timeline small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  writing-mode: vertical-rl;
+}
+
+.analytics-skill-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.analytics-skill-list article {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px;
+  background: var(--surface-subtle);
+}
+
+.analytics-skill-list article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analytics-skill-list span {
+  color: var(--muted);
+  font-size: 0.76rem;
 }
 
 .questions-header-actions,
@@ -4115,10 +4313,23 @@ p {
 
   .today-training-grid,
   .analytics-stat-grid,
+  .analytics-skill-list,
   .mock-evaluation-summary,
   .review-rating-grid,
   .lesson-quiz-intro {
     grid-template-columns: 1fr;
+  }
+
+  .adaptive-today-list article {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .adaptive-today-actions {
+    grid-column: 1 / -1;
+  }
+
+  .adaptive-today-actions > * {
+    flex: 1;
   }
 
   .questions-header-actions,

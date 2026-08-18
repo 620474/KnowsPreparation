@@ -1,8 +1,9 @@
-import type { StudyBlock, StudyDay, StudyExercise } from "../types";
+import type { StudyBlock, StudyDay, StudyExercise, TrackKey } from "../types";
 
 export interface PracticeTask {
   id: string;
   source: "Яндекс" | "Ozon";
+  track: Extract<TrackKey, "yandex" | "ozon">;
   dayNumber: number;
   dayTitle: string;
   block: StudyBlock & { exercise: StudyExercise };
@@ -10,6 +11,7 @@ export interface PracticeTask {
 
 const collectPracticeTasks = (
   source: PracticeTask["source"],
+  track: PracticeTask["track"],
   days: StudyDay[],
 ): PracticeTask[] =>
   days.flatMap((day) =>
@@ -19,6 +21,7 @@ const collectPracticeTasks = (
             {
               id: block.id,
               source,
+              track,
               dayNumber: day.dayNumber,
               dayTitle: day.title,
               block: { ...block, exercise: block.exercise },
@@ -30,7 +33,7 @@ const collectPracticeTasks = (
 
 export function getPracticeTasks(yandexSprint: StudyDay[], ozonSprint: StudyDay[]) {
   return [
-    ...collectPracticeTasks("Яндекс", yandexSprint),
-    ...collectPracticeTasks("Ozon", ozonSprint),
+    ...collectPracticeTasks("Яндекс", "yandex", yandexSprint),
+    ...collectPracticeTasks("Ozon", "ozon", ozonSprint),
   ];
 }

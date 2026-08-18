@@ -7,6 +7,20 @@ export const aiLevelSchema = z.enum(["middle", "middle-plus", "senior"]);
 export const TRACK_KEYS = ["course", "curriculum", "yandex", "ozon"] as const;
 export const trackKeySchema = z.enum(TRACK_KEYS);
 export type TrackKey = z.infer<typeof trackKeySchema>;
+export const SKILL_KEYS = [
+  "javascript",
+  "typescript",
+  "async",
+  "react",
+  "browser",
+  "algorithms",
+  "testing",
+  "architecture",
+  "css-a11y",
+  "ai",
+] as const;
+export const skillKeySchema = z.enum(SKILL_KEYS);
+export type SkillKey = z.infer<typeof skillKeySchema>;
 export const studyBlockKindSchema = z.enum(["theory", "practice", "ai", "review"]);
 export const resourceLanguageSchema = z.enum(["ru", "en"]);
 export const resourceKindSchema = z.enum([
@@ -272,6 +286,35 @@ export const practiceSolutionSaveResultSchema = z.object({
   progress: practiceSolutionProgressSchema.nullable(),
 });
 
+export const practiceAttemptSourceSchema = z.enum(["task", "lesson"]);
+
+export const practiceAttemptTestResultSchema = z.object({
+  title: z.string(),
+  passed: z.boolean(),
+  error: z.string().optional(),
+});
+
+export const practiceAttemptSchema = z.object({
+  id: z.string(),
+  track: trackKeySchema,
+  itemId: z.string(),
+  source: practiceAttemptSourceSchema,
+  exerciseVersion: z.string(),
+  skillKeys: z.array(skillKeySchema),
+  solution: z.string(),
+  passed: z.boolean(),
+  passedCount: z.number(),
+  totalCount: z.number(),
+  durationMs: z.number(),
+  error: z.string().nullable(),
+  tests: z.array(practiceAttemptTestResultSchema),
+  createdAt: z.string(),
+});
+
+export const practiceAttemptHistorySchema = z.object({
+  attempts: z.array(practiceAttemptSchema),
+});
+
 export const aiChatMessageSchema = z.object({
   id: z.string(),
   role: z.enum(["user", "assistant"]),
@@ -323,6 +366,72 @@ export const appSettingsSchema = z.object({
   bufferWeeks: z.number(),
   reminderEnabled: z.boolean(),
   reminderTime: z.string(),
+  adaptiveTodayEnabled: z.boolean().default(true),
+});
+
+export const adaptivePlanItemKindSchema = z.enum([
+  "review",
+  "practice",
+  "lesson",
+  "mock",
+  "plan",
+]);
+
+export const adaptivePlanItemSchema = z.object({
+  id: z.string(),
+  kind: adaptivePlanItemKindSchema,
+  title: z.string(),
+  reason: z.string(),
+  minutes: z.number(),
+  score: z.number(),
+  skillKeys: z.array(skillKeySchema),
+  track: trackKeySchema.nullable(),
+  itemId: z.string().nullable(),
+  source: practiceAttemptSourceSchema.nullable(),
+});
+
+export const adaptivePlanSchema = z.object({
+  date: z.string(),
+  budgetMinutes: z.number(),
+  totalMinutes: z.number(),
+  generatedAt: z.string(),
+  items: z.array(adaptivePlanItemSchema),
+});
+
+export const learningAnalyticsDaySchema = z.object({
+  date: z.string(),
+  activityCount: z.number(),
+  practiceAttempts: z.number(),
+  practicePassed: z.number(),
+  quizAttempts: z.number(),
+  quizAverage: z.number().nullable(),
+  reviews: z.number(),
+  mocks: z.number(),
+  mockAverage: z.number().nullable(),
+});
+
+export const learningAnalyticsSkillSchema = z.object({
+  key: skillKeySchema,
+  label: z.string(),
+  score: z.number().nullable(),
+  signalCount: z.number(),
+});
+
+export const learningAnalyticsSchema = z.object({
+  windowDays: z.number(),
+  startedAt: z.string().nullable(),
+  totals: z.object({
+    activityCount: z.number(),
+    practiceAttempts: z.number(),
+    practicePassRate: z.number().nullable(),
+    quizAttempts: z.number(),
+    quizAverage: z.number().nullable(),
+    reviews: z.number(),
+    mocks: z.number(),
+    mockAverage: z.number().nullable(),
+  }),
+  days: z.array(learningAnalyticsDaySchema),
+  skills: z.array(learningAnalyticsSkillSchema),
 });
 
 export const learningBackupSchema = z.object({
@@ -423,6 +532,10 @@ export type LessonQuizAttempt = z.infer<typeof lessonQuizAttemptSchema>;
 export type LessonQuizProgress = z.infer<typeof lessonQuizProgressSchema>;
 export type PracticeSolutionProgress = z.infer<typeof practiceSolutionProgressSchema>;
 export type PracticeSolutionSaveResult = z.infer<typeof practiceSolutionSaveResultSchema>;
+export type PracticeAttemptSource = z.infer<typeof practiceAttemptSourceSchema>;
+export type PracticeAttemptTestResult = z.infer<typeof practiceAttemptTestResultSchema>;
+export type PracticeAttempt = z.infer<typeof practiceAttemptSchema>;
+export type PracticeAttemptHistory = z.infer<typeof practiceAttemptHistorySchema>;
 export type AiChatMessage = z.infer<typeof aiChatMessageSchema>;
 export type AiChatHistory = z.infer<typeof aiChatHistorySchema>;
 export type AiLessonQuestionContext = z.infer<typeof aiLessonQuestionContextSchema>;
@@ -431,8 +544,17 @@ export type MockInterviewEvaluation = z.infer<typeof mockInterviewEvaluationSche
 export type MockInterview = z.infer<typeof mockInterviewSchema>;
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 export type SettingsPatch = Partial<
-  Pick<AppSettings, "startDate" | "reminderEnabled" | "reminderTime">
+  Pick<
+    AppSettings,
+    "startDate" | "reminderEnabled" | "reminderTime" | "adaptiveTodayEnabled"
+  >
 >;
+export type AdaptivePlanItemKind = z.infer<typeof adaptivePlanItemKindSchema>;
+export type AdaptivePlanItem = z.infer<typeof adaptivePlanItemSchema>;
+export type AdaptivePlan = z.infer<typeof adaptivePlanSchema>;
+export type LearningAnalyticsDay = z.infer<typeof learningAnalyticsDaySchema>;
+export type LearningAnalyticsSkill = z.infer<typeof learningAnalyticsSkillSchema>;
+export type LearningAnalytics = z.infer<typeof learningAnalyticsSchema>;
 export type LearningBackup = z.infer<typeof learningBackupSchema>;
 export type BootstrapContent = z.infer<typeof bootstrapContentSchema>;
 export type BootstrapProgress = z.infer<typeof bootstrapProgressSchema>;

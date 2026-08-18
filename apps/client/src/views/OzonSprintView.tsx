@@ -23,6 +23,7 @@ export function OzonSprintView(props: OzonSprintViewProps) {
       eyebrow="Ozon · 14 дней · без календаря"
       lessons={props.data.ai.lessons.ozon}
       sprintDays={props.data.ozonSprint}
+      track="ozon"
       title="Спринт к интервью Ozon"
       weekTitles={["JavaScript и асинхронность", "Браузер, React и мок-интервью"]}
     />

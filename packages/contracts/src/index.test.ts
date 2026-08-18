@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  adaptivePlanSchema,
   bootstrapContentSchema,
   bootstrapDataSchema,
   bootstrapProgressSchema,
+  learningAnalyticsSchema,
   practiceSolutionSaveResultSchema,
+  practiceAttemptSchema,
   studyExerciseRunnerSchema,
   trackKeySchema,
   TRACK_KEYS,
@@ -23,6 +26,25 @@ describe("shared API contracts", () => {
       saved: true,
       progress: { revision: "one" },
     })).toThrow();
+  });
+
+  it("validates server-confirmed practice attempts", () => {
+    expect(practiceAttemptSchema.parse({
+      id: "attempt-1",
+      track: "yandex",
+      itemId: "task-1",
+      source: "task",
+      exerciseVersion: "task:1:hash",
+      skillKeys: ["javascript"],
+      solution: "function solve() { return 1; }",
+      passed: true,
+      passedCount: 1,
+      totalCount: 1,
+      durationMs: 12,
+      error: null,
+      tests: [{ title: "case", passed: true }],
+      createdAt: "2026-08-18T10:00:00.000Z",
+    }).passed).toBe(true);
   });
 
   it("accepts every learning track key", () => {
@@ -52,5 +74,42 @@ describe("shared API contracts", () => {
     const progressKeys = Object.keys(bootstrapProgressSchema.shape);
     const dataKeys = Object.keys(bootstrapDataSchema.shape);
     expect(dataKeys).toEqual([...contentKeys, ...progressKeys]);
+  });
+
+  it("validates adaptive plans and measured analytics", () => {
+    expect(adaptivePlanSchema.parse({
+      date: "2026-08-18",
+      budgetMinutes: 120,
+      totalMinutes: 30,
+      generatedAt: "2026-08-18T10:00:00.000Z",
+      items: [{
+        id: "practice-1",
+        kind: "practice",
+        title: "Практика",
+        reason: "Последняя попытка не пройдена",
+        minutes: 30,
+        score: 100,
+        skillKeys: ["javascript"],
+        track: "yandex",
+        itemId: "task-1",
+        source: "task",
+      }],
+    }).items).toHaveLength(1);
+    expect(learningAnalyticsSchema.parse({
+      windowDays: 7,
+      startedAt: null,
+      totals: {
+        activityCount: 0,
+        practiceAttempts: 0,
+        practicePassRate: null,
+        quizAttempts: 0,
+        quizAverage: null,
+        reviews: 0,
+        mocks: 0,
+        mockAverage: null,
+      },
+      days: [],
+      skills: [],
+    }).windowDays).toBe(7);
   });
 });

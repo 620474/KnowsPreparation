@@ -1,3 +1,5 @@
+import { createHash, randomUUID } from "node:crypto";
+
 import {
   BadGatewayException,
   BadRequestException,
@@ -26,9 +28,11 @@ import { RESOURCES } from "./resources";
 import {
   CreateAlgorithmDto,
   GenerateAiCourseDto,
+  ListPracticeAttemptsDto,
   ReviewQuestionDto,
   SendAiChatMessageDto,
   SubmitLessonQuizDto,
+  SubmitPracticeAttemptDto,
   UpdateMockAnswerDto,
   UpdatePracticeSolutionDto,
   UpdateQuestionDto,
@@ -39,12 +43,15 @@ import { selectMockInterviewQuestions } from "./mock-interview";
 import {
   generateValidatedLesson,
   GeneratedRunnerValidationError,
+  runPracticeSolution,
 } from "./generated-runner";
 import { LearningCleanupService } from "./learning-cleanup.service";
+import { LearningSignalService } from "./learning-signal.service";
 import {
   serializeAiCourse,
   serializeAiLesson,
   serializeMockInterview,
+  serializePracticeAttempt,
   serializePracticeProgress,
   serializeQuestionProgress,
   serializeQuizProgress,
@@ -56,8 +63,10 @@ import { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
+import { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
+import { inferSkillKeys } from "./skills";
 import { scheduleQuestionReview } from "./spaced-repetition";
 import { buildTaskProgressUpdate } from "./task-progress";
 import {
@@ -102,10 +111,13 @@ export class LearningService {
     private readonly aiQuizProgressModel: Model<AiQuizProgress>,
     @InjectModel(AiPracticeProgress.name)
     private readonly aiPracticeProgressModel: Model<AiPracticeProgress>,
+    @InjectModel(PracticeAttempt.name)
+    private readonly practiceAttemptModel: Model<PracticeAttempt>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
     private readonly aiContent: AiContentService,
     private readonly cleanup: LearningCleanupService,
+    private readonly signals: LearningSignalService,
   ) {}
 
   async generateAiCourse(dto: GenerateAiCourseDto) {
@@ -472,6 +484,7 @@ export class LearningService {
       dailyMinutes: 120,
       reminderEnabled: false,
       reminderTime: "19:00",
+      adaptiveTodayEnabled: true,
     };
     for (const key of Object.keys(update)) delete insertDefaults[key];
     const settings = await this.settingsModel
@@ -498,6 +511,7 @@ export class LearningService {
       bufferWeeks: settings.bufferWeeks,
       reminderEnabled: settings.reminderEnabled ?? false,
       reminderTime: settings.reminderTime ?? "19:00",
+      adaptiveTodayEnabled: settings.adaptiveTodayEnabled ?? true,
     };
   }
 
@@ -592,6 +606,7 @@ export class LearningService {
         operationId: dto.operationId,
         questionId,
       });
+      await this.recordReviewSignal(questionId, dto);
       return {
         questionId: current.questionId,
         ...serializeQuestionProgress(current),
@@ -633,6 +648,7 @@ export class LearningService {
           operationId: dto.operationId,
           questionId,
         });
+        await this.recordReviewSignal(questionId, dto);
         return {
           questionId: duplicate.questionId,
           ...serializeQuestionProgress(duplicate),
@@ -642,6 +658,7 @@ export class LearningService {
     if (!question) {
       throw new InternalServerErrorException("Не удалось сохранить повторение");
     }
+    await this.recordReviewSignal(questionId, dto);
     return {
       questionId: question.questionId,
       ...serializeQuestionProgress(question),
@@ -654,7 +671,25 @@ export class LearningService {
     dto: SubmitLessonQuizDto,
   ) {
     const scope = await this.resolveTrackItemScope(trackKey, itemId);
-    return this.submitLessonQuiz(scope.courseKey, scope.courseVersion, itemId, dto);
+    const progress = await this.submitLessonQuiz(
+      scope.courseKey,
+      scope.courseVersion,
+      itemId,
+      dto,
+    );
+    const latest = progress.attempts.at(-1);
+    if (latest) {
+      await this.signals.record({
+        type: "quiz_submitted",
+        track: trackKey,
+        itemId,
+        skillKeys: inferSkillKeys(...latest.answers.map((answer) => answer.topic)),
+        payload: { score: latest.score, maxScore: latest.answers.length },
+        operationId: `quiz:${dto.operationId ?? randomUUID()}`,
+        occurredAt: new Date(latest.completedAt),
+      });
+    }
+    return progress;
   }
 
   async saveTrackPracticeSolution(
@@ -666,6 +701,192 @@ export class LearningService {
       requirePractice: true,
     });
     return this.savePracticeSolution(scope.courseKey, scope.courseVersion, itemId, dto);
+  }
+
+  async listTrackPracticeAttempts(
+    trackKey: TrackKey,
+    itemId: string,
+    dto: ListPracticeAttemptsDto,
+  ) {
+    const scope = await this.resolvePracticeAttemptScope(
+      trackKey,
+      itemId,
+      dto.source,
+    );
+    const attempts = await this.practiceAttemptModel
+      .find({
+        track: trackKey,
+        itemId,
+        source: dto.source,
+        exerciseVersion: scope.exerciseVersion,
+      })
+      .sort({ createdAt: -1 })
+      .limit(dto.limit)
+      .lean()
+      .exec();
+    return { attempts: attempts.map(serializePracticeAttempt) };
+  }
+
+  async submitTrackPracticeAttempt(
+    trackKey: TrackKey,
+    itemId: string,
+    dto: SubmitPracticeAttemptDto,
+  ) {
+    const duplicate = await this.practiceAttemptModel
+      .findOne({ operationId: dto.operationId })
+      .lean()
+      .exec();
+    if (duplicate) {
+      if (
+        duplicate.track !== trackKey ||
+        duplicate.itemId !== itemId ||
+        duplicate.source !== dto.source ||
+        duplicate.solution !== dto.solution
+      ) {
+        throw new BadRequestException(
+          "operationId уже использован для другой попытки",
+        );
+      }
+      await this.recordPracticeAttemptSignal(duplicate);
+      return serializePracticeAttempt(duplicate);
+    }
+
+    const scope = await this.resolvePracticeAttemptScope(
+      trackKey,
+      itemId,
+      dto.source,
+      dto.lessonVersion,
+    );
+    const execution = await runPracticeSolution(scope.runner, dto.solution);
+    try {
+      const created = await this.practiceAttemptModel.create({
+        track: trackKey,
+        courseKey: scope.courseKey,
+        courseVersion: scope.courseVersion,
+        itemId,
+        source: dto.source,
+        exerciseVersion: scope.exerciseVersion,
+        skillKeys: scope.skillKeys,
+        solution: dto.solution,
+        passed: execution.passed,
+        passedCount: execution.passedCount,
+        totalCount: execution.totalCount,
+        durationMs: execution.durationMs,
+        error: execution.error,
+        tests: execution.tests,
+        operationId: dto.operationId,
+      });
+      const attempt = created.toObject();
+      await this.recordPracticeAttemptSignal(attempt);
+      return serializePracticeAttempt(attempt);
+    } catch (error) {
+      const concurrent = await this.practiceAttemptModel
+        .findOne({ operationId: dto.operationId })
+        .lean()
+        .exec();
+      if (
+        concurrent &&
+        concurrent.track === trackKey &&
+        concurrent.itemId === itemId &&
+        concurrent.source === dto.source &&
+        concurrent.solution === dto.solution
+      ) {
+        await this.recordPracticeAttemptSignal(concurrent);
+        return serializePracticeAttempt(concurrent);
+      }
+      throw error;
+    }
+  }
+
+  private async resolvePracticeAttemptScope(
+    trackKey: TrackKey,
+    itemId: string,
+    source: "task" | "lesson",
+    lessonVersion?: number,
+  ) {
+    if (source === "task") {
+      if (!isStaticTrackKey(trackKey)) {
+        throw new BadRequestException(
+          "У персонального AI-курса нет статической практики",
+        );
+      }
+      const { track, block } = getStaticTrackItem(trackKey, itemId);
+      const runner = block.exercise?.runner;
+      if (!runner) {
+        throw new BadRequestException("Для этого блока нет запускаемой практики");
+      }
+      const runnerHash = createHash("sha256")
+        .update(JSON.stringify(runner))
+        .digest("base64url")
+        .slice(0, 12);
+      return {
+        courseKey: track.courseKey,
+        courseVersion: track.courseVersion,
+        exerciseVersion: `task:${track.courseVersion}:${runnerHash}`,
+        skillKeys: inferSkillKeys(
+          block.title,
+          block.description,
+          block.exercise?.statement,
+        ),
+        runner,
+      };
+    }
+
+    const scope = await this.resolveTrackItemScope(trackKey, itemId, {
+      requirePractice: true,
+    });
+    const lesson = await this.aiLessonModel
+      .findOne({ ...scope, itemId })
+      .lean()
+      .exec();
+    if (!lesson) throw new NotFoundException("AI-урок не найден");
+    if (lessonVersion !== undefined && lesson.version !== lessonVersion) {
+      throw new BadRequestException(
+        "Урок обновился. Открой его заново перед проверкой решения",
+      );
+    }
+    if (!lesson.practice.runner) {
+      throw new BadRequestException("Для этого урока нет запускаемой практики");
+    }
+    return {
+      ...scope,
+      exerciseVersion: `lesson:${lesson.version}`,
+      skillKeys: inferSkillKeys(
+        lesson.title,
+        lesson.practice.title,
+        lesson.practice.statement,
+      ),
+      runner: lesson.practice.runner,
+    };
+  }
+
+  private async recordPracticeAttemptSignal(attempt: PracticeAttempt) {
+    await this.signals.record({
+      type: "practice_attempted",
+      track: attempt.track,
+      itemId: attempt.itemId,
+      skillKeys: attempt.skillKeys ?? [],
+      payload: {
+        source: attempt.source,
+        passed: attempt.passed,
+        passedCount: attempt.passedCount,
+        totalCount: attempt.totalCount,
+        durationMs: attempt.durationMs,
+      },
+      operationId: `practice:${attempt.operationId}`,
+      occurredAt: attempt.createdAt,
+    });
+  }
+
+  private async recordReviewSignal(questionId: string, dto: ReviewQuestionDto) {
+    const question = QUESTION_BANK.find((item) => item.id === questionId);
+    await this.signals.record({
+      type: "question_reviewed",
+      itemId: questionId,
+      skillKeys: inferSkillKeys(question?.category, question?.prompt),
+      payload: { rating: dto.rating },
+      operationId: `review:${dto.operationId ?? randomUUID()}`,
+    });
   }
 
   /**
@@ -918,7 +1139,10 @@ export class LearningService {
 
   async completeMockInterview(interviewId: string) {
     const interview = await this.getMockInterviewDocument(interviewId);
-    if (interview.status === "completed") return serializeMockInterview(interview);
+    if (interview.status === "completed") {
+      await this.recordMockSignal(interview);
+      return serializeMockInterview(interview);
+    }
     const questionMap = new Map(QUESTION_BANK.map((question) => [question.id, question]));
     const answerMap = new Map(
       interview.answers.map((answer) => [answer.questionId, answer.content.trim()]),
@@ -937,7 +1161,19 @@ export class LearningService {
     interview.completedAt = new Date();
     interview.evaluation = evaluation;
     await interview.save();
+    await this.recordMockSignal(interview);
     return serializeMockInterview(interview);
+  }
+
+  private async recordMockSignal(interview: MockInterview & { _id: unknown }) {
+    if (!interview.evaluation) return;
+    await this.signals.record({
+      type: "mock_completed",
+      skillKeys: inferSkillKeys(...interview.evaluation.weakTopics),
+      payload: { score: interview.evaluation.overallScore },
+      operationId: `mock:${String(interview._id)}`,
+      occurredAt: interview.completedAt ?? new Date(),
+    });
   }
 
   async transcribeMockAnswer(

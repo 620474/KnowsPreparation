@@ -1,10 +1,17 @@
 import {
+  adaptivePlanSchema,
+  learningAnalyticsSchema,
+  practiceAttemptHistorySchema,
+  practiceAttemptSchema,
+} from "@prep/contracts";
+import {
   mergeBootstrapPayloads,
   parseBootstrapContent,
   parseBootstrapProgress,
 } from "./lib/bootstrap";
 import type {
   AlgorithmEntry,
+  AdaptivePlan,
   AiCourse,
   AiCourseProfile,
   AiChatHistory,
@@ -12,9 +19,13 @@ import type {
   AiLesson,
   Difficulty,
   LessonQuizProgress,
+  LearningAnalytics,
   LearningBackup,
   MockInterview,
   PracticeSolutionSaveResult,
+  PracticeAttempt,
+  PracticeAttemptHistory,
+  PracticeAttemptSource,
   QuestionProgress,
   ReviewRating,
   TaskProgress,
@@ -174,6 +185,19 @@ export const learningApi = {
       request<unknown>("/learning/bootstrap/content").then(parseBootstrapContent),
       request<unknown>("/learning/bootstrap/progress").then(parseBootstrapProgress),
     ]).then(([content, progress]) => mergeBootstrapPayloads(content, progress)),
+  getAdaptiveToday: () =>
+    request<AdaptivePlan>("/learning/adaptive/today").then((result) =>
+      adaptivePlanSchema.parse(result),
+    ),
+  skipAdaptiveRecommendation: (recommendationId: string, operationId: string) =>
+    request<{ skipped: boolean }>("/learning/adaptive/today/skip", {
+      method: "POST",
+      body: JSON.stringify({ recommendationId, operationId }),
+    }),
+  getLearningAnalytics: (days: 7 | 30) =>
+    request<LearningAnalytics>(`/learning/analytics?days=${days}`).then((result) =>
+      learningAnalyticsSchema.parse(result),
+    ),
   exportBackup: () => request<LearningBackup>("/learning/backup"),
   importBackup: (backup: LearningBackup) =>
     request<{ imported: Record<string, number>; total: number }>("/learning/backup/import", {
@@ -273,6 +297,32 @@ export const learningApi = {
         operationId,
       }),
     }).then((result) => practiceSolutionSaveResultSchema.parse(result)),
+  getPracticeAttempts: (
+    track: TrackKey,
+    itemId: string,
+    source: PracticeAttemptSource,
+    limit = 10,
+  ) =>
+    request<PracticeAttemptHistory>(
+      `${trackItemPath(track, itemId)}/practice/attempts?source=${source}&limit=${limit}`,
+    ).then((result) => practiceAttemptHistorySchema.parse(result)),
+  submitPracticeAttempt: (
+    track: TrackKey,
+    itemId: string,
+    source: PracticeAttemptSource,
+    lessonVersion: number | undefined,
+    solution: string,
+    operationId: string,
+  ) =>
+    request<PracticeAttempt>(`${trackItemPath(track, itemId)}/practice/attempts`, {
+      method: "POST",
+      body: JSON.stringify({
+        source,
+        lessonVersion,
+        solution,
+        operationId,
+      }),
+    }).then((result) => practiceAttemptSchema.parse(result)),
   getCurrentMockInterview: () =>
     request<MockInterview | null>("/learning/mock-interviews/current"),
   startMockInterview: () =>

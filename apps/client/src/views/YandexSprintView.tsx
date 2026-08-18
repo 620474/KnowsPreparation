@@ -18,6 +18,7 @@ import type {
   StudyDay,
   StudyBlockKind,
   TaskUpdateHandler,
+  TrackKey,
 } from "../types";
 
 interface YandexSprintViewProps {
@@ -34,6 +35,7 @@ interface YandexSprintViewProps {
   onOpenLesson: (blockId: string) => void;
   onOpenChat: (blockId: string, context?: AiLessonQuestionContext) => void;
   onUpdateTask: TaskUpdateHandler;
+  track?: Extract<TrackKey, "yandex" | "ozon">;
 }
 
 const WEEK_TITLES = [
@@ -63,6 +65,7 @@ export function YandexSprintView({
   onOpenLesson,
   onOpenChat,
   onUpdateTask,
+  track = "yandex",
 }: YandexSprintViewProps) {
   const sprintDays = providedSprintDays ?? data.yandexSprint ?? [];
   const lessons = providedLessons ?? data.ai.lessons.yandex;
@@ -280,6 +283,7 @@ export function YandexSprintView({
                                     runner={block.exercise?.runner}
                                     taskId={block.id}
                                     taskTitle={block.title}
+                                    track={track}
                                   />
                                 ) : null}
                               </div>

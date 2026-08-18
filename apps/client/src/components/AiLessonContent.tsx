@@ -327,7 +327,16 @@ export function AiLessonContent({
                 </button>
               </div>
             ) : null}
-            <CodePlayground code={practiceDraft.solution} runner={runner} />
+            <CodePlayground
+              attemptTarget={{
+                track,
+                itemId: lesson.itemId,
+                source: "lesson",
+                lessonVersion: lesson.version,
+              }}
+              code={practiceDraft.solution}
+              runner={runner}
+            />
           </div>
         ) : null}
       </section>

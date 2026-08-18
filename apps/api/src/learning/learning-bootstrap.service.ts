@@ -87,6 +87,7 @@ export class LearningBootstrapService {
             dailyMinutes: 120,
             reminderEnabled: false,
             reminderTime: "19:00",
+            adaptiveTodayEnabled: true,
           },
         },
         { upsert: true, returnDocument: "after", lean: true },
@@ -131,6 +132,7 @@ export class LearningBootstrapService {
         bufferWeeks: settings.bufferWeeks,
         reminderEnabled: settings.reminderEnabled ?? false,
         reminderTime: settings.reminderTime ?? "19:00",
+        adaptiveTodayEnabled: settings.adaptiveTodayEnabled ?? true,
       },
       progress: {
         tasks: Object.fromEntries(

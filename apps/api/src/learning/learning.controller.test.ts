@@ -4,6 +4,8 @@ import type { Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 
 import { LearningController } from "./learning.controller";
+import type { AdaptivePlanService } from "./adaptive-plan.service";
+import type { LearningAnalyticsService } from "./learning-analytics.service";
 import type { LearningBackupService } from "./learning-backup.service";
 import type { LearningBootstrapService } from "./learning-bootstrap.service";
 import type { LearningService } from "./learning.service";
@@ -34,6 +36,8 @@ describe("LearningController SSE", () => {
   it("aborts the running operation when the client disconnects", async () => {
     const controller = new LearningController(
       {} as LearningService,
+      {} as AdaptivePlanService,
+      {} as LearningAnalyticsService,
       {} as LearningBootstrapService,
       {} as LearningBackupService,
     );

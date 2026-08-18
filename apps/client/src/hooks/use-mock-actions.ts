@@ -26,6 +26,8 @@ export function useMockActions({ online, setError }: UseMockActionsOptions) {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
         current ? updateMockInterviews(current, interview) : current,
       );
+      void queryClient.invalidateQueries({ queryKey: ["adaptive-today"] });
+      void queryClient.invalidateQueries({ queryKey: ["learning-analytics"] });
     },
     onError: (error) => setError(error.message),
   });
@@ -60,6 +62,8 @@ export function useMockActions({ online, setError }: UseMockActionsOptions) {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
         current ? updateMockInterviews(current, interview) : current,
       );
+      void queryClient.invalidateQueries({ queryKey: ["adaptive-today"] });
+      void queryClient.invalidateQueries({ queryKey: ["learning-analytics"] });
     },
     onError: (error, _variables, context) => {
       if (context?.previous) {
@@ -75,6 +79,8 @@ export function useMockActions({ online, setError }: UseMockActionsOptions) {
       queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
         current ? updateMockInterviews(current, interview) : current,
       );
+      void queryClient.invalidateQueries({ queryKey: ["adaptive-today"] });
+      void queryClient.invalidateQueries({ queryKey: ["learning-analytics"] });
     },
     onError: (error) => setError(error.message),
   });

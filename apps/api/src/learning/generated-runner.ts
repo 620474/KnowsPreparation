@@ -1,4 +1,5 @@
 import { getQuickJS, shouldInterruptAfterDeadline } from "quickjs-emscripten";
+import type { StudyExerciseRunner } from "@prep/contracts";
 
 import type { GeneratedLesson } from "./ai-course";
 
@@ -22,26 +23,22 @@ export type PersistableGeneratedLesson = Omit<GeneratedLesson, "practice"> & {
   practice: Omit<GeneratedLesson["practice"], "referenceSolution">;
 };
 
-interface RunnerResult {
+export interface RunnerResult {
   title: string;
   passed: boolean;
   error?: string;
 }
 
-interface ValidatableTestCase {
-  title: string;
-  expression: string;
-  expected?: unknown;
-  expectedError?: string;
+export interface PracticeRunnerExecution {
+  passed: boolean;
+  passedCount: number;
+  totalCount: number;
+  durationMs: number;
+  error: string | null;
+  tests: RunnerResult[];
 }
 
-interface ValidatableRunner {
-  starterCode: string;
-  testCases: ValidatableTestCase[];
-  referenceSolution: string;
-}
-
-function buildRunnerSource(runner: ValidatableRunner, solution: string) {
+function buildRunnerSource(runner: StudyExerciseRunner, solution: string) {
   const testCases = JSON.stringify(runner.testCases);
   return [
     '"use strict";',
@@ -89,6 +86,9 @@ function buildRunnerSource(runner: ValidatableRunner, solution: string) {
   ].join("\n");
 }
 
+const executionErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "runner execution failed";
+
 async function evaluateRunnerSource(source: string, timeoutMs: number) {
   const quickJs = await getQuickJS();
   const runtime = quickJs.newRuntime();
@@ -131,34 +131,40 @@ export async function validateGeneratedRunner(
   lesson: GeneratedLesson,
   timeoutMs = RUNNER_TIMEOUT_MS,
 ): Promise<GeneratedRunnerValidation> {
+  const runner = lesson.practice.runner;
+  const starterResult = await runPracticeSolution(
+    runner,
+    runner.starterCode,
+    timeoutMs,
+  );
+  if (starterResult.passed) {
+    return { valid: false, failures: ["starterCode already passes every test"] };
+  }
+  const result = await runPracticeSolution(
+    runner,
+    lesson.practice.referenceSolution,
+    timeoutMs,
+  );
+  if (result.error) return { valid: false, failures: [result.error] };
+  const failures = result.tests
+    .filter((test) => !test.passed)
+    .map((test) => test.error ? `${test.title}: ${test.error}` : test.title);
+  return { valid: failures.length === 0, failures };
+}
+
+export async function runPracticeSolution(
+  runner: StudyExerciseRunner,
+  solution: string,
+  timeoutMs = RUNNER_TIMEOUT_MS,
+): Promise<PracticeRunnerExecution> {
+  const startedAt = Date.now();
   try {
-    const runner = {
-      ...lesson.practice.runner,
-      referenceSolution: lesson.practice.referenceSolution,
-    };
-    const starterResult = await evaluateRunnerSource(
-      buildRunnerSource(runner, runner.starterCode),
-      timeoutMs,
-    );
-    if (
-      Array.isArray(starterResult) &&
-      starterResult.length === runner.testCases.length &&
-      starterResult.every(
-        (item) =>
-          typeof item === "object" &&
-          item !== null &&
-          "passed" in item &&
-          item.passed === true,
-      )
-    ) {
-      return { valid: false, failures: ["starterCode already passes every test"] };
-    }
     const result = await evaluateRunnerSource(
-      buildRunnerSource(runner, runner.referenceSolution),
+      buildRunnerSource(runner, solution),
       timeoutMs,
     );
     if (!Array.isArray(result)) {
-      return { valid: false, failures: ["runner returned an invalid result"] };
+      throw new Error("runner returned an invalid result");
     }
     const tests = result.filter(
       (item): item is RunnerResult =>
@@ -168,16 +174,25 @@ export async function validateGeneratedRunner(
         typeof item.passed === "boolean",
     );
     if (tests.length !== runner.testCases.length) {
-      return { valid: false, failures: ["runner returned an incomplete result"] };
+      throw new Error("runner returned an incomplete result");
     }
-    const failures = tests
-      .filter((test) => !test.passed)
-      .map((test) => test.error ? `${test.title}: ${test.error}` : test.title);
-    return { valid: failures.length === 0, failures };
+    const passedCount = tests.filter((test) => test.passed).length;
+    return {
+      passed: passedCount === tests.length,
+      passedCount,
+      totalCount: tests.length,
+      durationMs: Date.now() - startedAt,
+      error: null,
+      tests,
+    };
   } catch (error) {
     return {
-      valid: false,
-      failures: [error instanceof Error ? error.message : "runner execution failed"],
+      passed: false,
+      passedCount: 0,
+      totalCount: runner.testCases.length,
+      durationMs: Date.now() - startedAt,
+      error: executionErrorMessage(error),
+      tests: [],
     };
   }
 }

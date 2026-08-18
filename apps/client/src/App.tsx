@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Alert, Button, Loader } from "@mantine/core";
 import { useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
 import { clearSession, getToken, learningApi, UNAUTHORIZED_EVENT } from "./api";
 import { AiChatWidget } from "./components/AiChatWidget";
-import { AiLessonReader } from "./components/AiLessonReader";
 import { AppShell } from "./components/AppShell";
 import { LoginScreen } from "./components/LoginScreen";
 import { useAiActions } from "./hooks/use-ai-actions";
@@ -15,23 +14,59 @@ import { buildLessonWorkspace } from "./hooks/use-lesson-workspace";
 import { useMockActions } from "./hooks/use-mock-actions";
 import { useProgressActions } from "./hooks/use-progress-actions";
 import { BOOTSTRAP_QUERY_KEY } from "./lib/bootstrap-cache";
+import { viewForTrack } from "./lib/app-route";
 import { getStudyPosition } from "./lib/date";
 import { useOnlineStatus } from "./lib/network";
 import { synchronizeDailyReminder } from "./lib/notifications";
 import { OFFLINE_MUTATION_ROOT } from "./lib/offline-mutation-keys";
 import { clearPersistedQueryCache } from "./lib/query-cache";
-import { AiCourseView } from "./views/AiCourseView";
-import { AlgorithmsView } from "./views/AlgorithmsView";
-import { AnalyticsView } from "./views/AnalyticsView";
-import { MockInterviewView } from "./views/MockInterviewView";
-import { OzonSprintView } from "./views/OzonSprintView";
-import { PlanView } from "./views/PlanView";
-import { QuestionsView } from "./views/QuestionsView";
-import { ResourcesView } from "./views/ResourcesView";
-import { ReviewView } from "./views/ReviewView";
-import { SettingsView } from "./views/SettingsView";
-import { TodayView } from "./views/TodayView";
-import { YandexSprintView } from "./views/YandexSprintView";
+const AiLessonReader = lazy(() =>
+  import("./components/AiLessonReader").then((module) => ({
+    default: module.AiLessonReader,
+  })),
+);
+const AiCourseView = lazy(() =>
+  import("./views/AiCourseView").then((module) => ({ default: module.AiCourseView })),
+);
+const AlgorithmsView = lazy(() =>
+  import("./views/AlgorithmsView").then((module) => ({ default: module.AlgorithmsView })),
+);
+const AnalyticsView = lazy(() =>
+  import("./views/AnalyticsView").then((module) => ({ default: module.AnalyticsView })),
+);
+const MockInterviewView = lazy(() =>
+  import("./views/MockInterviewView").then((module) => ({
+    default: module.MockInterviewView,
+  })),
+);
+const OzonSprintView = lazy(() =>
+  import("./views/OzonSprintView").then((module) => ({
+    default: module.OzonSprintView,
+  })),
+);
+const PlanView = lazy(() =>
+  import("./views/PlanView").then((module) => ({ default: module.PlanView })),
+);
+const QuestionsView = lazy(() =>
+  import("./views/QuestionsView").then((module) => ({ default: module.QuestionsView })),
+);
+const ResourcesView = lazy(() =>
+  import("./views/ResourcesView").then((module) => ({ default: module.ResourcesView })),
+);
+const ReviewView = lazy(() =>
+  import("./views/ReviewView").then((module) => ({ default: module.ReviewView })),
+);
+const SettingsView = lazy(() =>
+  import("./views/SettingsView").then((module) => ({ default: module.SettingsView })),
+);
+const TodayView = lazy(() =>
+  import("./views/TodayView").then((module) => ({ default: module.TodayView })),
+);
+const YandexSprintView = lazy(() =>
+  import("./views/YandexSprintView").then((module) => ({
+    default: module.YandexSprintView,
+  })),
+);
 
 export default function App() {
   const queryClient = useQueryClient();
@@ -220,6 +255,7 @@ export default function App() {
           {syncError}
         </Alert>
       ) : null}
+      <Suspense fallback={<div className="view-loader"><Loader color="mint" size="sm" /> Загружаю экран…</div>}>
       {activeView === "today" ? (
         <TodayView
           data={data}
@@ -240,6 +276,21 @@ export default function App() {
           onOpenLesson={(blockId) => openLessonReader("curriculum", blockId)}
           onOpenMock={() => navigateToView("mock-interview")}
           onOpenReview={() => navigateToView("review")}
+          onOpenAdaptiveItem={(item) => {
+            if (item.kind === "review") {
+              navigateToView("review");
+            } else if (item.kind === "mock") {
+              navigateToView("mock-interview");
+            } else if (
+              item.track &&
+              item.itemId &&
+              (item.kind === "lesson" || item.source === "lesson")
+            ) {
+              openLessonReader(item.track, item.itemId);
+            } else if (item.track) {
+              navigateToView(viewForTrack(item.track));
+            }
+          }}
           onUpdateTask={updateTask}
         />
       ) : null}
@@ -364,7 +415,7 @@ export default function App() {
       ) : null}
       {activeView === "settings" ? (
         <SettingsView
-          key={`${data.settings.startDate}:${data.settings.reminderEnabled}:${data.settings.reminderTime}`}
+          key={`${data.settings.startDate}:${data.settings.reminderEnabled}:${data.settings.reminderTime}:${data.settings.adaptiveTodayEnabled}`}
           data={data}
           onExportBackup={exportBackup}
           onImportBackup={importBackup}
@@ -401,6 +452,7 @@ export default function App() {
           }
         />
       ) : null}
+      </Suspense>
       <AiChatWidget
         key={`ai-chat-${chatDraftRequest?.id ?? 0}`}
         enabled={data.ai.enabled}

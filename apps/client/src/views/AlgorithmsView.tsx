@@ -154,6 +154,7 @@ export function AlgorithmsView({
                     runner={task.block.exercise.runner}
                     taskId={task.id}
                     taskTitle={task.block.title}
+                    track={task.track}
                   />
                 </div>
               </details>

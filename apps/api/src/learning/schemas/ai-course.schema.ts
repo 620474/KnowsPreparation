@@ -156,6 +156,9 @@ export class AiRunnerTestCase {
 
   @Prop({ type: MongooseSchema.Types.Mixed })
   expected!: unknown;
+
+  @Prop({ type: String })
+  expectedError?: string;
 }
 
 export const AiRunnerTestCaseSchema = SchemaFactory.createForClass(AiRunnerTestCase);

@@ -1,11 +1,20 @@
+import {
+  aiLessonSchema,
+  practiceAttemptSchema,
+  practiceSolutionProgressSchema,
+  TRACK_KEYS,
+  type TrackKey,
+  type TrackRecord,
+} from "@prep/contracts";
+
 import { QUESTION_BANK } from "./curriculum";
-import { TRACK_KEYS, type TrackKey, type TrackRecord } from "@prep/contracts";
 
 import type { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import type { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import type { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import type { MockInterview } from "./schemas/mock-interview.schema";
 import type { QuestionProgress } from "./schemas/question-progress.schema";
+import type { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { findStaticTrackByCourse } from "./track-registry";
 
 interface TrackScopedDocument {
@@ -107,6 +116,31 @@ export function serializePracticeProgress(progress: AiPracticeProgress) {
   });
 }
 
+export function serializePracticeAttempt(
+  attempt: PracticeAttempt & { _id: unknown },
+) {
+  return practiceAttemptSchema.parse({
+    id: String(attempt._id),
+    track: attempt.track,
+    itemId: attempt.itemId,
+    source: attempt.source,
+    exerciseVersion: attempt.exerciseVersion,
+    skillKeys: attempt.skillKeys ?? [],
+    solution: attempt.solution,
+    passed: attempt.passed,
+    passedCount: attempt.passedCount,
+    totalCount: attempt.totalCount,
+    durationMs: attempt.durationMs,
+    error: attempt.error ?? null,
+    tests: attempt.tests.map((test) => ({
+      title: test.title,
+      passed: test.passed,
+      ...(test.error ? { error: test.error } : {}),
+    })),
+    createdAt: attempt.createdAt.toISOString(),
+  });
+}
+
 export function serializePracticeProgressCollection(
   progresses: AiPracticeProgress[],
   aiCourse: AiCourse | null,
@@ -187,7 +221,3 @@ export function serializeMockInterview(interview: MockInterview & { _id: unknown
       : null,
   };
 }
-import {
-  aiLessonSchema,
-  practiceSolutionProgressSchema,
-} from "@prep/contracts";

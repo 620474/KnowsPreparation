@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Res,
   UploadedFile,
   UseGuards,
@@ -24,10 +25,14 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import {
   CreateAlgorithmDto,
   GenerateAiCourseDto,
+  GetLearningAnalyticsDto,
   ImportBackupDto,
+  ListPracticeAttemptsDto,
   ReviewQuestionDto,
   SendAiChatMessageDto,
+  SkipAdaptiveRecommendationDto,
   SubmitLessonQuizDto,
+  SubmitPracticeAttemptDto,
   UpdateMockAnswerDto,
   UpdatePracticeSolutionDto,
   UpdateQuestionDto,
@@ -35,6 +40,8 @@ import {
   UpdateTaskDto,
 } from "./dto/learning.dto";
 import { LearningService } from "./learning.service";
+import { AdaptivePlanService } from "./adaptive-plan.service";
+import { LearningAnalyticsService } from "./learning-analytics.service";
 import { LearningBackupService } from "./learning-backup.service";
 import { LearningBootstrapService } from "./learning-bootstrap.service";
 import { ParseTrackKeyPipe } from "./parse-track-key.pipe";
@@ -47,9 +54,31 @@ export class LearningController {
 
   constructor(
     private readonly learningService: LearningService,
+    private readonly adaptivePlanService: AdaptivePlanService,
+    private readonly analyticsService: LearningAnalyticsService,
     private readonly bootstrapService: LearningBootstrapService,
     private readonly backupService: LearningBackupService,
   ) {}
+
+  @Get("adaptive/today")
+  @Header("Cache-Control", "private, no-store")
+  adaptiveToday() {
+    return this.adaptivePlanService.getToday();
+  }
+
+  @Post("adaptive/today/skip")
+  skipAdaptiveRecommendation(@Body() dto: SkipAdaptiveRecommendationDto) {
+    return this.adaptivePlanService.skipRecommendation(
+      dto.recommendationId,
+      dto.operationId,
+    );
+  }
+
+  @Get("analytics")
+  @Header("Cache-Control", "private, no-store")
+  learningAnalytics(@Query() dto: GetLearningAnalyticsDto) {
+    return this.analyticsService.getAnalytics(dto.days);
+  }
 
   @Get("bootstrap/content")
   bootstrapContent(@Res({ passthrough: true }) response: Response) {
@@ -119,6 +148,24 @@ export class LearningController {
     @Body() dto: UpdatePracticeSolutionDto,
   ) {
     return this.learningService.saveTrackPracticeSolution(trackKey, itemId, dto);
+  }
+
+  @Get("tracks/:trackKey/items/:itemId/practice/attempts")
+  listTrackPracticeAttempts(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
+    @Param("itemId") itemId: string,
+    @Query() dto: ListPracticeAttemptsDto,
+  ) {
+    return this.learningService.listTrackPracticeAttempts(trackKey, itemId, dto);
+  }
+
+  @Post("tracks/:trackKey/items/:itemId/practice/attempts")
+  submitTrackPracticeAttempt(
+    @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
+    @Param("itemId") itemId: string,
+    @Body() dto: SubmitPracticeAttemptDto,
+  ) {
+    return this.learningService.submitTrackPracticeAttempt(trackKey, itemId, dto);
   }
 
   @Get("tracks/:trackKey/items/:itemId/chat")

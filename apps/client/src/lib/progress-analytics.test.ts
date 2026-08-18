@@ -13,6 +13,7 @@ const data: BootstrapData = {
     bufferWeeks: 0,
     reminderEnabled: false,
     reminderTime: "19:00",
+    adaptiveTodayEnabled: true,
   },
   curriculum: [],
   yandexSprint: [],

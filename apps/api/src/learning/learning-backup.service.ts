@@ -14,8 +14,10 @@ import { AiChatMessage } from "./schemas/ai-chat-message.schema";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
+import { LearningSignal } from "./schemas/learning-signal.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
+import { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
 
@@ -36,6 +38,10 @@ export class LearningBackupService {
     private readonly aiQuizProgressModel: Model<AiQuizProgress>,
     @InjectModel(AiPracticeProgress.name)
     private readonly aiPracticeProgressModel: Model<AiPracticeProgress>,
+    @InjectModel(PracticeAttempt.name)
+    private readonly practiceAttemptModel: Model<PracticeAttempt>,
+    @InjectModel(LearningSignal.name)
+    private readonly learningSignalModel: Model<LearningSignal>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
   ) {}
@@ -50,6 +56,8 @@ export class LearningBackupService {
       aiLessons,
       aiChatMessages,
       aiPracticeProgresses,
+      practiceAttempts,
+      learningSignals,
       aiQuizProgresses,
       mockInterviews,
     ] = await Promise.all([
@@ -61,6 +69,8 @@ export class LearningBackupService {
       this.aiLessonModel.find().lean().exec(),
       this.aiChatMessageModel.find().lean().exec(),
       this.aiPracticeProgressModel.find().lean().exec(),
+      this.practiceAttemptModel.find().lean().exec(),
+      this.learningSignalModel.find().lean().exec(),
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
     ]);
@@ -78,6 +88,8 @@ export class LearningBackupService {
         aiLessons,
         aiChatMessages,
         aiPracticeProgresses,
+        practiceAttempts,
+        learningSignals,
         aiQuizProgresses,
         mockInterviews,
       },
@@ -113,6 +125,14 @@ export class LearningBackupService {
       aiPracticeProgresses: await this.validateRecords(
         this.aiPracticeProgressModel,
         backup.data.aiPracticeProgresses,
+      ),
+      practiceAttempts: await this.validateRecords(
+        this.practiceAttemptModel,
+        backup.data.practiceAttempts,
+      ),
+      learningSignals: await this.validateRecords(
+        this.learningSignalModel,
+        backup.data.learningSignals,
       ),
       mockInterviews: await this.validateRecords(
         this.mockInterviewModel,
@@ -163,6 +183,16 @@ export class LearningBackupService {
           itemId: record.itemId,
           lessonVersion: record.lessonVersion,
         }),
+      ),
+      this.mergeRecords(
+        this.practiceAttemptModel,
+        prepared.practiceAttempts,
+        (record) => ({ operationId: record.operationId }),
+      ),
+      this.mergeRecords(
+        this.learningSignalModel,
+        prepared.learningSignals,
+        (record) => ({ operationId: record.operationId }),
       ),
       this.mergeRecords(
         this.mockInterviewModel,

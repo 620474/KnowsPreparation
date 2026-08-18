@@ -11,6 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { AppController } from "../app.controller";
 import { AuthModule } from "../auth/auth.module";
 import { QUESTION_BANK, TASK_IDS } from "./curriculum";
+import { getStaticRunnerValidationCases } from "./exercise-runners";
 import { LearningModule } from "./learning.module";
 import { AiLesson } from "./schemas/ai-course.schema";
 import { getStaticTrack } from "./track-registry";
@@ -329,6 +330,95 @@ describe("Learning API", () => {
     });
   });
 
+  it("verifies static and generated practice attempts idempotently", async () => {
+    const runnerCase = getStaticRunnerValidationCases().find(
+      (item) => item.id === "yandex-d01-algorithms",
+    );
+    if (!runnerCase) throw new Error("Static runner fixture is missing");
+    const path = `/api/v1/learning/tracks/yandex/items/${runnerCase.id}/practice/attempts`;
+    const staticPayload = {
+      source: "task",
+      solution: runnerCase.referenceSolution,
+      operationId: "static-attempt-1",
+    };
+
+    const first = await request(app.getHttpServer())
+      .post(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send(staticPayload)
+      .expect(201);
+    const duplicate = await request(app.getHttpServer())
+      .post(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send(staticPayload)
+      .expect(201);
+    expect(first.body).toMatchObject({
+      source: "task",
+      passed: true,
+      passedCount: first.body.totalCount,
+    });
+    expect(duplicate.body).toEqual(first.body);
+
+    await lessonModel.create({
+      courseKey: YANDEX_SPRINT_AI_KEY,
+      courseVersion: YANDEX_SPRINT_AI_VERSION,
+      itemId: runnerCase.id,
+      title: "Интеграционный урок",
+      goals: [],
+      explanation: "Тест",
+      codeExamples: [],
+      diagrams: [],
+      commonMistakes: [],
+      interviewQuestions: [],
+      practice: {
+        title: "Практика",
+        statement: "Решить задачу",
+        constraints: [],
+        examples: [],
+        runner: runnerCase.runner,
+      },
+      quiz: [],
+      summary: "Итог",
+      resourceIds: [],
+      version: 2,
+      generatedAt: new Date().toISOString(),
+    });
+    await request(app.getHttpServer())
+      .post(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        source: "lesson",
+        lessonVersion: 2,
+        solution: runnerCase.referenceSolution,
+        operationId: "lesson-attempt-1",
+      })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({ source: "lesson", passed: true });
+      });
+    await request(app.getHttpServer())
+      .post(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        source: "lesson",
+        lessonVersion: 1,
+        solution: runnerCase.referenceSolution,
+        operationId: "lesson-attempt-stale",
+      })
+      .expect(400);
+
+    const history = await request(app.getHttpServer())
+      .get(`${path}?source=task&limit=10`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(history.body.attempts).toHaveLength(1);
+    expect(history.body.attempts[0]).toMatchObject({
+      source: "task",
+      passed: true,
+    });
+    expect(history.body.attempts[0]).not.toHaveProperty("operationId");
+  });
+
   it("exports and restores all progress without deleting current data", async () => {
     const taskId = [...TASK_IDS][0];
     const secondTaskId = [...TASK_IDS][1];
@@ -344,6 +434,21 @@ describe("Learning API", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ reminderEnabled: true, reminderTime: "20:15" })
       .expect(200);
+    const runnerCase = getStaticRunnerValidationCases().find(
+      (item) => item.id === "yandex-d01-algorithms",
+    );
+    if (!runnerCase) throw new Error("Static runner fixture is missing");
+    const attemptPath =
+      `/api/v1/learning/tracks/yandex/items/${runnerCase.id}/practice/attempts`;
+    await request(app.getHttpServer())
+      .post(attemptPath)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        source: "task",
+        solution: runnerCase.referenceSolution,
+        operationId: "backup-attempt-1",
+      })
+      .expect(201);
 
     const exportResponse = await request(app.getHttpServer())
       .get("/api/v1/learning/backup")
@@ -353,6 +458,8 @@ describe("Learning API", () => {
       format: "knows-preparation-backup",
       version: 1,
     });
+    expect(exportResponse.body.data.practiceAttempts).toHaveLength(1);
+    expect(exportResponse.body.data.learningSignals).toHaveLength(1);
     expect(JSON.stringify(exportResponse.body)).not.toContain(TEST_PASSWORD);
 
     const collections = await connection.db?.collections();
@@ -382,6 +489,64 @@ describe("Learning API", () => {
     expect(bootstrapResponse.body.settings).toMatchObject({
       reminderEnabled: true,
       reminderTime: "20:15",
+    });
+    const restoredAttempts = await request(app.getHttpServer())
+      .get(`${attemptPath}?source=task`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(restoredAttempts.body.attempts).toHaveLength(1);
+    expect(restoredAttempts.body.attempts[0]).toMatchObject({ passed: true });
+  });
+
+  it("builds, measures and replaces adaptive recommendations", async () => {
+    const runnerCase = getStaticRunnerValidationCases().find(
+      (item) => item.id === "yandex-d01-algorithms",
+    );
+    if (!runnerCase) throw new Error("Static runner fixture is missing");
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/learning/tracks/yandex/items/${runnerCase.id}/practice/attempts`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        source: "task",
+        solution: "throw new Error('not solved');",
+        operationId: "adaptive-failed-attempt-1",
+      })
+      .expect(201)
+      .expect(({ body }) => expect(body.passed).toBe(false));
+
+    const planResponse = await request(app.getHttpServer())
+      .get("/api/v1/learning/adaptive/today")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    const practice = planResponse.body.items.find(
+      (item: { kind: string; itemId: string }) =>
+        item.kind === "practice" && item.itemId === runnerCase.id,
+    );
+    expect(practice).toMatchObject({ track: "yandex", source: "task" });
+
+    await request(app.getHttpServer())
+      .post("/api/v1/learning/adaptive/today/skip")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ recommendationId: practice.id, operationId: "skip-adaptive-1" })
+      .expect(201);
+
+    const replacedPlan = await request(app.getHttpServer())
+      .get("/api/v1/learning/adaptive/today")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(replacedPlan.body.items).not.toContainEqual(
+      expect.objectContaining({ id: practice.id }),
+    );
+
+    const analyticsResponse = await request(app.getHttpServer())
+      .get("/api/v1/learning/analytics?days=7")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(analyticsResponse.body).toMatchObject({
+      windowDays: 7,
+      totals: { activityCount: 1, practiceAttempts: 1, practicePassRate: 0 },
     });
   });
 

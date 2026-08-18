@@ -3,11 +3,14 @@ import { MongooseModule } from "@nestjs/mongoose";
 
 import { AuthModule } from "../auth/auth.module";
 import { AiContentService } from "./ai-content.service";
+import { AdaptivePlanService } from "./adaptive-plan.service";
+import { LearningAnalyticsService } from "./learning-analytics.service";
 import { LearningBackupService } from "./learning-backup.service";
 import { LearningBootstrapService } from "./learning-bootstrap.service";
 import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
+import { LearningSignalService } from "./learning-signal.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
 import {
   AiChatMessage,
@@ -35,6 +38,14 @@ import {
   QuestionProgress,
   QuestionProgressSchema,
 } from "./schemas/question-progress.schema";
+import {
+  PracticeAttempt,
+  PracticeAttemptSchema,
+} from "./schemas/practice-attempt.schema";
+import {
+  LearningSignal,
+  LearningSignalSchema,
+} from "./schemas/learning-signal.schema";
 import { Settings, SettingsSchema } from "./schemas/settings.schema";
 import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema";
 
@@ -50,6 +61,8 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
       { name: AiLesson.name, schema: AiLessonSchema },
       { name: AiChatMessage.name, schema: AiChatMessageSchema },
       { name: AiPracticeProgress.name, schema: AiPracticeProgressSchema },
+      { name: PracticeAttempt.name, schema: PracticeAttemptSchema },
+      { name: LearningSignal.name, schema: LearningSignalSchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
     ]),
@@ -57,10 +70,13 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
   controllers: [LearningController],
   providers: [
     AiContentService,
+    AdaptivePlanService,
+    LearningAnalyticsService,
     LearningBackupService,
     LearningBootstrapService,
     LearningCleanupService,
     LearningService,
+    LearningSignalService,
   ],
 })
 export class LearningModule {}

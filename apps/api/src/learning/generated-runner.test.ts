@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GeneratedLesson } from "./ai-course";
 import {
   generateValidatedLesson,
+  runPracticeSolution,
   validateGeneratedRunner,
 } from "./generated-runner";
 
@@ -36,6 +37,38 @@ const createLesson = (
 });
 
 describe("generated runner", () => {
+  it("returns a measurable result for a submitted solution", async () => {
+    const lesson = createLesson(
+      "function sum(left, right) { return left + right; }",
+    );
+
+    await expect(
+      runPracticeSolution(
+        lesson.practice.runner,
+        lesson.practice.referenceSolution,
+      ),
+    ).resolves.toMatchObject({
+      passed: true,
+      passedCount: 3,
+      totalCount: 3,
+      error: null,
+    });
+  });
+
+  it("records failed tests without rejecting the execution", async () => {
+    const lesson = createLesson(
+      "function sum(left, right) { return left + right; }",
+    );
+    const result = await runPracticeSolution(
+      lesson.practice.runner,
+      "function sum() { return 0; }",
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.passedCount).toBe(1);
+    expect(result.tests).toHaveLength(3);
+  });
+
   it("accepts a reference solution that passes every test", async () => {
     await expect(
       validateGeneratedRunner(

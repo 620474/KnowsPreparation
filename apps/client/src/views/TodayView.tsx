@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { ActionIcon, Button, Loader, Textarea } from "@mantine/core";
+import { ActionIcon, Alert, Button, Loader, Textarea } from "@mantine/core";
 import {
   BarChart3,
   BookOpen,
@@ -9,6 +9,8 @@ import {
   Flame,
   MessageCircle,
   MessagesSquare,
+  Play,
+  RefreshCw,
   Sparkles,
   Target,
   Trophy,
@@ -16,9 +18,15 @@ import {
 
 import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
+import { useAdaptivePlan } from "../hooks/use-adaptive-plan";
 import { getDateForOffset, getDayForOffset, getStudyPosition, getWeekForDay } from "../lib/date";
 import { buildReviewQueue } from "../lib/review-queue";
-import type { BootstrapData, TaskUpdateHandler } from "../types";
+import type {
+  AdaptivePlanItem,
+  BootstrapData,
+  SkillKey,
+  TaskUpdateHandler,
+} from "../types";
 
 interface TodayViewProps {
   data: BootstrapData;
@@ -31,6 +39,7 @@ interface TodayViewProps {
   onOpenAnalytics: () => void;
   onOpenMock: () => void;
   onOpenReview: () => void;
+  onOpenAdaptiveItem: (item: AdaptivePlanItem) => void;
 }
 
 const kindLabels = {
@@ -39,6 +48,19 @@ const kindLabels = {
   ai: "AI",
   review: "Повторение",
 };
+
+const skillLabels = {
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  async: "Асинхронность",
+  react: "React",
+  browser: "Браузер",
+  algorithms: "Алгоритмы",
+  testing: "Тестирование",
+  architecture: "Архитектура",
+  "css-a11y": "CSS/A11y",
+  ai: "AI",
+} satisfies Record<SkillKey, string>;
 
 export function TodayView({
   data,
@@ -51,7 +73,9 @@ export function TodayView({
   onOpenAnalytics,
   onOpenMock,
   onOpenReview,
+  onOpenAdaptiveItem,
 }: TodayViewProps) {
+  const adaptive = useAdaptivePlan(data.settings.adaptiveTodayEnabled);
   const position = getStudyPosition(data.settings.startDate);
   const day = getDayForOffset(data.curriculum, position.rawOffset);
   const week = getWeekForDay(data.curriculum, day);
@@ -101,6 +125,64 @@ export function TodayView({
           </div>
         </div>
       </section>
+
+      {data.settings.adaptiveTodayEnabled ? (
+        <section className="adaptive-today-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Адаптивный маршрут · {adaptive.plan?.totalMinutes ?? 0} минут</p>
+              <h2>Что даст максимум сегодня</h2>
+              <p>Приоритеты собраны из повторений, тестов, практики и моков.</p>
+            </div>
+            {adaptive.isPending && !adaptive.plan ? <Loader color="mint" size="sm" /> : null}
+          </div>
+          {adaptive.isFallback && !adaptive.plan ? (
+            <Alert color="yellow" variant="light">
+              Адаптивный план сейчас недоступен. Ниже остаётся обычный план по календарю.
+            </Alert>
+          ) : null}
+          {adaptive.plan?.items.length ? (
+            <div className="adaptive-today-list">
+              {adaptive.plan.items.map((item, index) => (
+                <article key={item.id}>
+                  <span className="adaptive-today-index">{index + 1}</span>
+                  <div>
+                    <div className="adaptive-today-meta">
+                      <span>{item.minutes} минут</span>
+                      <span>{item.skillKeys.map((skill) => skillLabels[skill]).join(" · ")}</span>
+                    </div>
+                    <h3>{item.title}</h3>
+                    <p>{item.reason}</p>
+                  </div>
+                  <div className="adaptive-today-actions">
+                    <Button
+                      className="primary-button"
+                      leftSection={<Play size={15} />}
+                      size="xs"
+                      type="button"
+                      onClick={() => onOpenAdaptiveItem(item)}
+                    >
+                      Начать
+                    </Button>
+                    <Button
+                      className="secondary-button"
+                      leftSection={<RefreshCw size={15} />}
+                      size="xs"
+                      type="button"
+                      variant="default"
+                      onClick={() => adaptive.skip(item.id)}
+                    >
+                      Заменить
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : adaptive.plan && !adaptive.isPending ? (
+            <p>На сегодня обязательных повторений нет — продолжай обычный план.</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="today-training-grid">
         <article>
@@ -205,6 +287,7 @@ export function TodayView({
                       runner={block.exercise?.runner}
                       taskId={block.id}
                       taskTitle={block.title}
+                      track="curriculum"
                     />
                   ) : null}
                   <Textarea
