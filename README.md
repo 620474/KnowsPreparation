@@ -1,160 +1,105 @@
-# Frontend Sprint
+<div align="center">
 
-Персональный трекер подготовки к frontend-собеседованиям. Один React-интерфейс
-работает как локальный сайт на компьютере и как Android-приложение. Оба клиента
-синхронизируют прогресс через защищённый NestJS API и одну MongoDB.
+# FS · Frontend Sprint
 
-## Что внутри
+### Interview OS для системной подготовки к frontend-собеседованиям
 
-- план на 10 основных и 2 буферные недели;
-- 120 минут в день, включая 30-минутный AI-блок в первые четыре недели;
-- 110 вопросов для самопроверки, включая отдельный блок по тестированию;
-- 225 проверенных источников в серверном JSON-каталоге;
-- трекер 60–80 алгоритмических задач;
-- общий прогресс для компьютера и Android;
-- JSON-бэкап и восстановление прогресса;
-- локальные Android-напоминания, голосовые ответы в моках и JS-песочница;
-- вход по личному паролю и JWT;
-- MongoDB доступна только API, но не клиентским приложениям.
+Учебный план, AI-разборы, интервальные повторения, live coding и полноценный симулятор интервью — в одном приложении для компьютера и Android.
+
+[![Release](https://img.shields.io/github/v/release/620474/KnowsPreparation?style=for-the-badge&label=release&labelColor=07110f&color=6bf5b0)](https://github.com/620474/KnowsPreparation/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/620474/KnowsPreparation/ci.yml?branch=main&style=for-the-badge&label=checks&labelColor=07110f&color=b79cff)](https://github.com/620474/KnowsPreparation/actions/workflows/ci.yml)
+![React](https://img.shields.io/badge/React-19-6bf5b0?style=for-the-badge&labelColor=07110f)
+![NestJS](https://img.shields.io/badge/NestJS-API-ffad73?style=for-the-badge&labelColor=07110f)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-6bf5b0?style=for-the-badge&labelColor=07110f)
+![Android](https://img.shields.io/badge/Android-Capacitor-b79cff?style=for-the-badge&labelColor=07110f)
+
+[Возможности](#возможности) · [Симулятор интервью](#симулятор-интервью) · [Быстрый старт](#быстрый-старт) · [Android](#android) · [Архитектура](#архитектура)
+
+</div>
+
+> **Главная идея:** приложение не просто хранит галочки, а измеряет подготовку, находит слабые темы и превращает их в следующий конкретный шаг.
+
+## Возможности
+
+| Направление | Что умеет приложение |
+| --- | --- |
+| **Учебный план** | 12 недель по 120 минут в день: 11 основных недель и одна буферная |
+| **Четыре трека** | Основной план, персональный AI-курс, подготовка к Яндексу и Ozon |
+| **AI-разборы** | Потоковая генерация уроков, схем, квизов, практики и контекстного чата |
+| **Практика** | JS-песочница с QuickJS, тест-кейсами и сохранением решений локально и в MongoDB |
+| **Повторение** | Интервальные повторения, очередь на сегодня и адаптация по качеству ответа |
+| **Собеседования** | Мок-интервью, голосовые ответы, live coding и итоговый отчёт о готовности |
+| **Аналитика** | Слабые темы, динамика знаний, история попыток и рекомендации следующего шага |
+| **Надёжность** | Офлайн-кеш, очередь изменений, версионированный JSON-бэкап и восстановление |
+
+| **12 недель** | **110 вопросов** | **244 источника** | **4 учебных трека** | **Web + Android** |
+| :---: | :---: | :---: | :---: | :---: |
+| 120 минут в день | с повторениями | в серверном каталоге | единый AI-контур | общий прогресс |
+
+## Симулятор интервью
+
+Версия 4 превратила подготовку в управляемую репетицию настоящего технического собеседования.
+
+```mermaid
+flowchart LR
+    A["Платформа<br/>JavaScript и браузер"] --> B["Live coding<br/>задача и тесты"]
+    B --> C["AI-секция<br/>решение с ассистентом"]
+    C --> D["Защита решения<br/>вопросы по коду"]
+    D --> E["Отчёт<br/>готовность и слабые темы"]
+```
+
+Доступны короткий сценарий на **35 минут** и полный на **75 минут**, а также профили общего frontend-собеседования, Яндекса и Ozon. Сессии сохраняются в MongoDB и попадают в историю и аналитику.
+
+## Как устроено обучение
+
+1. Открываешь тему из плана или специального трека.
+2. Читаешь сохранённый AI-разбор и при необходимости уточняешь детали в чате.
+3. Проходишь квиз из 10 вопросов.
+4. Решение практики запускается прямо в приложении и проверяется тестами.
+5. Результат влияет на интервальные повторения и список слабых тем.
+6. Симулятор собирает знания, речь и код в одну тренировку интервью.
+
+Контент хранится на backend, поэтому новые темы, ссылки и вопросы появляются на телефоне без пересборки APK. Новая Android-версия нужна только при изменении интерфейса или клиентской логики.
 
 ## Архитектура
 
-```text
-Локальный web-клиент ─┐
-                      ├── HTTPS API (NestJS) ── MongoDB Atlas
-Локальный Android APK ┘
+```mermaid
+flowchart LR
+    WEB["Локальный web<br/>React + Mantine"] --> API["HTTPS API<br/>NestJS"]
+    APK["Android APK<br/>Capacitor"] --> API
+    API --> DB["MongoDB Atlas<br/>прогресс и контент"]
+    API --> AI["OpenAI API<br/>уроки, чат и оценка"]
 ```
 
-Frontend не нужно размещать в интернете. Чтобы телефон работал при выключенном
-компьютере, API и MongoDB должны быть доступны постоянно.
+Frontend не требуется публиковать в интернете. Локальный сайт работает на компьютере, APK — на телефоне, а постоянно доступные API и MongoDB синхронизируют их даже при выключенном компьютере.
 
-## Локальный запуск
+## Быстрый старт
 
-Требуются Node.js 22.13+ или 24+, npm и Docker. Рекомендуемая версия записана в
-`.nvmrc`.
+Понадобятся Node.js 22.13+ или 24+, npm и Docker. Рекомендуемая версия Node.js записана в `.nvmrc`.
 
-1. Создать локальный конфиг:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Заменить `APP_PASSWORD` и `JWT_SECRET` в `.env`.
-3. Запустить MongoDB:
-
-   ```bash
-   docker compose up -d mongo
-   ```
-
-4. Установить зависимости и запустить API с клиентом:
-
-   ```bash
-   npm install
-   npm run dev
-   ```
-
-5. Открыть `http://localhost:5173`. Адрес API по умолчанию —
-   `http://localhost:3001/api/v1`.
-
-## Общая MongoDB
-
-Для работы устройств независимо друг от друга:
-
-1. Создать MongoDB Atlas cluster и отдельного database user.
-2. Разрешить подключение к Atlas только с IP облачного API-сервера.
-3. Разместить только API, используя `Dockerfile.api` или обычный Node.js runtime.
-4. Передать API переменные `MONGODB_URI`, `APP_PASSWORD`, `JWT_SECRET`, `PORT` и
-   `CLIENT_ORIGINS`.
-5. В клиенте указать HTTPS-адрес вида `https://your-api.example.com/api/v1`.
-
-Не добавляйте MongoDB connection string в Vite-переменные или Android-проект.
-
-## GitHub и Northflank
-
-Рекомендуемый поток выпуска API:
-
-```text
-feature branch → pull request → GitHub Actions → merge в main → Northflank
+```bash
+cp .env.example .env
+docker compose up -d mongo
+npm install
+npm run dev
 ```
 
-Workflow `.github/workflows/ci.yml` запускает typecheck, lint, тесты и сборку для
-pull request и каждого обновления `main`. В GitHub рекомендуется защитить ветку
-`main` и разрешать merge только после успешной проверки `Validate`.
+После создания `.env` замените `APP_PASSWORD` и `JWT_SECRET`, затем откройте:
 
-Для первого деплоя:
-
-1. Создать приватный GitHub-репозиторий и не добавлять в него `.env`.
-2. Подключить этот репозиторий через Northflank GitHub App.
-3. Создать `Combined Service`, выбрать ветку `main` и сборку через Dockerfile.
-4. Указать build context `/` и Dockerfile path `/Dockerfile.api`.
-5. Открыть публичный HTTP-порт `3001`.
-6. Добавить runtime secret group:
-
-   ```text
-   NODE_ENV=production
-   PORT=3001
-   MONGODB_URI=<MongoDB Atlas URI с именем базы frontend_prep>
-   APP_PASSWORD=<личный пароль, не менее 12 символов>
-   JWT_SECRET=<случайная строка, не менее 32 символов>
-   OPENAI_API_KEY=<ключ для AI-уроков, чата, оценки и расшифровки голоса>
-   OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
-   ```
-
-   `CLIENT_ORIGINS` нужен только для дополнительных web-origin. Локальный Vite
-   и Capacitor уже разрешены API.
-
-7. Настроить проверки контейнера на порту `3001`:
-   - startup и readiness: `GET /api/health`;
-   - liveness: `GET /api/health/live`.
-8. После деплоя указать в web-клиенте и Android адрес
-   `https://<northflank-domain>/api/v1`.
-
-API пишет структурированные JSON-логи, добавляет `X-Request-Id` к каждому ответу
-и сохраняет этот идентификатор в связанных сообщениях. Авторизация, cookie,
-тексты AI-запросов и пользовательские ответы в логи не попадают. При закрытии
-страницы активный SSE-запрос отменяет генерацию OpenAI.
-
-Для монорепозитория можно включить allow list путей сборки:
-
-```text
-apps/api/**
-apps/client/package.json
-package.json
-package-lock.json
-tsconfig.base.json
-Dockerfile.api
-.dockerignore
-```
-
-Для production-доступа к Atlas используйте выделенный Northflank egress IP и
-добавьте в Atlas только этот адрес `/32`. Доступ `0.0.0.0/0` допустим лишь для
-короткой первичной проверки. По возможности выбирайте один облачный регион для
-Northflank и Atlas.
-
-## Обновление каталога без нового APK
-
-Каталог хранится на backend в
-`apps/api/src/learning/data/resources.json`. Прогресс и настройки остаются в
-MongoDB.
-
-Чтобы добавить или изменить материал:
-
-1. Обновить JSON, сохраняя стабильный уникальный `id` и HTTPS-ссылку.
-2. Запустить `npm run typecheck && npm test`.
-3. Отправить изменения в GitHub.
-4. Дождаться автоматического деплоя API в Northflank.
-
-Клиент получает кешируемые `curriculum`, спринты, `resources` и `questions`
-через `GET /api/v1/learning/bootstrap/content`, а изменяемый прогресс — через
-`GET /api/v1/learning/bootstrap/progress`. Поэтому изменения контента не требуют
-пересборки APK. Новая версия APK нужна только при изменении React-интерфейса или
-клиентской логики.
+- клиент — `http://localhost:5173`;
+- API — `http://localhost:3001/api/v1`;
+- health check — `http://localhost:3001/api/health`.
 
 ## Учебные треки
 
-AI-разбор, проверочный тест, практику с запуском кода и чат поддерживают четыре
-трека: `course` (персональный AI-курс), `curriculum` (12-недельный учебный план),
-`yandex` и `ozon`. Все они работают через один набор адресов:
+| Ключ | Назначение |
+| --- | --- |
+| `curriculum` | Основная 12-недельная программа |
+| `course` | Персональный AI-курс |
+| `yandex` | Трёхнедельный спринт перед секциями Яндекса |
+| `ozon` | Двухнедельный спринт по материалам интервью Ozon |
+
+Урок, квиз, практика и чат всех треков используют единый API:
 
 ```text
 POST   /api/v1/learning/tracks/:trackKey/items/:itemId/lesson
@@ -167,65 +112,140 @@ POST   /api/v1/learning/tracks/:trackKey/items/:itemId/chat/stream
 DELETE /api/v1/learning/tracks/:trackKey/items/:itemId/chat
 ```
 
-Новый трек добавляется записью в `apps/api/src/learning/track-registry.ts`:
-дни, цель для чата и инструкции промпта. Правки в контроллере не нужны.
-
-## Бэкап прогресса
-
-В разделе «Ещё» можно экспортировать все пользовательские данные в версионированный
-JSON и восстановить их позже. Импорт работает как merge: добавляет и обновляет
-записи, но не удаляет уже существующие. В файл не попадают пароль, JWT, адрес API
-и MongoDB connection string.
-
-На Android тот же раздел позволяет включить ежедневное локальное напоминание.
-Для голосового ответа в мок-интервью приложение запрашивает доступ к микрофону,
-отправляет запись на API для расшифровки и не сохраняет исходное аудио.
+Новый трек добавляется через `apps/api/src/learning/track-registry.ts`: достаточно описать дни, цель чата и инструкции генерации без новых контроллеров.
 
 ## Android
 
-Требуются Android Studio, Android SDK и JDK 21+.
+### Установка готовой версии
+
+Последний APK публикуется в [GitHub Releases](https://github.com/620474/KnowsPreparation/releases/latest). Он подключается к тому же API и использует тот же прогресс, что и локальный web-клиент.
+
+### Локальная сборка
+
+Понадобятся Android Studio, Android SDK и JDK 21+.
 
 ```bash
 npm run android:sync
 npm run android:open
 ```
 
-Первая команда собирает React-клиент и копирует bundle внутрь Android-проекта.
-Вторая открывает проект в Android Studio, где можно установить debug-версию на
-телефон или собрать подписанный APK. Публичный сайт для работы APK не нужен.
-
-Debug APK собирается командой:
+Для ручной debug-сборки:
 
 ```bash
 cd apps/client/android
 ./gradlew assembleDebug
 ```
 
-Результат: `apps/client/android/app/build/outputs/apk/debug/app-debug.apk`.
+Результат появится в `apps/client/android/app/build/outputs/apk/debug/app-debug.apk`.
 
-## Версии и релизы
+## Данные и офлайн-режим
 
-Версия релиза определяется Git-тегами и Conventional Commits. После успешных
-проверок push в `main` запускает `semantic-release`, создаёт GitHub Release и
-прикладывает APK с именем `KnowsPreparation-vX.Y.Z.apk`. Android `versionName`
-и возрастающий `versionCode` вычисляются из той же SemVer-версии во время сборки.
-Поля `version` в workspace-пакетах намеренно содержат
-`0.0.0-semantic-release`: фактическая версия берётся из Git-тега и не меняется
-отдельным release-коммитом.
-Релиз подписывается постоянным ключом из GitHub Secret
-`ANDROID_DEBUG_KEYSTORE_BASE64`; ключ нельзя добавлять в репозиторий или заменять,
-иначе Android не сможет установить новую версию поверх существующей.
+- Прочитанные статьи и основной bootstrap кешируются в IndexedDB.
+- Изменения прогресса сохраняются локально и синхронизируются после восстановления сети.
+- Решения практики имеют версии: более новая локальная работа не затирается старой серверной копией.
+- В разделе «Ещё» можно экспортировать пользовательские данные в JSON и восстановить их через merge.
+- В бэкап не входят пароль, JWT, адрес API и строка подключения MongoDB.
+- Голосовая запись отправляется на API для расшифровки, но исходное аудио не сохраняется.
 
-- `fix: ...` — patch-релиз: `1.0.0` → `1.0.1`;
-- `feat: ...` — minor-релиз: `1.0.0` → `1.1.0`;
-- `feat!: ...` или `BREAKING CHANGE:` — major-релиз: `1.0.0` → `2.0.0`;
+## Обновление материалов
+
+Каталог находится в `apps/api/src/learning/data/resources.json`, а прогресс и настройки — в MongoDB.
+
+1. Обновите JSON, сохранив стабильный уникальный `id` и HTTPS-ссылку.
+2. Запустите `npm run typecheck && npm test`.
+3. Отправьте изменения в GitHub.
+4. Дождитесь автоматического деплоя API.
+
+Статический контент загружается через `GET /api/v1/learning/bootstrap/content`, а изменяемый прогресс — через `GET /api/v1/learning/bootstrap/progress`.
+
+<details>
+<summary><strong>MongoDB Atlas и production API</strong></summary>
+
+Для независимой работы компьютера и телефона:
+
+1. Создайте MongoDB Atlas cluster и отдельного database user.
+2. Разрешите подключение только с IP облачного API-сервера.
+3. Разместите API через `Dockerfile.api` или обычный Node.js runtime.
+4. Передайте API переменные `MONGODB_URI`, `APP_PASSWORD`, `JWT_SECRET`, `PORT` и `CLIENT_ORIGINS`.
+5. В клиенте укажите HTTPS-адрес вида `https://your-api.example.com/api/v1`.
+
+Никогда не добавляйте MongoDB connection string в Vite-переменные, Android-проект или Git.
+
+</details>
+
+<details>
+<summary><strong>GitHub и Northflank</strong></summary>
+
+Рекомендуемый поток выпуска:
+
+```text
+feature branch → pull request → GitHub Actions → merge в main → Northflank
+```
+
+Workflow `.github/workflows/ci.yml` запускает typecheck, lint, тесты и сборку для pull request и каждого обновления `main`.
+
+Для первого деплоя:
+
+1. Подключите репозиторий через Northflank GitHub App.
+2. Создайте `Combined Service` из ветки `main`.
+3. Выберите build context `/` и Dockerfile path `/Dockerfile.api`.
+4. Откройте публичный HTTP-порт `3001`.
+5. Добавьте runtime variables:
+
+   ```text
+   NODE_ENV=production
+   PORT=3001
+   MONGODB_URI=<MongoDB Atlas URI с именем базы frontend_prep>
+   APP_PASSWORD=<личный пароль, не менее 12 символов>
+   JWT_SECRET=<случайная строка, не менее 32 символов>
+   OPENAI_API_KEY=<ключ для AI-уроков, чата, оценки и расшифровки>
+   OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+   ```
+
+6. Настройте проверки контейнера:
+   - startup и readiness — `GET /api/health`;
+   - liveness — `GET /api/health/live`.
+7. Укажите в web-клиенте и Android адрес `https://<northflank-domain>/api/v1`.
+
+Для Atlas рекомендуется выделенный Northflank egress IP с правилом `/32`. Доступ `0.0.0.0/0` допустим только для короткой первичной проверки.
+
+API пишет структурированные JSON-логи и добавляет `X-Request-Id`, но не логирует авторизацию, cookie, AI-запросы и пользовательские ответы.
+
+</details>
+
+<details>
+<summary><strong>Версии и релизы</strong></summary>
+
+Версия определяется Git-тегами и Conventional Commits. После успешного push в `main` запускается `semantic-release`, создаётся GitHub Release и прикладывается APK `KnowsPreparation-vX.Y.Z.apk`.
+
+- `fix: ...` — patch: `1.0.0` → `1.0.1`;
+- `feat: ...` — minor: `1.0.0` → `1.1.0`;
+- `feat!: ...` или `BREAKING CHANGE:` — major: `1.0.0` → `2.0.0`;
 - `docs:`, `test:`, `chore:` — сами по себе релиз не создают.
 
-Версии и release notes не нужно менять вручную. Локальная проверка конфигурации:
+Поля `version` в workspace-пакетах содержат `0.0.0-semantic-release`: фактическая версия берётся из Git-тега. Android `versionName` и `versionCode` вычисляются из той же версии.
+
+APK подписывается постоянным ключом из GitHub Secret `ANDROID_DEBUG_KEYSTORE_BASE64`. Его нельзя добавлять в репозиторий или заменять, иначе Android не сможет установить обновление поверх существующего приложения.
+
+Локальная проверка конфигурации:
 
 ```bash
 npm run release:dry-run
 ```
+
+</details>
+
+## Стек
+
+| Слой | Технологии |
+| --- | --- |
+| Client | React, TypeScript, Mantine, Vite, TanStack Query |
+| Android | Capacitor, Android SDK, локальные уведомления и запись голоса |
+| API | NestJS, TypeScript, SSE, JWT |
+| Data | MongoDB, Mongoose, IndexedDB |
+| AI | OpenAI API, потоковая генерация, транскрипция и оценка |
+| Practice | QuickJS, тест-кейсы и изолированный запуск решений |
+| Delivery | Docker, GitHub Actions, semantic-release, Northflank |
 
 ## Проверки
 
@@ -236,11 +256,35 @@ npm test
 npm run build
 ```
 
-## Основные каталоги
+## Структура проекта
 
-- `apps/client` — React, Mantine, Vite и Capacitor Android;
-- `apps/client/src/hooks` — навигация и доменные действия интерфейса;
-- `apps/api` — NestJS, авторизация и MongoDB-модели;
-- `apps/api/src/learning/track-registry.ts` — единая конфигурация учебных треков;
-- `apps/api/src/learning/curriculum.ts` — учебная программа и банк вопросов.
-- `apps/api/src/learning/data/resources.json` — серверный каталог материалов.
+```text
+apps/
+├── api/                         NestJS API и MongoDB-модели
+│   └── src/learning/
+│       ├── track-registry.ts    реестр учебных треков
+│       ├── curriculum.ts        программа и банк вопросов
+│       └── data/resources.json  каталог материалов
+└── client/                      React, Mantine и Capacitor Android
+    └── src/
+        ├── components/          интерфейс и учебные инструменты
+        └── hooks/               навигация и доменные действия
+packages/
+└── contracts/                   общие Zod-контракты API и клиента
+```
+
+## Возможная версия 5
+
+> Это только концепция, а не активный roadmap.
+
+**Frontend Sprint 5 · Job Search OS** мог бы замкнуть цикл подготовки: импортировать вакансии, сравнивать требования с измеренными навыками, строить короткий план под конкретную компанию, хранить этапы откликов и разбирать реальные собеседования. Такой этап имеет смысл только после накопления данных в текущей версии 4 — сейчас приложение лучше использовать, а не усложнять.
+
+---
+
+<div align="center">
+
+**Учись → практикуйся → проходи интервью → разбирай результат**
+
+[Скачать последнюю версию](https://github.com/620474/KnowsPreparation/releases/latest) · [Открыть репозиторий](https://github.com/620474/KnowsPreparation)
+
+</div>
