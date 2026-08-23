@@ -219,6 +219,73 @@ function binarySearch(numbers, target) {
       { title: "Пустой массив", expression: "longestConsecutive([])", expected: 0 },
     ],
   ),
+  "w02-d04-practice": runner(
+    `class EventEmitter {
+  constructor() {
+    // Создай закрытое для экземпляра хранилище обработчиков
+  }
+
+  on(event, handler) {
+    // Добавь обработчик и верни функцию отписки
+  }
+
+  emit(event, ...args) {
+    // Вызови актуальные обработчики
+  }
+}`,
+    [
+      { title: "Передаёт аргументы подписчикам", expression: "(() => { const emitter = new EventEmitter(); const values = []; emitter.on('data', (left, right) => values.push(left + right)); emitter.emit('data', 2, 3); return values; })()", expected: [5] },
+      { title: "Отписывает только выбранный обработчик", expression: "(() => { const emitter = new EventEmitter(); const values = []; const unsubscribe = emitter.on('data', value => values.push('first:' + value)); emitter.on('data', value => values.push('second:' + value)); unsubscribe(); unsubscribe(); emitter.emit('data', 7); return values; })()", expected: ["second:7"] },
+      { title: "Изолирует разные события", expression: "(() => { const emitter = new EventEmitter(); let calls = 0; emitter.on('open', () => calls += 1); emitter.emit('close'); return calls; })()", expected: 0 },
+    ],
+  ),
+  "w02-d05-practice": runner(
+    `class SocketClient {
+  constructor(transport, retryPolicy) {
+    // Сохрани зависимости и начальное состояние
+  }
+
+  connect() {
+    // Переведи клиент в connecting и вызови transport.connect()
+  }
+
+  handleOpen() {
+    // Зафиксируй успешное соединение
+  }
+
+  handleClose() {
+    // Запланируй reconnect и верни задержку
+  }
+
+  getState() {
+    // Верни текущее состояние
+  }
+}`,
+    [
+      { title: "Использует внедрённые зависимости", expression: "(() => { const events = []; const transport = { connect: () => events.push('connect'), schedule(callback, delay) { events.push(delay); this.pending = callback; } }; const retryPolicy = { next: attempt => (attempt + 1) * 100 }; const client = new SocketClient(transport, retryPolicy); client.connect(); client.handleOpen(); const delay = client.handleClose(); transport.pending(); return { delay, state: client.getState(), events }; })()", expected: { delay: 100, state: "connecting", events: ["connect", 100, "connect"] } },
+      { title: "Увеличивает попытку и сбрасывает её после open", expression: "(() => { const transport = { connect() {}, schedule() {} }; const client = new SocketClient(transport, { next: attempt => attempt }); client.connect(); client.handleOpen(); const first = client.handleClose(); const second = client.handleClose(); client.handleOpen(); const afterOpen = client.handleClose(); return [first, second, afterOpen]; })()", expected: [0, 1, 0] },
+    ],
+  ),
+  "w05-d07-practice": runner(
+    `function socketReducer(state, event) {
+  // Верни следующее состояние без мутации state
+}`,
+    [
+      { title: "Проходит жизненный цикл соединения", expression: "(() => { let state = { status: 'closed', messages: [], error: null }; state = socketReducer(state, { type: 'connect' }); state = socketReducer(state, { type: 'open' }); state = socketReducer(state, { type: 'message', data: 'hello' }); return state; })()", expected: { status: "open", messages: ["hello"], error: null } },
+      { title: "Не мутирует массив сообщений", expression: "(() => { const messages = ['first']; const state = { status: 'open', messages, error: null }; const next = socketReducer(state, { type: 'message', data: 'second' }); return { old: messages, next: next.messages, same: messages === next.messages }; })()", expected: { old: ["first"], next: ["first", "second"], same: false } },
+      { title: "Сохраняет ссылку для неизвестного события", expression: "(() => { const state = { status: 'open', messages: [], error: null }; return socketReducer(state, { type: 'unknown' }) === state; })()", expected: true },
+    ],
+  ),
+  "w08-d06-practice": runner(
+    `function getReconnectDelay(attempt, baseDelay, maxDelay, jitter) {
+  // Верни задержку exponential backoff с jitter ±20%
+}`,
+    [
+      { title: "Удваивает задержку", expression: "getReconnectDelay(3, 500, 30000, 0)", expected: 4000 },
+      { title: "Соблюдает верхний лимит", expression: "getReconnectDelay(10, 500, 30000, 0)", expected: 30000 },
+      { title: "Применяет управляемый jitter", expression: "[getReconnectDelay(0, 500, 30000, -1), getReconnectDelay(0, 500, 30000, 1)]", expected: [400, 600] },
+    ],
+  ),
   "ozon-d01-practice": runner(
     `function reverseInteger(value) {
   // Верни развёрнутое 32-битное число
@@ -573,6 +640,79 @@ function binarySearch(numbers, target) {
     maximum = Math.max(maximum, length);
   }
   return maximum;
+}`,
+  "w02-d04-practice": `class EventEmitter {
+  constructor() {
+    this.handlers = new Map();
+  }
+
+  on(event, handler) {
+    const handlers = this.handlers.get(event) ?? new Set();
+    handlers.add(handler);
+    this.handlers.set(event, handlers);
+    return () => {
+      handlers.delete(handler);
+      if (handlers.size === 0) this.handlers.delete(event);
+    };
+  }
+
+  emit(event, ...args) {
+    const handlers = this.handlers.get(event);
+    if (!handlers) return;
+    for (const handler of [...handlers]) handler(...args);
+  }
+}`,
+  "w02-d05-practice": `class SocketClient {
+  constructor(transport, retryPolicy) {
+    this.transport = transport;
+    this.retryPolicy = retryPolicy;
+    this.state = "closed";
+    this.attempt = 0;
+  }
+
+  connect() {
+    this.state = "connecting";
+    this.transport.connect();
+  }
+
+  handleOpen() {
+    this.state = "open";
+    this.attempt = 0;
+  }
+
+  handleClose() {
+    this.state = "reconnecting";
+    const delay = this.retryPolicy.next(this.attempt);
+    this.attempt += 1;
+    this.transport.schedule(() => this.connect(), delay);
+    return delay;
+  }
+
+  getState() {
+    return this.state;
+  }
+}`,
+  "w05-d07-practice": `function socketReducer(state, event) {
+  switch (event.type) {
+    case "connect":
+      return { ...state, status: "connecting", error: null };
+    case "open":
+      return { ...state, status: "open", error: null };
+    case "message":
+      return { ...state, messages: [...state.messages, event.data], error: null };
+    case "error":
+      return { ...state, status: "error", error: event.error };
+    case "close":
+      return { ...state, status: event.retrying ? "reconnecting" : "closed" };
+    default:
+      return state;
+  }
+}`,
+  "w08-d06-practice": `function getReconnectDelay(attempt, baseDelay, maxDelay, jitter) {
+  const exponentialDelay = baseDelay * 2 ** Math.max(0, attempt);
+  const cappedDelay = Math.min(exponentialDelay, maxDelay);
+  const jitterMultiplier = 1 + Math.max(-1, Math.min(1, jitter)) * 0.2;
+  return Math.min(maxDelay, Math.round(cappedDelay * jitterMultiplier));
 }`,
   "ozon-d01-practice": `function reverseInteger(value) {
   const reversed = Number(String(Math.abs(value)).split("").reverse().join("")) * Math.sign(value);

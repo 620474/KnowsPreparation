@@ -156,9 +156,27 @@ describe("curriculum", () => {
   });
 
   it("contains the complete interview question bank", () => {
-    expect(QUESTION_BANK).toHaveLength(110);
-    expect(new Set(QUESTION_BANK.map((question) => question.id)).size).toBe(110);
-    expect(QUESTION_BANK.slice(-10).every((question) => question.category === "Тестирование")).toBe(true);
+    expect(QUESTION_BANK).toHaveLength(126);
+    expect(new Set(QUESTION_BANK.map((question) => question.id)).size).toBe(126);
+    expect(QUESTION_BANK.filter((question) => question.category === "Тестирование")).toHaveLength(10);
+    expect(QUESTION_BANK.filter((question) => question.category === "ООП JavaScript/TypeScript")).toHaveLength(8);
+    expect(QUESTION_BANK.filter((question) => question.category === "React: прикладная разработка")).toHaveLength(8);
+  });
+
+  it("provides executable OOP and realtime React practices", () => {
+    const practiceIds = [
+      "w02-d04-practice",
+      "w02-d05-practice",
+      "w05-d07-practice",
+      "w08-d06-practice",
+    ];
+    const blocks = CURRICULUM.flatMap((week) => week.days.flatMap((day) => day.blocks));
+
+    for (const practiceId of practiceIds) {
+      const block = blocks.find((item) => item.id === practiceId);
+      expect(block?.exercise?.runner?.starterCode).toBeTruthy();
+      expect(block?.exercise?.runner?.testCases.length).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it("contains a valid curated resource catalog", () => {

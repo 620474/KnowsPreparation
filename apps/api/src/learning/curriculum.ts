@@ -10,6 +10,7 @@ import type {
 } from "@prep/contracts";
 
 import { getResourceIdsForBlock } from "./resources";
+import { getExerciseRunner } from "./exercise-runners";
 
 export type {
   StudyBlock,
@@ -61,8 +62,8 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "Замыкания и лексическое окружение",
       "this и правила привязки контекста",
       "call, apply, bind",
-      "Прототипная цепочка",
-      "Классы как синтаксис над прототипами",
+      "ООП в JavaScript: прототипы, инкапсуляция и полиморфизм",
+      "Классы JS/TS: private, interface, abstract и контракт",
       "Каррирование и композиция функций",
       "Утечки памяти через замыкания",
     ],
@@ -70,8 +71,8 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "Исправить var в асинхронном цикле",
       "Реализовать собственный bind",
       "Реализовать curry(fn)",
-      "Найти пару двумя указателями",
-      "Самая длинная подстрока без повторов",
+      "Реализовать EventEmitter с закрытым состоянием",
+      "Спроектировать WebSocketClient через композицию",
       "Минимальное окно в строке",
       "Мини-мок: функции и объекты",
     ],
@@ -128,18 +129,18 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "Зависимости useEffect",
       "Устаревшие замыкания",
       "useMemo, useCallback и memo",
-      "Context и цена обновлений",
+      "Context, controlled state и границы обновлений",
       "TanStack Query, RTK и Zustand",
-      "Проектирование кастомных хуков",
+      "Кастомные хуки и жизненный цикл внешней подписки",
     ],
     practice: [
       "Исправить условный вызов хука",
       "Устранить цикл useEffect",
       "Исправить stale closure",
       "Профилировать бесполезную мемоизацию",
-      "Разделить перегруженный Context",
+      "Разделить Context и стабилизировать значения",
       "Спроектировать server state",
-      "Написать и защитить custom hook",
+      "Реализовать состояние useWebSocket без stale closure",
     ],
   },
   {
@@ -195,7 +196,7 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "CSS cascade, Flexbox и Grid",
       "Семантика, ARIA и клавиатура",
       "Бесконечная лента",
-      "Realtime: WebSocket, SSE, polling",
+      "WebSocket: lifecycle, heartbeat, reconnect и backoff",
       "Offline и оптимистичные обновления",
     ],
     practice: [
@@ -204,7 +205,7 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "Сверстать адаптивный layout мысленно",
       "Провести a11y-аудит компонента",
       "Спроектировать ленту",
-      "Спроектировать уведомления",
+      "Реализовать reconnect с exponential backoff и jitter",
       "Спроектировать offline-first экран",
     ],
   },
@@ -212,7 +213,7 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
     title: "Архитектура и презентация опыта",
     outcome: "Защищать архитектурные решения и убедительно показывать фактический грейд.",
     theory: [
-      "SOLID, KISS и осознанные нарушения",
+      "ООП, SOLID, KISS и осознанные нарушения",
       "Композиция и паттерны компонентов",
       "FSD и правила зависимостей",
       "Монорепа и полирепо",
@@ -221,7 +222,7 @@ const WEEK_DEFINITIONS: WeekDefinition[] = [
       "Резюме: роль, вклад и метрики",
     ],
     practice: [
-      "Защитить нарушение SOLID",
+      "Разделить transport, reconnect и parser через композицию",
       "Разобрать архитектуру рабочего проекта",
       "Нарисовать границы модулей",
       "Сравнить mono и polyrepo",
@@ -453,6 +454,72 @@ const dayNames = [
   "Контроль недели",
 ];
 
+const CURRICULUM_EXERCISES: Record<string, Omit<StudyExercise, "runner">> = {
+  "w02-d04-practice": {
+    statement: "Реализуй EventEmitter. Обработчики должны храниться внутри экземпляра, подписка должна возвращать функцию отписки, а emit — вызывать актуальные обработчики с переданными аргументами.",
+    signature: "class EventEmitter { on(event, handler): () => void; emit(event, ...args): void }",
+    constraints: [
+      "Не используй глобальное состояние",
+      "Повторная отписка не должна приводить к ошибке",
+      "Разные события не должны влиять друг на друга",
+    ],
+    examples: [
+      {
+        input: "on('message', handler); emit('message', 'hello')",
+        output: "handler получает 'hello'",
+      },
+    ],
+  },
+  "w02-d05-practice": {
+    statement: "Реализуй SocketClient, который не наследуется от транспорта, а получает transport и retryPolicy через конструктор. Клиент должен управлять состоянием и планировать переподключение после закрытия.",
+    signature: "class SocketClient { connect(): void; handleOpen(): void; handleClose(): number; getState(): string }",
+    constraints: [
+      "Используй композицию и dependency injection",
+      "После успешного открытия сбрасывай номер попытки",
+      "handleClose должен вернуть выбранную задержку",
+    ],
+    examples: [
+      {
+        input: "connect(); handleOpen(); handleClose()",
+        output: "transport.schedule получает повторный connect",
+      },
+    ],
+  },
+  "w05-d07-practice": {
+    statement: "Реализуй чистый reducer для состояния useWebSocket. Он должен обрабатывать connect, open, message, error и close без мутации предыдущего состояния.",
+    signature: "socketReducer(state, event): SocketState",
+    constraints: [
+      "Не изменяй state и массив messages",
+      "Неизвестное событие должно вернуть прежний объект",
+      "message добавляет данные в конец списка",
+    ],
+    examples: [
+      {
+        input: "socketReducer({ status: 'open', messages: [] }, { type: 'message', data: 'hi' })",
+        output: "{ status: 'open', messages: ['hi'], error: null }",
+      },
+    ],
+  },
+  "w08-d06-practice": {
+    statement: "Реализуй расчёт задержки переподключения с exponential backoff, верхним лимитом и управляемым jitter. Функция понадобится внутри useWebSocket.",
+    signature: "getReconnectDelay(attempt, baseDelay, maxDelay, jitter): number",
+    constraints: [
+      "attempt начинается с нуля",
+      "Результат не должен превышать maxDelay",
+      "jitter находится в диапазоне от -1 до 1 и делает тесты детерминированными",
+    ],
+    examples: [
+      { input: "getReconnectDelay(3, 500, 30000, 0)", output: "4000" },
+      { input: "getReconnectDelay(10, 500, 30000, 0)", output: "30000" },
+    ],
+  },
+};
+
+const getCurriculumExercise = (blockId: string): StudyExercise | undefined => {
+  const exercise = CURRICULUM_EXERCISES[blockId];
+  return exercise ? { ...exercise, runner: getExerciseRunner(blockId) } : undefined;
+};
+
 export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekIndex) => {
   const weekNumber = weekIndex + 1;
   const taskSuffix = definition.taskKey ? `-${definition.taskKey}` : "";
@@ -467,6 +534,7 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
       const aiSprintDay = AI_SPRINT_DAYS[weekIndex * 7 + dayIndex];
       const mainBlockMinutes = aiSprintDay ? 40 : 50;
       const reviewMinutes = aiSprintDay ? 10 : 20;
+      const practiceBlockId = `${dayId}-practice${taskSuffix}`;
       return {
         id: dayId,
         dayNumber,
@@ -482,12 +550,13 @@ export const CURRICULUM: StudyWeek[] = WEEK_DEFINITIONS.map((definition, weekInd
             resourceIds: getResourceIdsForBlock(weekIndex, dayIndex, "theory"),
           },
           {
-            id: `${dayId}-practice${taskSuffix}`,
+            id: practiceBlockId,
             kind: "practice" as const,
             title: definition.practice[dayIndex] ?? "Практическая задача",
             description: `${mainBlockMinutes} минут: решить самостоятельно, затем разобрать альтернативы и Big-O.`,
             minutes: mainBlockMinutes,
             resourceIds: getResourceIdsForBlock(weekIndex, dayIndex, "practice"),
+            exercise: getCurriculumExercise(practiceBlockId),
           },
           ...(aiSprintDay
             ? [
@@ -689,6 +758,32 @@ const questionGroups: Array<[string, string[]]> = [
       "Зачем нужен MSW и чем перехват сетевого запроса лучше прямого мока fetch?",
       "Как писать устойчивые Playwright-тесты: локаторы, auto-waiting и изоляция данных?",
       "Из-за чего появляются flaky-тесты и как локализовать проблему в CI?",
+    ],
+  ],
+  [
+    "ООП JavaScript/TypeScript",
+    [
+      "Как четыре принципа ООП проявляются в JavaScript, где нет обязательной классической модели классов?",
+      "Чем приватное поле #value отличается от соглашения _value и замыкания?",
+      "Как связаны prototype экземпляра, свойство prototype конструктора и оператор new?",
+      "Когда наследование оправдано, а когда композиция уменьшает связанность?",
+      "Чем interface отличается от abstract class в TypeScript и когда выбирать каждый вариант?",
+      "Покажи нарушение принципа подстановки Лисков на frontend-примере и предложи исправление.",
+      "Как dependency inversion помогает тестировать WebSocket-клиент без настоящего соединения?",
+      "Спроектируй EventEmitter: хранение подписок, отписка, обработка изменения списка во время emit.",
+    ],
+  ],
+  [
+    "React: прикладная разработка",
+    [
+      "Чем controlled и uncontrolled компоненты отличаются по источнику истины и цене интеграции?",
+      "Как спроектировать useWebSocket: connect, cleanup, reconnect и защита от stale closure?",
+      "Как не открыть два WebSocket-соединения из-за повторного запуска эффекта в Strict Mode?",
+      "Как хранить часто приходящие сообщения, чтобы не перерисовывать всё дерево на каждый пакет?",
+      "Что стабилизируют memo, useMemo и useCallback, и почему сами по себе они не гарантируют ускорение?",
+      "Как разделить Context, чтобы изменение realtime-данных не обновляло всех потребителей?",
+      "Как смоделировать состояния connecting, open, reconnecting, closed и error через reducer?",
+      "Как доказать оптимизацию React-компонента с помощью Profiler и вкладки WebSocket Frames?",
     ],
   ],
 ];
