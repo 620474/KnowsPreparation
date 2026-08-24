@@ -17,6 +17,7 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "aiQuizProgresses",
   "mockInterviews",
   "interviewSessions",
+  "yandexPlatformMockAttempts",
 ] as const;
 
 export type LearningBackupCollection = (typeof LEARNING_BACKUP_COLLECTIONS)[number];
@@ -62,7 +63,8 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
       (collection === "aiPracticeProgresses" ||
       collection === "practiceAttempts" ||
       collection === "learningSignals" ||
-      collection === "interviewSessions"
+      collection === "interviewSessions" ||
+      collection === "yandexPlatformMockAttempts"
         ? []
         : undefined);
     if (!Array.isArray(records)) {

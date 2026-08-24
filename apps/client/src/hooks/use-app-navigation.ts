@@ -24,6 +24,9 @@ export function useAppNavigation() {
   const [dayReader, setDayReader] = useState<DayRouteTarget | null>(
     () => parseAppRoute(window.location.hash).dayReader ?? null,
   );
+  const [yandexMockDayId, setYandexMockDayId] = useState<string | null>(
+    () => parseAppRoute(window.location.hash).yandexMockDayId ?? null,
+  );
   const [chatOpen, setChatOpen] = useState(false);
   const [chatItemId, setChatItemId] = useState<string | null>(null);
   const [chatDraftRequest, setChatDraftRequest] = useState<{
@@ -40,6 +43,7 @@ export function useAppNavigation() {
       setActiveView(route.view);
       setLessonReader(route.lessonReader);
       setDayReader(route.dayReader ?? null);
+      setYandexMockDayId(route.yandexMockDayId ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -78,6 +82,7 @@ export function useAppNavigation() {
       setActiveView(route.view);
       setLessonReader(route.lessonReader);
       setDayReader(route.dayReader ?? null);
+      setYandexMockDayId(route.yandexMockDayId ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -110,6 +115,17 @@ export function useAppNavigation() {
         view: viewForTrack(track),
         lessonReader: null,
         dayReader: { track, dayId },
+      }),
+    [navigateToRoute],
+  );
+
+  const navigateToYandexMock = useCallback(
+    (dayId: string) =>
+      navigateToRoute({
+        view: "yandex",
+        lessonReader: null,
+        dayReader: { track: "yandex", dayId },
+        yandexMockDayId: dayId,
       }),
     [navigateToRoute],
   );
@@ -172,6 +188,7 @@ export function useAppNavigation() {
     lessonReader,
     quizFocusItemId,
     dayReader,
+    yandexMockDayId,
     chatOpen,
     chatItemId,
     chatDraftRequest,
@@ -179,6 +196,7 @@ export function useAppNavigation() {
     navigateToView,
     navigateToLesson,
     navigateToTrackDay,
+    navigateToYandexMock,
     openLessonReader: navigateToLesson,
     closeLessonReader,
     openChat,

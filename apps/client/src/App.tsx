@@ -20,6 +20,7 @@ import { useOnlineStatus } from "./lib/network";
 import { synchronizeDailyReminder } from "./lib/notifications";
 import { OFFLINE_MUTATION_ROOT } from "./lib/offline-mutation-keys";
 import { clearPersistedQueryCache } from "./lib/query-cache";
+import type { YandexMockDayId } from "./types";
 const AiLessonReader = lazy(() =>
   import("./components/AiLessonReader").then((module) => ({
     default: module.AiLessonReader,
@@ -77,6 +78,11 @@ const YandexSprintView = lazy(() =>
     default: module.YandexSprintView,
   })),
 );
+const YandexPlatformMockView = lazy(() =>
+  import("./views/YandexPlatformMockView").then((module) => ({
+    default: module.YandexPlatformMockView,
+  })),
+);
 
 export default function App() {
   const queryClient = useQueryClient();
@@ -95,6 +101,7 @@ export default function App() {
     lessonReader,
     quizFocusItemId,
     dayReader,
+    yandexMockDayId,
     chatOpen,
     chatItemId,
     chatDraftRequest,
@@ -102,6 +109,7 @@ export default function App() {
     navigateToView,
     navigateToLesson,
     navigateToTrackDay,
+    navigateToYandexMock,
     openLessonReader,
     closeLessonReader,
     openChat,
@@ -294,7 +302,16 @@ export default function App() {
           }}
         />
       ) : null}
-      {activeView === "yandex" && dayReader?.track === "yandex" ? (
+      {activeView === "yandex" && yandexMockDayId ? (
+        <YandexPlatformMockView
+          dayId={yandexMockDayId as YandexMockDayId}
+          onBack={() => navigateToTrackDay("yandex", yandexMockDayId)}
+          onCompleteBlock={() =>
+            updateTask(`${yandexMockDayId}-platform`, { completed: true })
+          }
+        />
+      ) : null}
+      {activeView === "yandex" && dayReader?.track === "yandex" && !yandexMockDayId ? (
         <TrackDayView
           key={dayReader.dayId}
           data={data}
@@ -316,6 +333,7 @@ export default function App() {
           onOpenChat={(blockId) => openChat(blockId)}
           onOpenDay={(dayId) => navigateToTrackDay("yandex", dayId)}
           onOpenLesson={(blockId) => openLessonReader("yandex", blockId)}
+          onOpenPlatformMock={(mockDayId) => navigateToYandexMock(mockDayId)}
           onOpenQuiz={(blockId) => openLessonReader("yandex", blockId, true)}
           onReviewSolution={(blockId, draft) => openChatWithDraft(blockId, draft)}
           onUpdateTask={updateTask}

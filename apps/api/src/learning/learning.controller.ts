@@ -25,6 +25,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import {
   CreateAlgorithmDto,
   GenerateAiCourseDto,
+  GradeYandexMockResponseDto,
   GetLearningAnalyticsDto,
   ImportBackupDto,
   ListInterviewSessionsDto,
@@ -44,6 +45,7 @@ import {
   UpdateSettingsDto,
   UpdateTaskDto,
   SendInterviewAiMessageDto,
+  SaveYandexMockResponseDto,
 } from "./dto/learning.dto";
 import { InterviewSessionService } from "./interview-session.service";
 import { LearningService } from "./learning.service";
@@ -53,6 +55,7 @@ import { LearningBackupService } from "./learning-backup.service";
 import { LearningBootstrapService } from "./learning-bootstrap.service";
 import { ParseTrackKeyPipe } from "./parse-track-key.pipe";
 import type { TrackKey } from "./track-registry";
+import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning")
@@ -66,6 +69,7 @@ export class LearningController {
     private readonly bootstrapService: LearningBootstrapService,
     private readonly backupService: LearningBackupService,
     private readonly interviewSessionService: InterviewSessionService,
+    private readonly yandexPlatformMockService: YandexPlatformMockService,
   ) {}
 
   @Get("adaptive/today")
@@ -282,6 +286,40 @@ export class LearningController {
   ) {
     if (!audio) throw new BadRequestException("Добавь аудиозапись ответа");
     return this.learningService.transcribeMockAnswer(interviewId, audio);
+  }
+
+  @Get("yandex-platform-mocks/:dayId")
+  @Header("Cache-Control", "private, no-store")
+  getYandexPlatformMock(@Param("dayId") dayId: string) {
+    return this.yandexPlatformMockService.getLatest(dayId);
+  }
+
+  @Post("yandex-platform-mocks/:dayId")
+  startYandexPlatformMock(@Param("dayId") dayId: string) {
+    return this.yandexPlatformMockService.start(dayId);
+  }
+
+  @Put("yandex-platform-mocks/attempts/:attemptId/questions/:questionId")
+  saveYandexPlatformMockResponse(
+    @Param("attemptId") attemptId: string,
+    @Param("questionId") questionId: string,
+    @Body() dto: SaveYandexMockResponseDto,
+  ) {
+    return this.yandexPlatformMockService.saveResponse(attemptId, questionId, dto);
+  }
+
+  @Put("yandex-platform-mocks/attempts/:attemptId/questions/:questionId/grade")
+  gradeYandexPlatformMockResponse(
+    @Param("attemptId") attemptId: string,
+    @Param("questionId") questionId: string,
+    @Body() dto: GradeYandexMockResponseDto,
+  ) {
+    return this.yandexPlatformMockService.gradeResponse(attemptId, questionId, dto);
+  }
+
+  @Post("yandex-platform-mocks/attempts/:attemptId/complete")
+  completeYandexPlatformMock(@Param("attemptId") attemptId: string) {
+    return this.yandexPlatformMockService.complete(attemptId);
   }
 
   @Get("interview-sessions/current")

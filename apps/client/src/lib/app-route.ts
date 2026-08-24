@@ -31,6 +31,7 @@ export interface AppRoute {
   view: AppView;
   lessonReader: LessonRouteTarget | null;
   dayReader?: DayRouteTarget | null;
+  yandexMockDayId?: string | null;
 }
 
 const DEFAULT_ROUTE: AppRoute = { view: "yandex", lessonReader: null };
@@ -87,6 +88,15 @@ export function parseAppRoute(hash: string): AppRoute {
   if (!view) return DEFAULT_ROUTE;
 
   const track = viewTracks[view];
+  if (track === "yandex" && segments[1] === "mock" && segments[2]) {
+    const dayId = decodeItemId(segments[2]);
+    return {
+      view,
+      lessonReader: null,
+      dayReader: { track, dayId },
+      yandexMockDayId: dayId,
+    };
+  }
   if (isDayTrack(track) && segments[1] === "day" && segments[2]) {
     const dayId = decodeItemId(segments[2]);
     const lessonItemId =
@@ -111,6 +121,10 @@ export function parseAppRoute(hash: string): AppRoute {
 
 export function formatAppRoute(route: AppRoute): string {
   const path = viewPaths[route.view];
+
+  if (route.yandexMockDayId) {
+    return `#/${path}/mock/${encodeURIComponent(route.yandexMockDayId)}`;
+  }
 
   if (route.dayReader) {
     const dayPath = `#/${path}/day/${encodeURIComponent(route.dayReader.dayId)}`;

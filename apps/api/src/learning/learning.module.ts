@@ -12,6 +12,7 @@ import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { InterviewSessionService } from "./interview-session.service";
+import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
 import {
   AiChatMessage,
@@ -53,6 +54,10 @@ import {
 } from "./schemas/learning-signal.schema";
 import { Settings, SettingsSchema } from "./schemas/settings.schema";
 import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema";
+import {
+  YandexPlatformMockAttempt,
+  YandexPlatformMockAttemptSchema,
+} from "./schemas/yandex-platform-mock.schema";
 
 @Module({
   imports: [
@@ -71,6 +76,10 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
+      {
+        name: YandexPlatformMockAttempt.name,
+        schema: YandexPlatformMockAttemptSchema,
+      },
     ]),
   ],
   controllers: [LearningController],
@@ -84,6 +93,7 @@ import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema
     LearningService,
     LearningSignalService,
     InterviewSessionService,
+    YandexPlatformMockService,
   ],
 })
 export class LearningModule {}

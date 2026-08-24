@@ -26,6 +26,7 @@ const createBackup = (): LearningBackupV1 => ({
     aiQuizProgresses: [],
     mockInterviews: [],
     interviewSessions: [],
+    yandexPlatformMockAttempts: [],
   },
 });
 

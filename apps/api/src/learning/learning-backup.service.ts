@@ -21,6 +21,7 @@ import { QuestionProgress } from "./schemas/question-progress.schema";
 import { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
+import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
 
 @Injectable()
 export class LearningBackupService {
@@ -47,6 +48,8 @@ export class LearningBackupService {
     private readonly mockInterviewModel: Model<MockInterview>,
     @InjectModel(InterviewSession.name)
     private readonly interviewSessionModel: Model<InterviewSession>,
+    @InjectModel(YandexPlatformMockAttempt.name)
+    private readonly yandexPlatformMockAttemptModel: Model<YandexPlatformMockAttempt>,
   ) {}
 
   async exportBackup() {
@@ -64,6 +67,7 @@ export class LearningBackupService {
       aiQuizProgresses,
       mockInterviews,
       interviewSessions,
+      yandexPlatformMockAttempts,
     ] = await Promise.all([
       this.settingsModel.find().lean().exec(),
       this.taskModel.find().lean().exec(),
@@ -78,6 +82,7 @@ export class LearningBackupService {
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
       this.interviewSessionModel.find().lean().exec(),
+      this.yandexPlatformMockAttemptModel.find().lean().exec(),
     ]);
 
     return {
@@ -98,6 +103,7 @@ export class LearningBackupService {
         aiQuizProgresses,
         mockInterviews,
         interviewSessions,
+        yandexPlatformMockAttempts,
       },
     };
   }
@@ -147,6 +153,10 @@ export class LearningBackupService {
       interviewSessions: await this.validateRecords(
         this.interviewSessionModel,
         backup.data.interviewSessions,
+      ),
+      yandexPlatformMockAttempts: await this.validateRecords(
+        this.yandexPlatformMockAttemptModel,
+        backup.data.yandexPlatformMockAttempts,
       ),
     };
 
@@ -212,6 +222,11 @@ export class LearningBackupService {
       this.mergeRecords(
         this.interviewSessionModel,
         prepared.interviewSessions,
+        (record) => ({ _id: record._id }),
+      ),
+      this.mergeRecords(
+        this.yandexPlatformMockAttemptModel,
+        prepared.yandexPlatformMockAttempts,
         (record) => ({ _id: record._id }),
       ),
     ]);

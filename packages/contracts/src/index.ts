@@ -359,6 +359,34 @@ export const mockInterviewSchema = z.object({
   evaluation: mockInterviewEvaluationSchema.nullable(),
 });
 
+export const yandexMockDayIdSchema = z.enum([
+  "yandex-d07",
+  "yandex-d14",
+  "yandex-d21",
+]);
+export const yandexMockStatusSchema = z.enum(["in_progress", "completed"]);
+export const yandexMockVerdictSchema = z.enum(["correct", "incorrect"]);
+export const yandexPlatformMockQuestionSchema = z.object({
+  id: z.string(),
+  topic: z.string(),
+  prompt: z.string(),
+  code: z.string(),
+  response: z.string(),
+  verdict: yandexMockVerdictSchema.nullable(),
+  expectedAnswer: z.string().nullable(),
+  explanation: z.string().nullable(),
+});
+export const yandexPlatformMockAttemptSchema = z.object({
+  id: z.string(),
+  dayId: yandexMockDayIdSchema,
+  status: yandexMockStatusSchema,
+  durationMinutes: z.number(),
+  startedAt: z.string(),
+  completedAt: z.string().nullable(),
+  score: z.number().nullable(),
+  questions: z.array(yandexPlatformMockQuestionSchema),
+});
+
 export const interviewSessionModeSchema = z.enum(["express", "full"]);
 export const interviewSessionCompanySchema = z.enum(["general", "yandex", "ozon"]);
 export const interviewSessionStatusSchema = z.enum([
@@ -629,6 +657,15 @@ export type AiLessonQuestionContext = z.infer<typeof aiLessonQuestionContextSche
 export type MockQuestionEvaluation = z.infer<typeof mockQuestionEvaluationSchema>;
 export type MockInterviewEvaluation = z.infer<typeof mockInterviewEvaluationSchema>;
 export type MockInterview = z.infer<typeof mockInterviewSchema>;
+export type YandexMockDayId = z.infer<typeof yandexMockDayIdSchema>;
+export type YandexMockStatus = z.infer<typeof yandexMockStatusSchema>;
+export type YandexMockVerdict = z.infer<typeof yandexMockVerdictSchema>;
+export type YandexPlatformMockQuestion = z.infer<
+  typeof yandexPlatformMockQuestionSchema
+>;
+export type YandexPlatformMockAttempt = z.infer<
+  typeof yandexPlatformMockAttemptSchema
+>;
 export type InterviewSessionMode = z.infer<typeof interviewSessionModeSchema>;
 export type InterviewSessionCompany = z.infer<typeof interviewSessionCompanySchema>;
 export type InterviewSessionStatus = z.infer<typeof interviewSessionStatusSchema>;

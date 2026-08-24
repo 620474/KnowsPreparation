@@ -863,4 +863,69 @@ describe("Learning API", () => {
 
     expect(response.body.answers[questionId]).toBe("");
   });
+
+  it("runs a Yandex platform mock without leaking answers before prediction", async () => {
+    const started = await request(app.getHttpServer())
+      .post("/api/v1/learning/yandex-platform-mocks/yandex-d07")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(201);
+
+    expect(started.body).toMatchObject({
+      dayId: "yandex-d07",
+      status: "in_progress",
+      durationMinutes: 60,
+      score: null,
+    });
+    expect(started.body.questions).toHaveLength(6);
+    expect(
+      started.body.questions.every(
+        (question: { expectedAnswer: string | null }) =>
+          question.expectedAnswer === null,
+      ),
+    ).toBe(true);
+
+    let attempt = started.body;
+    for (const [index, question] of attempt.questions.entries()) {
+      attempt = (
+        await request(app.getHttpServer())
+          .put(
+            `/api/v1/learning/yandex-platform-mocks/attempts/${attempt.id}/questions/${question.id}`,
+          )
+          .set("Authorization", `Bearer ${token}`)
+          .send({ response: `Мой прогноз ${index + 1}` })
+          .expect(200)
+      ).body;
+      expect(attempt.questions[index].expectedAnswer).toBeTruthy();
+
+      attempt = (
+        await request(app.getHttpServer())
+          .put(
+            `/api/v1/learning/yandex-platform-mocks/attempts/${attempt.id}/questions/${question.id}/grade`,
+          )
+          .set("Authorization", `Bearer ${token}`)
+          .send({ verdict: index < 4 ? "correct" : "incorrect" })
+          .expect(200)
+      ).body;
+    }
+
+    const completed = await request(app.getHttpServer())
+      .post(
+        `/api/v1/learning/yandex-platform-mocks/attempts/${attempt.id}/complete`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .expect(201);
+    expect(completed.body).toMatchObject({
+      status: "completed",
+      score: 67,
+    });
+
+    const restored = await request(app.getHttpServer())
+      .get("/api/v1/learning/yandex-platform-mocks/yandex-d07")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(restored.body.id).toBe(attempt.id);
+    expect(restored.body.questions.every(
+      (question: { explanation: string | null }) => Boolean(question.explanation),
+    )).toBe(true);
+  });
 });

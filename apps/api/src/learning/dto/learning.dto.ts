@@ -248,6 +248,18 @@ export class UpdateMockAnswerDto {
   content!: string;
 }
 
+export class SaveYandexMockResponseDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  response!: string;
+}
+
+export class GradeYandexMockResponseDto {
+  @IsIn(["correct", "incorrect"])
+  verdict!: "correct" | "incorrect";
+}
+
 export class StartInterviewSessionDto {
   @IsIn(INTERVIEW_SESSION_MODES)
   mode!: InterviewSessionMode;

@@ -6,6 +6,7 @@ import {
   practiceAttemptHistorySchema,
   practiceAttemptSchema,
   practiceSolutionSaveResultSchema,
+  yandexPlatformMockAttemptSchema,
 } from "@prep/contracts";
 import { z } from "zod";
 import {
@@ -38,6 +39,9 @@ import type {
   TaskProgress,
   TaskProgressPatch,
   TrackKey,
+  YandexMockDayId,
+  YandexMockVerdict,
+  YandexPlatformMockAttempt,
   AppSettings,
   SettingsPatch,
 } from "./types";
@@ -355,6 +359,37 @@ export const learningApi = {
       { method: "POST", body: form },
     );
   },
+  getYandexPlatformMock: (dayId: YandexMockDayId) =>
+    request<unknown>(`/learning/yandex-platform-mocks/${dayId}`).then((result) =>
+      result === null ? null : yandexPlatformMockAttemptSchema.parse(result),
+    ),
+  startYandexPlatformMock: (dayId: YandexMockDayId) =>
+    request<YandexPlatformMockAttempt>(`/learning/yandex-platform-mocks/${dayId}`, {
+      method: "POST",
+    }).then((result) => yandexPlatformMockAttemptSchema.parse(result)),
+  saveYandexPlatformMockResponse: (
+    attemptId: string,
+    questionId: string,
+    response: string,
+  ) =>
+    request<YandexPlatformMockAttempt>(
+      `/learning/yandex-platform-mocks/attempts/${encodeURIComponent(attemptId)}/questions/${encodeURIComponent(questionId)}`,
+      { method: "PUT", body: JSON.stringify({ response }) },
+    ).then((result) => yandexPlatformMockAttemptSchema.parse(result)),
+  gradeYandexPlatformMockResponse: (
+    attemptId: string,
+    questionId: string,
+    verdict: YandexMockVerdict,
+  ) =>
+    request<YandexPlatformMockAttempt>(
+      `/learning/yandex-platform-mocks/attempts/${encodeURIComponent(attemptId)}/questions/${encodeURIComponent(questionId)}/grade`,
+      { method: "PUT", body: JSON.stringify({ verdict }) },
+    ).then((result) => yandexPlatformMockAttemptSchema.parse(result)),
+  completeYandexPlatformMock: (attemptId: string) =>
+    request<YandexPlatformMockAttempt>(
+      `/learning/yandex-platform-mocks/attempts/${encodeURIComponent(attemptId)}/complete`,
+      { method: "POST" },
+    ).then((result) => yandexPlatformMockAttemptSchema.parse(result)),
   getCurrentInterviewSession: () =>
     request<unknown>("/learning/interview-sessions/current").then((result) =>
       result === null ? null : interviewSessionSchema.parse(result),

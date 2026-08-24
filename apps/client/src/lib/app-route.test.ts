@@ -72,4 +72,15 @@ describe("app routes", () => {
     expect(viewForTrack("yandex")).toBe("yandex");
     expect(viewForTrack("ozon")).toBe("ozon");
   });
+
+  it("round-trips a Yandex platform mock route", () => {
+    const route = {
+      view: "yandex" as const,
+      lessonReader: null,
+      dayReader: { track: "yandex" as const, dayId: "yandex-d07" },
+      yandexMockDayId: "yandex-d07",
+    };
+    expect(formatAppRoute(route)).toBe("#/yandex/mock/yandex-d07");
+    expect(parseAppRoute("#/yandex/mock/yandex-d07")).toEqual(route);
+  });
 });

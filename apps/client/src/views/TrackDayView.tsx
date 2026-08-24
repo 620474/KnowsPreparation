@@ -10,6 +10,7 @@ import {
   Clock3,
   ListChecks,
   MessageCircle,
+  Play,
   Sparkles,
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ interface TrackDayViewProps {
   onOpenLesson: (blockId: string) => void;
   onOpenQuiz: (blockId: string) => void;
   onOpenChat: (blockId: string) => void;
+  onOpenPlatformMock?: (dayId: string) => void;
   onReviewSolution: (blockId: string, draft: string) => void;
   onUpdateTask: TaskUpdateHandler;
 }
@@ -59,6 +61,7 @@ export function TrackDayView({
   onOpenLesson,
   onOpenQuiz,
   onOpenChat,
+  onOpenPlatformMock,
   onReviewSolution,
   onUpdateTask,
 }: TrackDayViewProps) {
@@ -176,7 +179,11 @@ export function TrackDayView({
               ? quizProgress.attempts.at(-1)
               : undefined;
           const hasQuiz = lesson?.quiz.length === 10;
-          const supportsLesson = block.kind !== "review";
+          const isYandexPlatformMock =
+            track === "yandex" &&
+            ["yandex-d07", "yandex-d14", "yandex-d21"].includes(day.id) &&
+            block.id.endsWith("-platform");
+          const supportsLesson = block.kind !== "review" && !isYandexPlatformMock;
           const isGenerating = generatingLessonId === block.id;
 
           return (
@@ -207,6 +214,19 @@ export function TrackDayView({
               <div className="curriculum-block-content">
                 <p>{block.description}</p>
                 <ResourceLinks resourceIds={block.resourceIds} resources={data.resources} />
+
+                {isYandexPlatformMock && onOpenPlatformMock ? (
+                  <div className="curriculum-block-actions">
+                    <Button
+                      className="primary-button"
+                      leftSection={<Play size={16} />}
+                      type="button"
+                      onClick={() => onOpenPlatformMock(day.id)}
+                    >
+                      Начать платформенную секцию · 60 минут
+                    </Button>
+                  </div>
+                ) : null}
 
                 {supportsLesson && data.ai.enabled ? (
                   <div className="curriculum-block-actions">

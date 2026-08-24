@@ -12,6 +12,7 @@ import {
   studyExerciseRunnerSchema,
   trackKeySchema,
   TRACK_KEYS,
+  yandexPlatformMockAttemptSchema,
 } from "./index";
 
 describe("shared API contracts", () => {
@@ -149,5 +150,28 @@ describe("shared API contracts", () => {
       defenseAnswers: [],
       evaluation: null,
     }).currentStage).toBe("platform");
+  });
+
+  it("keeps hidden Yandex mock answers nullable until reveal", () => {
+    const attempt = yandexPlatformMockAttemptSchema.parse({
+      id: "attempt-1",
+      dayId: "yandex-d07",
+      status: "in_progress",
+      durationMinutes: 60,
+      startedAt: "2026-08-24T00:00:00.000Z",
+      completedAt: null,
+      score: null,
+      questions: [{
+        id: "question-1",
+        topic: "Scope",
+        prompt: "Что выведется?",
+        code: "console.log(value)",
+        response: "",
+        verdict: null,
+        expectedAnswer: null,
+        explanation: null,
+      }],
+    });
+    expect(attempt.questions[0]?.expectedAnswer).toBeNull();
   });
 });
