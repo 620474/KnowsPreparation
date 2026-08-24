@@ -189,12 +189,13 @@ export function MockInterviewView({
         <h1>{question.prompt}</h1>
         <Textarea
           value={answer}
-          onChange={(event) =>
+          onChange={(event) => {
+            const value = event.currentTarget.value;
             setDraftAnswers((current) => ({
               ...current,
-              [question.id]: event.currentTarget.value,
-            }))
-          }
+              [question.id]: value,
+            }));
+          }}
           minRows={10}
           maxLength={12_000}
           placeholder="Структурированный ответ, примеры и компромиссы…"

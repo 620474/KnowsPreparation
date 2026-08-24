@@ -84,12 +84,13 @@ export function ReviewView({ data, onBack, onReview }: ReviewViewProps) {
           label="Тезисы ответа"
           minRows={5}
           placeholder="Ключевые пункты, пример из опыта, что нужно уточнить…"
-          onChange={(event) =>
+          onChange={(event) => {
+            const value = event.currentTarget.value;
             setNotes((current) => ({
               ...current,
-              [item.question.id]: event.currentTarget.value,
-            }))
-          }
+              [item.question.id]: value,
+            }));
+          }}
         />
         <div className="review-rating-grid">
           {ratings.map((rating) => (

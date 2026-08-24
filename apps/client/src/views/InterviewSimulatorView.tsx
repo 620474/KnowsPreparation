@@ -306,17 +306,18 @@ export function InterviewSimulatorView() {
             maxLength={12_000}
             disabled={Boolean(activePlatformItem.followUpQuestion)}
             value={activePlatformDraft?.answer ?? ""}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.currentTarget.value;
               setPlatformDrafts((current) => ({
                 ...current,
                 [activePlatformItem.question.id]: {
-                  answer: event.currentTarget.value,
+                  answer: value,
                   followUpAnswer:
                     current[activePlatformItem.question.id]?.followUpAnswer ??
                     activePlatformItem.followUpAnswer,
                 },
-              }))
-            }
+              }));
+            }}
           />
           {activePlatformItem.followUpQuestion ? (
             <div className="interview-follow-up">
@@ -326,17 +327,18 @@ export function InterviewSimulatorView() {
                 minRows={5}
                 maxLength={12_000}
                 value={activePlatformDraft?.followUpAnswer ?? ""}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
                   setPlatformDrafts((current) => ({
                     ...current,
                     [activePlatformItem.question.id]: {
                       answer:
                         current[activePlatformItem.question.id]?.answer ??
                         activePlatformItem.answer,
-                      followUpAnswer: event.currentTarget.value,
+                      followUpAnswer: value,
                     },
-                  }))
-                }
+                  }));
+                }}
               />
             </div>
           ) : null}
@@ -443,7 +445,10 @@ export function InterviewSimulatorView() {
       {session.currentStage === "defense" && defenseIndex >= 0 ? (
         <section className="interview-stage-card">
           <div className="interview-stage-heading"><ShieldCheck /><div><span>Защита {defenseIndex + 1}/{session.defenseQuestions.length}</span><h2>{session.defenseQuestions[defenseIndex]}</h2></div></div>
-          <Textarea minRows={8} maxLength={12_000} value={defenseDrafts[defenseIndex] ?? session.defenseAnswers[defenseIndex] ?? ""} onChange={(event) => setDefenseDrafts((current) => ({ ...current, [defenseIndex]: event.currentTarget.value }))} />
+          <Textarea minRows={8} maxLength={12_000} value={defenseDrafts[defenseIndex] ?? session.defenseAnswers[defenseIndex] ?? ""} onChange={(event) => {
+            const value = event.currentTarget.value;
+            setDefenseDrafts((current) => ({ ...current, [defenseIndex]: value }));
+          }} />
           <AudioAnswerRecorder
             onTranscribe={(audio) => learningApi.transcribeInterviewAnswer(session.id, audio).then(({ text }) => text)}
             onTranscript={(text) => setDefenseDrafts((current) => ({ ...current, [defenseIndex]: [current[defenseIndex]?.trim() ?? session.defenseAnswers[defenseIndex]?.trim(), text].filter(Boolean).join("\n\n") }))}

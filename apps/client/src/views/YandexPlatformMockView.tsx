@@ -256,12 +256,13 @@ export function YandexPlatformMockView({
           maxLength={12_000}
           placeholder="Сначала назови результат, затем правило языка…"
           value={draft}
-          onChange={(event) =>
+          onChange={(event) => {
+            const value = event.currentTarget.value;
             setDrafts((current) => ({
               ...current,
-              [question.id]: event.currentTarget.value,
-            }))
-          }
+              [question.id]: value,
+            }));
+          }}
         />
 
         {question.expectedAnswer !== null ? (
