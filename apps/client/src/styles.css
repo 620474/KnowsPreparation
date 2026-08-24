@@ -544,6 +544,7 @@ p {
   position: absolute;
   right: -80px;
   bottom: -130px;
+  pointer-events: none;
   width: 320px;
   height: 320px;
   border: 1px solid rgba(107, 245, 176, 0.12);
