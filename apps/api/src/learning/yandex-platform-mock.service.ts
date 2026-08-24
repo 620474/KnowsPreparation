@@ -36,9 +36,10 @@ export class YandexPlatformMockService {
     const attempt = await this.attemptModel
       .findOne({ dayId })
       .sort({ status: -1, updatedAt: -1 })
-      .lean()
       .exec();
-    return attempt ? this.serialize(attempt) : null;
+    if (!attempt) return null;
+    await this.synchronizeActiveAttempt(attempt);
+    return this.serialize(attempt);
   }
 
   async start(dayIdValue: string): Promise<SerializedAttempt> {
@@ -47,7 +48,10 @@ export class YandexPlatformMockService {
       .findOne({ dayId, status: "in_progress" })
       .sort({ updatedAt: -1 })
       .exec();
-    if (current) return this.serialize(current);
+    if (current) {
+      await this.synchronizeActiveAttempt(current);
+      return this.serialize(current);
+    }
 
     const questions = getYandexPlatformMockQuestions(dayId);
     const attempt = await this.attemptModel.create({
@@ -141,6 +145,36 @@ export class YandexPlatformMockService {
     const answer = attempt.answers.find((item) => item.questionId === questionId);
     if (!answer) throw new NotFoundException("Вопрос не входит в эту попытку");
     return answer;
+  }
+
+  private async synchronizeActiveAttempt(
+    attempt: YandexPlatformMockAttemptDocument,
+  ) {
+    if (attempt.status !== "in_progress") return;
+    const questions = getYandexPlatformMockQuestions(attempt.dayId);
+    const existingAnswers = new Set(
+      attempt.answers.map((answer) => answer.questionId),
+    );
+    const missingQuestions = questions.filter(
+      (question) => !existingAnswers.has(question.id),
+    );
+    if (
+      missingQuestions.length === 0 &&
+      attempt.questionIds.length === questions.length
+    ) {
+      return;
+    }
+    attempt.questionIds = questions.map((question) => question.id);
+    attempt.answers.push(
+      ...missingQuestions.map((question) => ({
+        questionId: question.id,
+        response: "",
+        verdict: null,
+      })),
+    );
+    attempt.markModified("questionIds");
+    attempt.markModified("answers");
+    await attempt.save();
   }
 
   private serialize(

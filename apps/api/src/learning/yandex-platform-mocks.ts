@@ -85,6 +85,140 @@ console.log(state.count);`,
     expectedAnswer: "Возникнет TypeError на присваивании; console.log не выполнится.",
     explanation: "Свойство существует, но writable: false. В strict mode попытка записи приводит к TypeError вместо молчаливого игнорирования.",
   },
+  {
+    id: "d07-var-scope-07",
+    topic: "Области видимости var",
+    prompt: "Что выведется и почему переменная доступна за пределами блока?",
+    code: `function read() {
+  if (true) {
+    var value = 7;
+  }
+  console.log(value);
+}
+read();`,
+    expectedAnswer: "7",
+    explanation: "var имеет функциональную, а не блочную область видимости. Объявление поднимается в начало функции read.",
+  },
+  {
+    id: "d07-shadowing-08",
+    topic: "Лексические области",
+    prompt: "Что произойдёт при выполнении внутреннего блока?",
+    code: `const value = 1;
+{
+  console.log(value);
+  const value = 2;
+}`,
+    expectedAnswer: "ReferenceError на console.log.",
+    explanation: "Внутренний const затеняет внешний value на всём блоке, но до строки инициализации находится в TDZ.",
+  },
+  {
+    id: "d07-default-params-09",
+    topic: "Параметры по умолчанию",
+    prompt: "Вернёт ли функция значение или выбросит ошибку?",
+    code: `const value = 10;
+function read(value = value) {
+  return value;
+}
+console.log(read());`,
+    expectedAnswer: "ReferenceError при вычислении параметра по умолчанию.",
+    explanation: "Параметр value создаёт собственный binding и затеняет внешний. Его правая часть обращается к этому же неинициализированному binding.",
+  },
+  {
+    id: "d07-equality-10",
+    topic: "Равенство и coercion",
+    prompt: "Предскажи четыре булевых результата.",
+    code: `console.log(null == undefined);
+console.log(null == 0);
+console.log(false == 0);
+console.log([] == false);`,
+    expectedAnswer: "true, false, true, true",
+    explanation: "null неявно равен только undefined. false приводится к 0. Пустой массив превращается в пустую строку, затем в 0.",
+  },
+  {
+    id: "d07-symbol-11",
+    topic: "Symbol и перечисление",
+    prompt: "Какие ключи попадут в каждый вывод?",
+    code: `const token = Symbol("token");
+const data = { visible: 1, [token]: 2 };
+console.log(Object.keys(data));
+console.log(Reflect.ownKeys(data));`,
+    expectedAnswer: "Object.keys вернёт [\"visible\"]; Reflect.ownKeys вернёт [\"visible\", Symbol(token)].",
+    explanation: "Object.keys перечисляет только собственные enumerable string-ключи. Reflect.ownKeys включает также символы.",
+  },
+  {
+    id: "d07-freeze-12",
+    topic: "Object.freeze",
+    prompt: "Что выведется и почему заморозка не остановила изменение?",
+    code: `const state = Object.freeze({ nested: { count: 1 } });
+state.nested.count = 2;
+console.log(state.nested.count);`,
+    expectedAnswer: "2",
+    explanation: "Object.freeze действует поверхностно: ссылка nested защищена от замены, но сам вложенный объект не заморожен.",
+  },
+  {
+    id: "d07-getter-13",
+    topic: "Геттеры и this",
+    prompt: "Что выведет чтение свойства у наследника?",
+    code: `const base = {
+  value: 2,
+  get doubled() { return this.value * 2; },
+};
+const child = Object.create(base);
+child.value = 5;
+console.log(child.doubled);`,
+    expectedAnswer: "10",
+    explanation: "Геттер найден в прототипе, но вызывается с receiver child, поэтому this.value равно 5.",
+  },
+  {
+    id: "d07-delete-14",
+    topic: "configurable",
+    prompt: "Что произойдёт при удалении свойства в строгом режиме?",
+    code: `"use strict";
+const data = {};
+Object.defineProperty(data, "id", { value: 1 });
+delete data.id;
+console.log(data.id);`,
+    expectedAnswer: "TypeError на delete; console.log не выполнится.",
+    explanation: "У defineProperty configurable по умолчанию false. В strict mode удаление такого свойства выбрасывает TypeError.",
+  },
+  {
+    id: "d07-instanceof-15",
+    topic: "instanceof",
+    prompt: "Почему две проверки дадут разные результаты?",
+    code: `function Box() {}
+const first = new Box();
+Box.prototype = {};
+const second = new Box();
+console.log(first instanceof Box, second instanceof Box);`,
+    expectedAnswer: "false true",
+    explanation: "instanceof ищет текущий Box.prototype в цепочке объекта. first связан со старым prototype, second — с новым.",
+  },
+  {
+    id: "d07-array-holes-16",
+    topic: "Разреженные массивы",
+    prompt: "Сколько раз вызовется callback и какой массив получится?",
+    code: `const source = [1, , 3];
+let calls = 0;
+const result = source.map((value) => {
+  calls += 1;
+  return value * 2;
+});
+console.log(calls, result.length, 1 in result);`,
+    expectedAnswer: "2 3 false",
+    explanation: "map пропускает отсутствующие элементы, но сохраняет длину и hole на той же позиции.",
+  },
+  {
+    id: "d07-json-17",
+    topic: "JSON-сериализация",
+    prompt: "Какая строка получится после JSON.stringify?",
+    code: `const value = {
+  missing: undefined,
+  list: [undefined, function run() {}, Symbol("x")],
+};
+console.log(JSON.stringify(value));`,
+    expectedAnswer: "{\"list\":[null,null,null]}",
+    explanation: "Непредставимые значения в объектах пропускаются, а в массивах заменяются на null для сохранения индексов.",
+  },
 ];
 
 const dayFourteen: YandexPlatformMockQuestionDefinition[] = [
@@ -159,6 +293,144 @@ setTimeout(() => console.log("timer"), 0);
 repeat();`,
     expectedAnswer: "В обычной модели timer не получит управление, потому что checkpoint микрозадач никогда не завершится.",
     explanation: "Каждая микрозадача добавляет следующую. Очередь не опустошается, поэтому event loop не переходит к следующей task и рендерингу.",
+  },
+  {
+    id: "d14-constructor-07",
+    topic: "Promise constructor",
+    prompt: "Запиши точный порядок вывода.",
+    code: `console.log("A");
+new Promise((resolve) => {
+  console.log("B");
+  resolve();
+}).then(() => console.log("C"));
+console.log("D");`,
+    expectedAnswer: "A B D C",
+    explanation: "Executor Promise вызывается синхронно. Callback then выполняется позже как микрозадача.",
+  },
+  {
+    id: "d14-catch-08",
+    topic: "Обработка ошибок Promise",
+    prompt: "Будет ли ошибка обработана этим catch?",
+    code: `Promise.reject(new Error("first"))
+  .catch(() => { throw new Error("second"); })
+  .then(
+    () => console.log("ok"),
+    (error) => console.log(error.message),
+  );`,
+    expectedAnswer: "Будет выведено second.",
+    explanation: "Первый catch обрабатывает исходный reject, но сам выбрасывает новую ошибку. Следующий then получает её во второй обработчик.",
+  },
+  {
+    id: "d14-thenable-09",
+    topic: "Thenable assimilation",
+    prompt: "Какое значение получит then и почему?",
+    code: `const thenable = {
+  then(resolve) {
+    resolve(1);
+    resolve(2);
+  },
+};
+Promise.resolve(thenable).then(console.log);`,
+    expectedAnswer: "1",
+    explanation: "Promise принимает только первый переход состояния. Повторный вызов resolve игнорируется.",
+  },
+  {
+    id: "d14-all-10",
+    topic: "Promise.all",
+    prompt: "Что попадёт в обработчики и дождётся ли Promise.all таймера?",
+    code: `const slow = new Promise((resolve) => setTimeout(() => resolve("slow"), 20));
+Promise.all([slow, Promise.reject("fail")])
+  .then(console.log)
+  .catch(console.log);`,
+    expectedAnswer: "catch выведет fail, не дожидаясь выполнения slow.",
+    explanation: "Promise.all отклоняется при первом rejected-элементе. Сам slow не отменяется и продолжит выполняться отдельно.",
+  },
+  {
+    id: "d14-any-11",
+    topic: "Promise.any",
+    prompt: "Чем завершится операция и что содержит ошибка?",
+    code: `Promise.any([
+  Promise.reject("A"),
+  Promise.reject("B"),
+]).catch((error) => {
+  console.log(error.name, error.errors);
+});`,
+    expectedAnswer: "AggregateError [\"A\", \"B\"]",
+    explanation: "Promise.any отклоняется только когда отклонены все входы, и собирает причины в AggregateError.errors.",
+  },
+  {
+    id: "d14-async-return-12",
+    topic: "Возврат async-функции",
+    prompt: "Что выведется и каким объектом является result?",
+    code: `async function read() {
+  return 5;
+}
+const result = read();
+console.log(result instanceof Promise);
+result.then(console.log);`,
+    expectedAnswer: "Сначала true, затем 5.",
+    explanation: "async-функция всегда возвращает Promise; обычное значение автоматически становится fulfilled-результатом.",
+  },
+  {
+    id: "d14-await-reject-13",
+    topic: "Ошибки async/await",
+    prompt: "Какой вывод получится после отклонения Promise?",
+    code: `async function run() {
+  try {
+    await Promise.reject("fail");
+    console.log("after");
+  } catch (error) {
+    console.log(error);
+  }
+}
+run();`,
+    expectedAnswer: "fail",
+    explanation: "Отклонённый Promise в await ведёт себя как throw. Строка after пропускается, управление переходит в catch.",
+  },
+  {
+    id: "d14-nested-microtasks-14",
+    topic: "Очередь микрозадач",
+    prompt: "Запиши точный порядок вывода вложенных микрозадач.",
+    code: `queueMicrotask(() => {
+  console.log("A");
+  queueMicrotask(() => console.log("C"));
+});
+Promise.resolve().then(() => console.log("B"));`,
+    expectedAnswer: "A B C",
+    explanation: "A уже стоит первой. Во время её выполнения C добавляется в конец очереди после ранее поставленной B.",
+  },
+  {
+    id: "d14-timer-nesting-15",
+    topic: "Tasks и microtasks",
+    prompt: "Запиши порядок вывода двух таймеров и Promise.",
+    code: `setTimeout(() => {
+  console.log("timer 1");
+  Promise.resolve().then(() => console.log("promise"));
+}, 0);
+setTimeout(() => console.log("timer 2"), 0);`,
+    expectedAnswer: "timer 1, promise, timer 2",
+    explanation: "После каждой task движок опустошает очередь микрозадач, поэтому promise выполняется до следующего таймера.",
+  },
+  {
+    id: "d14-foreach-16",
+    topic: "async callback в forEach",
+    prompt: "Почему done выводится раньше чисел и ждёт ли forEach callback?",
+    code: `[1, 2].forEach(async (value) => {
+  await Promise.resolve();
+  console.log(value);
+});
+console.log("done");`,
+    expectedAnswer: "done, затем 1 и 2.",
+    explanation: "forEach не использует возвращённые Promise. Оба callback доходят до await, а синхронный код продолжает выполнение.",
+  },
+  {
+    id: "d14-race-17",
+    topic: "Promise.race",
+    prompt: "Какое значение победит, учитывая уже выполненный Promise?",
+    code: `const timer = new Promise((resolve) => setTimeout(() => resolve("timer"), 0));
+Promise.race([timer, Promise.resolve("ready")]).then(console.log);`,
+    expectedAnswer: "ready",
+    explanation: "Оба результата доставляются асинхронно, но reaction уже fulfilled Promise ставится в микрозадачи раньше callback таймера.",
   },
 ];
 
@@ -244,6 +516,135 @@ promise.then(console.log);`,
 }`,
     expectedAnswer: "Все вызовы используют count равный 0 и запрашивают значение 1. Нужно setCount((current) => current + 1).",
     explanation: "Каждый render создаёт снимок состояния для своих обработчиков. Functional updater последовательно получает актуальное промежуточное значение очереди обновлений.",
+  },
+  {
+    id: "d21-batching-07",
+    topic: "React batching",
+    prompt: "Какое значение будет после клика и почему обновления не потеряются?",
+    code: `function Counter() {
+  const [count, setCount] = useState(0);
+  const click = () => {
+    setCount((value) => value + 1);
+    setCount((value) => value + 1);
+    setCount((value) => value + 1);
+  };
+}`,
+    expectedAnswer: "После одного click значение станет 3.",
+    explanation: "Functional updater получает результат предыдущего обновления в очереди: 0 → 1 → 2 → 3, даже если React объединяет рендеры.",
+  },
+  {
+    id: "d21-effect-cleanup-08",
+    topic: "React useEffect",
+    prompt: "В каком порядке выполнятся effect и cleanup при смене id, а затем размонтировании?",
+    code: `useEffect(() => {
+  console.log("subscribe", id);
+  return () => console.log("unsubscribe", id);
+}, [id]);`,
+    expectedAnswer: "Для первого id: subscribe. При смене: unsubscribe старого id, затем subscribe нового. При unmount: unsubscribe нового.",
+    explanation: "Перед запуском нового effect React вызывает cleanup предыдущего, а при размонтировании очищает последний активный effect.",
+  },
+  {
+    id: "d21-memo-09",
+    topic: "React.memo",
+    prompt: "Почему Child всё равно перерисуется при каждом рендере Parent?",
+    code: `const Child = memo(function Child({ options }) {
+  return <div>{options.limit}</div>;
+});
+function Parent() {
+  const options = { limit: 10 };
+  return <Child options={options} />;
+}`,
+    expectedAnswer: "На каждом рендере Parent создаётся новый объект options, поэтому поверхностное сравнение React.memo видит изменившийся prop.",
+    explanation: "React.memo сравнивает ссылки. Стабилизировать объект можно useMemo, если повторный рендер Child действительно дорогой.",
+  },
+  {
+    id: "d21-destructuring-10",
+    topic: "Деструктуризация",
+    prompt: "Какие значения будут у first и second?",
+    code: `const { first = 1, second = 2 } = {
+  first: null,
+  second: undefined,
+};
+console.log(first, second);`,
+    expectedAnswer: "null 2",
+    explanation: "Значение по умолчанию применяется только при undefined. null считается явно переданным значением.",
+  },
+  {
+    id: "d21-optional-chain-11",
+    topic: "Optional chaining",
+    prompt: "Чем различаются два выражения?",
+    code: `const user = null;
+console.log(user?.profile?.name);
+console.log((user?.profile).name);`,
+    expectedAnswer: "Первый console.log выведет undefined; второй выбросит TypeError.",
+    explanation: "Непрерывная optional chain безопасно останавливается. Скобки завершают цепочку, после чего .name читается у undefined.",
+  },
+  {
+    id: "d21-map-12",
+    topic: "Map и идентичность ключей",
+    prompt: "Что выведется и почему одинаковая форма объектов не делает ключи равными?",
+    code: `const map = new Map();
+map.set({ id: 1 }, "value");
+console.log(map.get({ id: 1 }), map.size);`,
+    expectedAnswer: "undefined 1",
+    explanation: "Объектные ключи Map сравниваются по идентичности ссылки. Второй литерал создаёт другой объект.",
+  },
+  {
+    id: "d21-set-13",
+    topic: "Set и SameValueZero",
+    prompt: "Какой размер Set и какие проверки истинны?",
+    code: `const values = new Set([NaN, NaN, 0, -0]);
+console.log(values.size, values.has(NaN), values.has(-0));`,
+    expectedAnswer: "2 true true",
+    explanation: "Set использует SameValueZero: NaN равен NaN, а +0 и -0 считаются одним значением.",
+  },
+  {
+    id: "d21-private-14",
+    topic: "Приватные поля классов",
+    prompt: "Можно ли вызвать метод с чужим receiver?",
+    code: `class Counter {
+  #value = 1;
+  read() { return this.#value; }
+}
+const counter = new Counter();
+console.log(counter.read.call({}));`,
+    expectedAnswer: "TypeError",
+    explanation: "Доступ к #value выполняет brand check. Обычный объект не является экземпляром с приватным полем Counter.",
+  },
+  {
+    id: "d21-proxy-15",
+    topic: "Proxy и Reflect",
+    prompt: "Что выведется и зачем передавать receiver в Reflect.get?",
+    code: `const target = {
+  value: 2,
+  get doubled() { return this.value * 2; },
+};
+const proxy = new Proxy(target, {
+  get(object, key, receiver) {
+    return Reflect.get(object, key, receiver);
+  },
+});
+proxy.value = 5;
+console.log(proxy.doubled);`,
+    expectedAnswer: "10",
+    explanation: "Reflect.get вызывает геттер с receiver proxy. Поэтому this.value читается через proxy и равно 5.",
+  },
+  {
+    id: "d21-clone-16",
+    topic: "structuredClone",
+    prompt: "Какие сравнения истинны после глубокого клонирования?",
+    code: `const source = {
+  date: new Date("2020-01-01"),
+  nested: { value: 1 },
+};
+const copy = structuredClone(source);
+console.log(
+  copy !== source,
+  copy.nested !== source.nested,
+  copy.date instanceof Date,
+);`,
+    expectedAnswer: "true true true",
+    explanation: "structuredClone создаёт новые вложенные объекты и сохраняет поддерживаемые встроенные типы, включая Date.",
   },
 ];
 

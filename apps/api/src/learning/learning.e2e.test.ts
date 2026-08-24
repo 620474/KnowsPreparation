@@ -15,6 +15,7 @@ import { AiContentService } from "./ai-content.service";
 import { getStaticRunnerValidationCases } from "./exercise-runners";
 import { LearningModule } from "./learning.module";
 import { AiLesson } from "./schemas/ai-course.schema";
+import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
 import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
 
@@ -25,6 +26,7 @@ describe("Learning API", () => {
   let connection: Connection;
   let mongo: MongoMemoryServer;
   let lessonModel: Model<AiLesson>;
+  let yandexMockAttemptModel: Model<YandexPlatformMockAttempt>;
   let token: string;
 
   beforeAll(async () => {
@@ -63,6 +65,9 @@ describe("Learning API", () => {
     connection = app.get<Connection>(getConnectionToken());
     await connection.syncIndexes();
     lessonModel = app.get<Model<AiLesson>>(getModelToken(AiLesson.name));
+    yandexMockAttemptModel = app.get<Model<YandexPlatformMockAttempt>>(
+      getModelToken(YandexPlatformMockAttempt.name),
+    );
 
     const loginResponse = await request(app.getHttpServer())
       .post("/api/v1/auth/login")
@@ -876,7 +881,7 @@ describe("Learning API", () => {
       durationMinutes: 60,
       score: null,
     });
-    expect(started.body.questions).toHaveLength(6);
+    expect(started.body.questions).toHaveLength(17);
     expect(
       started.body.questions.every(
         (question: { expectedAnswer: string | null }) =>
@@ -916,7 +921,7 @@ describe("Learning API", () => {
       .expect(201);
     expect(completed.body).toMatchObject({
       status: "completed",
-      score: 67,
+      score: 24,
     });
 
     const restored = await request(app.getHttpServer())
@@ -927,5 +932,46 @@ describe("Learning API", () => {
     expect(restored.body.questions.every(
       (question: { explanation: string | null }) => Boolean(question.explanation),
     )).toBe(true);
+  });
+
+  it("extends an active Yandex mock without losing saved answers", async () => {
+    const started = await request(app.getHttpServer())
+      .post("/api/v1/learning/yandex-platform-mocks/yandex-d07")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(201);
+    const firstQuestion = started.body.questions[0] as { id: string };
+    await request(app.getHttpServer())
+      .put(
+        `/api/v1/learning/yandex-platform-mocks/attempts/${started.body.id}/questions/${firstQuestion.id}`,
+      )
+      .set("Authorization", `Bearer ${token}`)
+      .send({ response: "Сохранённый прогноз" })
+      .expect(200);
+
+    await yandexMockAttemptModel.updateOne(
+      { _id: started.body.id },
+      {
+        $set: {
+          questionIds: started.body.questions
+            .slice(0, 6)
+            .map((question: { id: string }) => question.id),
+          answers: started.body.questions.slice(0, 6).map(
+            (question: { id: string }, index: number) => ({
+              questionId: question.id,
+              response: index === 0 ? "Сохранённый прогноз" : "",
+              verdict: null,
+            }),
+          ),
+        },
+      },
+    );
+
+    const restored = await request(app.getHttpServer())
+      .get("/api/v1/learning/yandex-platform-mocks/yandex-d07")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(restored.body.questions).toHaveLength(17);
+    expect(restored.body.questions[0].response).toBe("Сохранённый прогноз");
+    expect(restored.body.questions[16].response).toBe("");
   });
 });
