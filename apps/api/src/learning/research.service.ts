@@ -3,11 +3,13 @@ import { randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import {
+  EMPTY_RESEARCH_PROTOCOL,
   RESEARCH_QUALITY_GATE_KEYS,
   RESEARCH_STAGE_KEYS,
   createResearchClaimSchema,
   createResearchEvidenceSchema,
   createResearchProjectSchema,
+  updateResearchActionSchema,
   updateResearchClaimSchema,
   updateResearchEvidenceSchema,
   updateResearchProjectSchema,
@@ -15,6 +17,7 @@ import {
   type CreateResearchEvidence,
   type CreateResearchProject,
   type ResearchClaim,
+  type ResearchAction,
   type ResearchEvidence,
   type ResearchProject,
   type UpdateResearchClaim,
@@ -27,6 +30,9 @@ import type { ZodType } from "zod";
 import { ResearchClaimEntry } from "./schemas/research-claim.schema";
 import { ResearchEvidenceEntry } from "./schemas/research-evidence.schema";
 import { ResearchProject as ResearchProjectEntry } from "./schemas/research-project.schema";
+import { calculateResearchMetrics } from "./research-quality";
+import { ResearchActionEntry } from "../research/schemas/research-action.schema";
+import { ResearchAgentRunEntry } from "../research/schemas/research-agent-run.schema";
 
 const parsePayload = <T>(schema: ZodType<T>, value: unknown): T => {
   const result = schema.safeParse(value);
@@ -47,6 +53,7 @@ const serializeProject = (project: ResearchProjectEntry): ResearchProject => ({
   startDate: project.startDate,
   targetDate: project.targetDate,
   nextAction: project.nextAction,
+  protocol: { ...EMPTY_RESEARCH_PROTOCOL, ...project.protocol },
   stages: project.stages,
   qualityGates: project.qualityGates,
   risks: project.risks,
@@ -64,6 +71,13 @@ const serializeEvidence = (entry: ResearchEvidenceEntry): ResearchEvidence => ({
   stance: entry.stance,
   quality: entry.quality,
   notes: entry.notes,
+  sourceKind: entry.sourceKind ?? "unassessed",
+  author: entry.author ?? "",
+  publishedAt: entry.publishedAt ?? null,
+  accessedAt: entry.accessedAt ?? null,
+  originId: entry.originId ?? "",
+  independence: entry.independence ?? "unknown",
+  freshness: entry.freshness ?? "unassessed",
   createdAt: entry.createdAt.toISOString(),
   updatedAt: entry.updatedAt.toISOString(),
 });
@@ -74,9 +88,25 @@ const serializeClaim = (entry: ResearchClaimEntry): ResearchClaim => ({
   text: entry.text,
   status: entry.status,
   confidence: entry.confidence,
-  evidenceIds: entry.evidenceIds,
+  evidenceIds: entry.evidenceIds ?? [],
+  evidenceLinks: entry.evidenceLinks ?? [],
   alternativeExplanations: entry.alternativeExplanations,
   uncertainty: entry.uncertainty,
+  createdAt: entry.createdAt.toISOString(),
+  updatedAt: entry.updatedAt.toISOString(),
+});
+
+const serializeAction = (entry: ResearchActionEntry): ResearchAction => ({
+  actionId: entry.actionId,
+  projectId: entry.projectId,
+  runId: entry.runId,
+  type: entry.type,
+  title: entry.title,
+  reason: entry.reason,
+  expectedOutcome: entry.expectedOutcome,
+  priority: entry.priority,
+  payload: entry.payload ?? {},
+  status: entry.status,
   createdAt: entry.createdAt.toISOString(),
   updatedAt: entry.updatedAt.toISOString(),
 });
@@ -90,6 +120,10 @@ export class ResearchService {
     private readonly evidenceModel: Model<ResearchEvidenceEntry>,
     @InjectModel(ResearchClaimEntry.name)
     private readonly claimModel: Model<ResearchClaimEntry>,
+    @InjectModel(ResearchActionEntry.name)
+    private readonly actionModel: Model<ResearchActionEntry>,
+    @InjectModel(ResearchAgentRunEntry.name)
+    private readonly agentRunModel: Model<ResearchAgentRunEntry>,
   ) {}
 
   async listProjects() {
@@ -98,15 +132,25 @@ export class ResearchService {
   }
 
   async getWorkspace(projectId: string) {
-    const [project, evidence, claims] = await Promise.all([
+    const [project, evidence, claims, actions] = await Promise.all([
       this.requireProject(projectId),
       this.evidenceModel.find({ projectId }).sort({ updatedAt: -1 }).exec(),
       this.claimModel.find({ projectId }).sort({ updatedAt: -1 }).exec(),
+      this.actionModel.find({ projectId }).sort({ priority: -1, updatedAt: -1 }).exec(),
     ]);
+    const serializedProject = serializeProject(project);
+    const serializedEvidence = evidence.map(serializeEvidence);
+    const serializedClaims = claims.map(serializeClaim);
     return {
-      project: serializeProject(project),
-      evidence: evidence.map(serializeEvidence),
-      claims: claims.map(serializeClaim),
+      project: serializedProject,
+      evidence: serializedEvidence,
+      claims: serializedClaims,
+      actions: actions.map(serializeAction),
+      metrics: calculateResearchMetrics(
+        serializedProject,
+        serializedEvidence,
+        serializedClaims,
+      ),
     };
   }
 
@@ -144,6 +188,8 @@ export class ResearchService {
     await Promise.all([
       this.evidenceModel.deleteMany({ projectId }).exec(),
       this.claimModel.deleteMany({ projectId }).exec(),
+      this.actionModel.deleteMany({ projectId }).exec(),
+      this.agentRunModel.deleteMany({ projectId }).exec(),
     ]);
     return { deleted: true };
   }
@@ -177,13 +223,17 @@ export class ResearchService {
       { projectId, evidenceIds: evidenceId },
       { $pull: { evidenceIds: evidenceId } },
     ).exec();
+    await this.claimModel.updateMany(
+      { projectId, "evidenceLinks.evidenceId": evidenceId },
+      { $pull: { evidenceLinks: { evidenceId } } },
+    ).exec();
     return { deleted: true };
   }
 
   async createClaim(projectId: string, value: unknown) {
     await this.requireProject(projectId);
     const input = parsePayload<CreateResearchClaim>(createResearchClaimSchema, value);
-    await this.validateEvidenceIds(projectId, input.evidenceIds);
+    await this.validateClaimEvidence(projectId, input.evidenceIds, input.evidenceLinks);
     const entry = await this.claimModel.create({
       ...input,
       projectId,
@@ -194,7 +244,11 @@ export class ResearchService {
 
   async updateClaim(projectId: string, claimId: string, value: unknown) {
     const patch = parsePayload<UpdateResearchClaim>(updateResearchClaimSchema, value);
-    if (patch.evidenceIds) await this.validateEvidenceIds(projectId, patch.evidenceIds);
+    await this.validateClaimEvidence(
+      projectId,
+      patch.evidenceIds ?? [],
+      patch.evidenceLinks ?? [],
+    );
     const entry = await this.claimModel.findOneAndUpdate(
       { projectId, claimId },
       { $set: patch },
@@ -208,6 +262,17 @@ export class ResearchService {
     const entry = await this.claimModel.findOneAndDelete({ projectId, claimId }).exec();
     if (!entry) throw new NotFoundException("Вывод не найден");
     return { deleted: true };
+  }
+
+  async updateActionStatus(projectId: string, actionId: string, value: unknown) {
+    const { status } = parsePayload(updateResearchActionSchema, value);
+    const action = await this.actionModel.findOneAndUpdate(
+      { projectId, actionId },
+      { $set: { status } },
+      { returnDocument: "after", runValidators: true },
+    ).exec();
+    if (!action) throw new NotFoundException("Действие исследования не найдено");
+    return serializeAction(action);
   }
 
   private async requireProject(projectId: string) {
@@ -225,5 +290,17 @@ export class ResearchService {
     if (count !== new Set(evidenceIds).size) {
       throw new BadRequestException("Один из выбранных источников не найден");
     }
+  }
+
+  private async validateClaimEvidence(
+    projectId: string,
+    evidenceIds: string[],
+    evidenceLinks: Array<{ evidenceId: string }>,
+  ) {
+    const linkedIds = evidenceLinks.map((link) => link.evidenceId);
+    if (new Set(linkedIds).size !== linkedIds.length) {
+      throw new BadRequestException("Один источник нельзя связать с выводом дважды");
+    }
+    await this.validateEvidenceIds(projectId, [...evidenceIds, ...linkedIds]);
   }
 }

@@ -24,6 +24,9 @@ export class ResearchClaimEntry {
   @Prop({ type: [String], default: [] })
   evidenceIds!: string[];
 
+  @Prop({ type: [Object], default: [] })
+  evidenceLinks!: ResearchClaim["evidenceLinks"];
+
   @Prop({ default: "" })
   alternativeExplanations!: string;
 

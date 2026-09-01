@@ -3,6 +3,7 @@ import type {
   ResearchDesign,
   ResearchMilestone,
   ResearchProjectStatus,
+  ResearchProtocol,
   ResearchQualityGate,
   ResearchRisk,
   ResearchStage,
@@ -42,6 +43,9 @@ export class ResearchProject {
 
   @Prop({ default: "" })
   nextAction!: string;
+
+  @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
+  protocol!: ResearchProtocol;
 
   @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
   stages!: ResearchStage[];

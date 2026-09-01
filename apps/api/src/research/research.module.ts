@@ -16,6 +16,15 @@ import {
   ResearchProjectSchema,
 } from "../learning/schemas/research-project.schema";
 import { ResearchController } from "./research.controller";
+import { ResearchAgentService } from "./research-agent.service";
+import {
+  ResearchAgentRunEntry,
+  ResearchAgentRunEntrySchema,
+} from "./schemas/research-agent-run.schema";
+import {
+  ResearchActionEntry,
+  ResearchActionEntrySchema,
+} from "./schemas/research-action.schema";
 
 @Module({
   imports: [
@@ -24,10 +33,12 @@ import { ResearchController } from "./research.controller";
       { name: ResearchProject.name, schema: ResearchProjectSchema },
       { name: ResearchEvidenceEntry.name, schema: ResearchEvidenceEntrySchema },
       { name: ResearchClaimEntry.name, schema: ResearchClaimEntrySchema },
+      { name: ResearchAgentRunEntry.name, schema: ResearchAgentRunEntrySchema },
+      { name: ResearchActionEntry.name, schema: ResearchActionEntrySchema },
     ]),
   ],
   controllers: [ResearchController],
-  providers: [ResearchService],
+  providers: [ResearchService, ResearchAgentService],
   exports: [MongooseModule],
 })
 export class ResearchModule {}

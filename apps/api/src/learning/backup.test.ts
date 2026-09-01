@@ -30,6 +30,8 @@ const createBackup = (): LearningBackupV1 => ({
     researchProjects: [],
     researchEvidence: [],
     researchClaims: [],
+    researchActions: [],
+    researchAgentRuns: [],
     careerActivities: [],
     careerApplications: [],
     careerSettings: [],
@@ -99,11 +101,15 @@ describe("parseLearningBackup", () => {
     delete legacyData.researchProjects;
     delete legacyData.researchEvidence;
     delete legacyData.researchClaims;
+    delete legacyData.researchActions;
+    delete legacyData.researchAgentRuns;
 
     const data = parseLearningBackup({ ...backup, data: legacyData }).data;
     expect(data.researchProjects).toEqual([]);
     expect(data.researchEvidence).toEqual([]);
     expect(data.researchClaims).toEqual([]);
+    expect(data.researchActions).toEqual([]);
+    expect(data.researchAgentRuns).toEqual([]);
   });
 
   it("accepts backups created before career tracking was added", () => {

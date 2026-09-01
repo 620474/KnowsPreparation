@@ -13,11 +13,15 @@ import {
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ResearchService } from "../learning/research.service";
 import { ResearchPayloadDto } from "./dto/research-payload.dto";
+import { ResearchAgentService } from "./research-agent.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning/research")
 export class ResearchController {
-  constructor(private readonly researchService: ResearchService) {}
+  constructor(
+    private readonly researchService: ResearchService,
+    private readonly researchAgentService: ResearchAgentService,
+  ) {}
 
   @Get("projects")
   @Header("Cache-Control", "private, no-store")
@@ -97,5 +101,54 @@ export class ResearchController {
     @Param("claimId") claimId: string,
   ) {
     return this.researchService.deleteClaim(projectId, claimId);
+  }
+
+  @Patch("projects/:projectId/actions/:actionId")
+  updateActionStatus(
+    @Param("projectId") projectId: string,
+    @Param("actionId") actionId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchService.updateActionStatus(projectId, actionId, dto.data);
+  }
+
+  @Post("projects/:projectId/agent-runs")
+  startAgentRun(
+    @Param("projectId") projectId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchAgentService.startRun(projectId, dto.data);
+  }
+
+  @Get("projects/:projectId/agent-runs/latest")
+  @Header("Cache-Control", "private, no-store")
+  getLatestAgentRun(@Param("projectId") projectId: string) {
+    return this.researchAgentService.getLatestRun(projectId);
+  }
+
+  @Get("projects/:projectId/agent-runs/:runId")
+  @Header("Cache-Control", "private, no-store")
+  getAgentRun(
+    @Param("projectId") projectId: string,
+    @Param("runId") runId: string,
+  ) {
+    return this.researchAgentService.getRun(projectId, runId);
+  }
+
+  @Post("projects/:projectId/agent-runs/:runId/cancel")
+  cancelAgentRun(
+    @Param("projectId") projectId: string,
+    @Param("runId") runId: string,
+  ) {
+    return this.researchAgentService.cancelRun(projectId, runId);
+  }
+
+  @Post("projects/:projectId/agent-runs/:runId/apply")
+  applyAgentRun(
+    @Param("projectId") projectId: string,
+    @Param("runId") runId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchAgentService.applyRun(projectId, runId, dto.data);
   }
 }

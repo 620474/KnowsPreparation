@@ -365,6 +365,18 @@ describe("Learning API", () => {
           startDate: "2026-09-01",
           targetDate: "2026-10-01",
           nextAction: "Зафиксировать benchmark",
+          protocol: {
+            subQuestions: "Какие метрики устойчивости важны?",
+            workingHypotheses: "A устойчивее B",
+            alternativeHypotheses: "Разницы нет",
+            sourceHierarchy: "Первичные эксперименты прежде обзоров",
+            inclusionCriteria: "Locked holdout",
+            exclusionCriteria: "Training corpus",
+            stoppingRule: "Два независимых эксперимента",
+            decisionChangeCriteria: "Воспроизводимый обратный результат",
+            ethicalConstraints: "",
+            revisitDate: null,
+          },
         },
       })
       .expect(201);
@@ -383,6 +395,13 @@ describe("Learning API", () => {
           stance: "supports",
           quality: "high",
           notes: "Holdout не использован при настройке",
+          sourceKind: "primary",
+          author: "Benchmark team",
+          publishedAt: "2026-08-25",
+          accessedAt: "2026-09-01",
+          originId: "locked-benchmark-v1",
+          independence: "independent",
+          freshness: "current",
         },
       })
       .expect(201);
@@ -395,7 +414,14 @@ describe("Learning API", () => {
           text: "Конфигурация A устойчивее baseline",
           status: "validated",
           confidence: "moderate",
-          evidenceIds: [evidenceResponse.body.evidenceId],
+          evidenceIds: [],
+          evidenceLinks: [{
+            evidenceId: evidenceResponse.body.evidenceId,
+            stance: "supports",
+            excerpt: "A beats baseline",
+            locator: "Table 1",
+            notes: "Прямое сравнение",
+          }],
           alternativeExplanations: "Различие corpus mix",
           uncertainty: "Один домен документации",
         },
@@ -407,9 +433,14 @@ describe("Learning API", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(workspace.body.evidence).toHaveLength(1);
-    expect(workspace.body.claims[0].evidenceIds).toEqual([
-      evidenceResponse.body.evidenceId,
-    ]);
+    expect(workspace.body.claims[0].evidenceLinks[0]).toEqual(
+      expect.objectContaining({
+        evidenceId: evidenceResponse.body.evidenceId,
+        stance: "supports",
+      }),
+    );
+    expect(workspace.body.metrics.claimCoverage).toBe(100);
+    expect(workspace.body.metrics.primarySourceRatio).toBe(100);
 
     const backup = await request(app.getHttpServer())
       .get("/api/v1/learning/backup")
@@ -418,6 +449,271 @@ describe("Learning API", () => {
     expect(backup.body.data.researchProjects).toHaveLength(1);
     expect(backup.body.data.researchEvidence).toHaveLength(1);
     expect(backup.body.data.researchClaims).toHaveLength(1);
+  });
+
+  it("runs autonomous research idempotently and applies only approved results", async () => {
+    const projectResponse = await request(app.getHttpServer())
+      .post("/api/v1/learning/research/projects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          title: "Надёжность WebSocket reconnect",
+          decisionStatement: "Выбрать стратегию переподключения",
+          primaryQuestion: "Какая стратегия reconnect устойчивее?",
+          scope: "React-клиент и браузерный WebSocket API",
+          design: "mixed_methods",
+          status: "active",
+          startDate: "2026-09-02",
+          targetDate: null,
+          nextAction: "Запустить автономное исследование",
+        },
+      })
+      .expect(201);
+    const projectId = projectResponse.body.projectId as string;
+    const agents = app.get(AiAgentService);
+    const protocol = {
+      subQuestions: "Как обнаруживать обрыв?",
+      workingHypotheses: "Exponential backoff снижает нагрузку",
+      alternativeHypotheses: "Фиксированная задержка достаточно надёжна",
+      sourceHierarchy: "Стандарты и первичная документация",
+      inclusionCriteria: "Проверяемое описание поведения",
+      exclusionCriteria: "Неподтверждённые пересказы",
+      stoppingRule: "Два независимых источника и проверка альтернативы",
+      decisionChangeCriteria: "Опровержение преимущества backoff",
+      ethicalConstraints: "",
+      revisitDate: null,
+    };
+    const source = {
+      candidateId: "temporary",
+      title: "WebSocket reconnect study",
+      url: "https://example.com/reconnect-study",
+      sourceType: "Эксперимент",
+      quality: "high" as const,
+      sourceKind: "primary" as const,
+      author: "Research team",
+      publishedAt: "2026-08-01",
+      accessedAt: "2026-09-02",
+      originId: "reconnect-study-v1",
+      independence: "independent" as const,
+      freshness: "current" as const,
+      notes: "Сравнение стратегий на одинаковом профиле отказов",
+    };
+    const planSpy = vi.spyOn(agents, "planResearch").mockResolvedValue({
+      protocol,
+      searchQueries: ["websocket reconnect backoff", "websocket reconnect fixed delay"],
+    });
+    const discoverySpy = vi.spyOn(agents, "discoverResearchEvidence")
+      .mockRejectedValueOnce(new Error("temporary discovery failure"))
+      .mockResolvedValueOnce({ evidence: [source], summary: "Backoff выглядит устойчивее", gaps: [] })
+      .mockResolvedValueOnce({ evidence: [], summary: "Сильных опровержений нет", gaps: [] });
+    const synthesisSpy = vi.spyOn(agents, "synthesizeResearch").mockResolvedValue({
+      claims: [{
+        candidateId: "claim-1",
+        text: "Exponential backoff снижает пиковую нагрузку при массовом reconnect",
+        confidence: "moderate",
+        evidenceLinks: [{
+          candidateId: "source-1",
+          stance: "supports",
+          excerpt: "Peak reconnect load decreased",
+          locator: "Results",
+          notes: "Прямое сравнение",
+        }],
+        alternativeExplanations: "Результат зависит от jitter",
+        uncertainty: "Один профиль отказов",
+      }],
+      summary: "Backoff предпочтителен с jitter и верхним пределом задержки.",
+      unresolvedGaps: [],
+      stopReason: "Правило остановки выполнено частично",
+    });
+    const auditSpy = vi.spyOn(agents, "auditResearchClaims").mockResolvedValue({
+      audits: [{
+        claimCandidateId: "claim-1",
+        evidenceCandidateId: "source-1",
+        verified: true,
+        entailmentScore: 92,
+        note: "Источник прямо подтверждает снижение пиковой нагрузки",
+      }],
+      contradictions: [{
+        candidateId: "contradiction-1",
+        claimA: "Backoff снижает нагрузку",
+        claimB: "Без jitter возможна синхронизация клиентов",
+        explanation: "Вывод зависит от реализации jitter",
+        status: "limited",
+        impact: "Добавить jitter в рекомендацию",
+      }],
+    });
+    const actionsSpy = vi.spyOn(agents, "mapResearchActions").mockResolvedValue([{
+      candidateId: "action-1",
+      type: "CREATE_PRACTICE_TASK",
+      title: "Реализовать reconnect с jitter",
+      reason: "Это главный практически проверяемый вывод",
+      expectedOutcome: "Уметь объяснить и реализовать устойчивое переподключение",
+      priority: 1,
+      payload: {
+        details: "Написать WebSocket-клиент с backoff, jitter и верхней границей",
+        targetId: null,
+      },
+    }]);
+
+    try {
+      const operationId = "research-operation-1";
+      const started = await request(app.getHttpServer())
+        .post(`/api/v1/learning/research/projects/${projectId}/agent-runs`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ data: { operationId, type: "technical_topic", mode: "standard" } })
+        .expect(201);
+      const duplicate = await request(app.getHttpServer())
+        .post(`/api/v1/learning/research/projects/${projectId}/agent-runs`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ data: { operationId, type: "technical_topic", mode: "standard" } })
+        .expect(201);
+      expect(duplicate.body.runId).toBe(started.body.runId);
+
+      let run = started.body;
+      for (let attempt = 0; attempt < 40 && run.status !== "review_ready"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        run = (
+          await request(app.getHttpServer())
+            .get(`/api/v1/learning/research/projects/${projectId}/agent-runs/latest`)
+            .set("Authorization", `Bearer ${token}`)
+            .expect(200)
+        ).body;
+      }
+      expect(run.status).toBe("review_ready");
+      expect(run.draft.evidence).toHaveLength(1);
+      expect(run.draft.claims).toHaveLength(1);
+      expect(run.draft.citationAudits[0]).toMatchObject({ verified: true });
+      expect(run.draft.contradictions).toHaveLength(1);
+      expect(run.draft.actions).toHaveLength(1);
+      expect(run.usage).toMatchObject({ modelCalls: 7, validatedClaims: 1 });
+      expect(run.logs).toContainEqual(expect.objectContaining({
+        message: "Временная ошибка AI; повторяю текущий шаг один раз",
+      }));
+
+      const applied = await request(app.getHttpServer())
+        .post(`/api/v1/learning/research/projects/${projectId}/agent-runs/${run.runId}/apply`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          data: {
+            operationId: "research-apply-operation-1",
+            includeProtocol: true,
+            evidenceCandidateIds: ["source-1"],
+            claimCandidateIds: ["claim-1"],
+            actionCandidateIds: ["action-1"],
+          },
+        })
+        .expect(201);
+      expect(applied.body.project.protocol.stoppingRule).toContain("независимых");
+      expect(applied.body.evidence).toHaveLength(1);
+      expect(applied.body.claims[0].evidenceLinks[0].evidenceId).toBe(
+        applied.body.evidence[0].evidenceId,
+      );
+      expect(applied.body.claims[0].evidenceLinks[0]).toMatchObject({
+        verified: true,
+        entailmentScore: 92,
+      });
+      expect(applied.body.actions[0]).toMatchObject({
+        type: "CREATE_PRACTICE_TASK",
+        status: "approved",
+      });
+
+      const backup = await request(app.getHttpServer())
+        .get("/api/v1/learning/backup")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+      expect(backup.body.data.researchAgentRuns).toHaveLength(1);
+      expect(backup.body.data.researchActions).toHaveLength(1);
+    } finally {
+      planSpy.mockRestore();
+      discoverySpy.mockRestore();
+      synthesisSpy.mockRestore();
+      auditSpy.mockRestore();
+      actionsSpy.mockRestore();
+    }
+  });
+
+  it("stops autonomous research when its model-call budget is exhausted", async () => {
+    const projectResponse = await request(app.getHttpServer())
+      .post("/api/v1/learning/research/projects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          title: "Бюджетный запуск",
+          decisionStatement: "Проверить circuit breaker",
+          primaryQuestion: "Остановится ли агент?",
+          scope: "Один AI-вызов",
+          design: "computational",
+          status: "active",
+          startDate: "2026-09-02",
+          targetDate: null,
+          nextAction: "Запустить",
+        },
+      })
+      .expect(201);
+    const projectId = projectResponse.body.projectId as string;
+    const agents = app.get(AiAgentService);
+    const planSpy = vi.spyOn(agents, "planResearch").mockResolvedValue({
+      protocol: {
+        subQuestions: "Что происходит после первого шага?",
+        workingHypotheses: "Запуск остановится",
+        alternativeHypotheses: "Запуск продолжится",
+        sourceHierarchy: "Не требуется",
+        inclusionCriteria: "События запуска",
+        exclusionCriteria: "Внешние источники",
+        stoppingRule: "Лимит исчерпан",
+        decisionChangeCriteria: "Второй вызов выполнен",
+        ethicalConstraints: "",
+        revisitDate: null,
+      },
+      searchQueries: ["budget one", "budget two"],
+    });
+    const discoverySpy = vi.spyOn(agents, "discoverResearchEvidence");
+
+    try {
+      let run = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/research/projects/${projectId}/agent-runs`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({
+            data: {
+              operationId: "research-budget-operation",
+              type: "technical_topic",
+              mode: "quick",
+              budget: { maximumModelCalls: 1 },
+            },
+          })
+          .expect(201)
+      ).body;
+      for (let attempt = 0; attempt < 40 && run.status === "queued"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        run = (
+          await request(app.getHttpServer())
+            .get(`/api/v1/learning/research/projects/${projectId}/agent-runs/latest`)
+            .set("Authorization", `Bearer ${token}`)
+            .expect(200)
+        ).body;
+      }
+      for (let attempt = 0; attempt < 40 && run.status === "running"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        run = (
+          await request(app.getHttpServer())
+            .get(`/api/v1/learning/research/projects/${projectId}/agent-runs/latest`)
+            .set("Authorization", `Bearer ${token}`)
+            .expect(200)
+        ).body;
+      }
+
+      expect(run).toMatchObject({
+        status: "partially_completed",
+        phase: "review",
+        usage: { modelCalls: 1, solCalls: 0 },
+      });
+      expect(run.error).toContain("лимит AI-вызовов");
+      expect(discoverySpy).not.toHaveBeenCalled();
+    } finally {
+      planSpy.mockRestore();
+      discoverySpy.mockRestore();
+    }
   });
 
   it("tracks job applications, interviews, weekly activity, and backup", async () => {

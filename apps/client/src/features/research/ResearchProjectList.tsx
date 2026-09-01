@@ -30,6 +30,18 @@ const emptyProject: CreateResearchProject = {
   startDate: null,
   targetDate: null,
   nextAction: "",
+  protocol: {
+    subQuestions: "",
+    workingHypotheses: "",
+    alternativeHypotheses: "",
+    sourceHierarchy: "",
+    inclusionCriteria: "",
+    exclusionCriteria: "",
+    stoppingRule: "",
+    decisionChangeCriteria: "",
+    ethicalConstraints: "",
+    revisitDate: null,
+  },
 };
 
 const formatDate = (value: string | null) =>

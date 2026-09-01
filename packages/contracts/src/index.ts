@@ -698,6 +698,30 @@ export const researchMilestoneSchema = z.object({
   dueDate: z.string().nullable(),
   status: z.enum(["pending", "complete"]),
 });
+export const researchProtocolSchema = z.object({
+  subQuestions: z.string().trim().max(12_000),
+  workingHypotheses: z.string().trim().max(12_000),
+  alternativeHypotheses: z.string().trim().max(12_000),
+  sourceHierarchy: z.string().trim().max(8_000),
+  inclusionCriteria: z.string().trim().max(8_000),
+  exclusionCriteria: z.string().trim().max(8_000),
+  stoppingRule: z.string().trim().max(4_000),
+  decisionChangeCriteria: z.string().trim().max(4_000),
+  ethicalConstraints: z.string().trim().max(4_000),
+  revisitDate: z.string().nullable(),
+});
+export const EMPTY_RESEARCH_PROTOCOL = {
+  subQuestions: "",
+  workingHypotheses: "",
+  alternativeHypotheses: "",
+  sourceHierarchy: "",
+  inclusionCriteria: "",
+  exclusionCriteria: "",
+  stoppingRule: "",
+  decisionChangeCriteria: "",
+  ethicalConstraints: "",
+  revisitDate: null,
+} as const;
 const researchProjectFieldsSchema = z.object({
   title: z.string().trim().min(2).max(180),
   decisionStatement: z.string().trim().max(4000),
@@ -708,6 +732,7 @@ const researchProjectFieldsSchema = z.object({
   startDate: z.string().nullable(),
   targetDate: z.string().nullable(),
   nextAction: z.string().trim().max(2000),
+  protocol: researchProtocolSchema.default(EMPTY_RESEARCH_PROTOCOL),
 });
 export const createResearchProjectSchema = researchProjectFieldsSchema;
 export const updateResearchProjectSchema = researchProjectFieldsSchema.partial().extend({
@@ -736,6 +761,23 @@ export const researchEvidenceQualitySchema = z.enum([
   "medium",
   "high",
 ]);
+export const researchEvidenceSourceKindSchema = z.enum([
+  "unassessed",
+  "primary",
+  "secondary",
+  "official",
+]);
+export const researchEvidenceIndependenceSchema = z.enum([
+  "unknown",
+  "independent",
+  "dependent",
+]);
+export const researchEvidenceFreshnessSchema = z.enum([
+  "unassessed",
+  "current",
+  "aging",
+  "outdated",
+]);
 const researchEvidenceFieldsSchema = z.object({
   title: z.string().trim().min(2).max(300),
   url: z.string().trim().max(2000),
@@ -743,6 +785,13 @@ const researchEvidenceFieldsSchema = z.object({
   stance: researchEvidenceStanceSchema,
   quality: researchEvidenceQualitySchema,
   notes: z.string().trim().max(8000),
+  sourceKind: researchEvidenceSourceKindSchema.default("unassessed"),
+  author: z.string().trim().max(500).default(""),
+  publishedAt: z.string().nullable().default(null),
+  accessedAt: z.string().nullable().default(null),
+  originId: z.string().trim().max(500).default(""),
+  independence: researchEvidenceIndependenceSchema.default("unknown"),
+  freshness: researchEvidenceFreshnessSchema.default("unassessed"),
 });
 export const createResearchEvidenceSchema = researchEvidenceFieldsSchema;
 export const updateResearchEvidenceSchema = researchEvidenceFieldsSchema.partial();
@@ -758,11 +807,28 @@ export const researchClaimConfidenceSchema = z.enum([
   "moderate",
   "high",
 ]);
+export const researchEvidenceRelationStanceSchema = z.enum([
+  "supports",
+  "contradicts",
+  "limits",
+  "context",
+]);
+export const researchEvidenceRelationSchema = z.object({
+  evidenceId: z.string(),
+  stance: researchEvidenceRelationStanceSchema,
+  excerpt: z.string().trim().max(8_000),
+  locator: z.string().trim().max(500),
+  notes: z.string().trim().max(4_000),
+  verified: z.boolean().optional(),
+  entailmentScore: z.number().int().min(0).max(100).optional(),
+  auditNote: z.string().trim().max(4_000).optional(),
+});
 const researchClaimFieldsSchema = z.object({
   text: z.string().trim().min(2).max(8000),
   status: z.enum(["draft", "validated", "rejected"]),
   confidence: researchClaimConfidenceSchema,
-  evidenceIds: z.array(z.string()).max(100),
+  evidenceIds: z.array(z.string()).max(100).default([]),
+  evidenceLinks: z.array(researchEvidenceRelationSchema).max(100).default([]),
   alternativeExplanations: z.string().trim().max(8000),
   uncertainty: z.string().trim().max(8000),
 });
@@ -774,10 +840,218 @@ export const researchClaimSchema = researchClaimFieldsSchema.extend({
   createdAt: z.string(),
   updatedAt: z.string(),
 });
+export const EMPTY_RESEARCH_METRICS = {
+  depth: 0,
+  confidence: 0,
+  impact: 0,
+  coverage: 0,
+  claimCoverage: 0,
+  primarySourceRatio: 0,
+  triangulation: 0,
+  contradictionHandling: 0,
+  traceability: 0,
+  freshness: 0,
+  warnings: [] as string[],
+};
+export const researchMetricsSchema = z.object({
+  depth: z.number().int().min(0).max(100),
+  confidence: z.number().int().min(0).max(100),
+  impact: z.number().int().min(0).max(100),
+  coverage: z.number().int().min(0).max(100),
+  claimCoverage: z.number().int().min(0).max(100),
+  primarySourceRatio: z.number().int().min(0).max(100),
+  triangulation: z.number().int().min(0).max(100),
+  contradictionHandling: z.number().int().min(0).max(100),
+  traceability: z.number().int().min(0).max(100),
+  freshness: z.number().int().min(0).max(100),
+  warnings: z.array(z.string()),
+});
+export const researchActionTypeSchema = z.enum([
+  "CREATE_LESSON",
+  "CREATE_QUIZ",
+  "CREATE_PRACTICE_TASK",
+  "ADD_REVIEW_ITEMS",
+  "CREATE_MOCK_PROFILE",
+  "UPDATE_VACANCY_PLAN",
+  "ADD_CAREER_ACTION",
+  "CREATE_DAILY_PLAN",
+  "NO_ACTION",
+]);
+export const researchActionStatusSchema = z.enum([
+  "approved",
+  "completed",
+  "rejected",
+]);
+const researchActionFieldsSchema = z.object({
+  type: researchActionTypeSchema,
+  title: z.string().trim().min(2).max(300),
+  reason: z.string().trim().min(2).max(4_000),
+  expectedOutcome: z.string().trim().min(2).max(4_000),
+  priority: z.number().int().min(1).max(5),
+  payload: z.object({
+    details: z.string().trim().max(8_000),
+    targetId: z.string().trim().max(300).nullable(),
+  }),
+});
+export const researchActionSchema = researchActionFieldsSchema.extend({
+  actionId: z.string(),
+  projectId: z.string(),
+  runId: z.string(),
+  status: researchActionStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export const updateResearchActionSchema = z.object({
+  status: researchActionStatusSchema,
+});
 export const researchWorkspaceSchema = z.object({
   project: researchProjectSchema,
   evidence: z.array(researchEvidenceSchema),
   claims: z.array(researchClaimSchema),
+  actions: z.array(researchActionSchema).default([]),
+  metrics: researchMetricsSchema.default(EMPTY_RESEARCH_METRICS),
+});
+
+export const researchAgentTypeSchema = z.enum([
+  "technical_topic",
+  "company_interview",
+  "vacancy",
+  "learning_method",
+  "post_interview",
+]);
+export const researchAgentModeSchema = z.enum(["quick", "standard", "deep"]);
+export const researchAgentRunStatusSchema = z.enum([
+  "queued",
+  "running",
+  "review_ready",
+  "partially_completed",
+  "applied",
+  "failed",
+  "cancelled",
+]);
+export const researchAgentPhaseSchema = z.enum([
+  "queued",
+  "planning",
+  "discovery",
+  "challenge",
+  "synthesis",
+  "auditing",
+  "actions",
+  "review",
+  "complete",
+]);
+export const researchAgentLogEntrySchema = z.object({
+  phase: researchAgentPhaseSchema,
+  message: z.string().trim().min(1).max(1_000),
+  at: z.string(),
+});
+export const researchAgentEvidenceDraftSchema = researchEvidenceFieldsSchema
+  .omit({ stance: true })
+  .extend({
+    candidateId: z.string().trim().min(1).max(160),
+  });
+export const researchAgentEvidenceLinkDraftSchema = researchEvidenceRelationSchema
+  .omit({ evidenceId: true })
+  .extend({
+    candidateId: z.string().trim().min(1).max(160),
+  });
+export const researchAgentClaimDraftSchema = z.object({
+  candidateId: z.string().trim().min(1).max(160),
+  text: z.string().trim().min(2).max(8_000),
+  confidence: researchClaimConfidenceSchema,
+  evidenceLinks: z.array(researchAgentEvidenceLinkDraftSchema).max(30),
+  alternativeExplanations: z.string().trim().max(8_000),
+  uncertainty: z.string().trim().max(8_000),
+});
+export const researchAgentCitationAuditSchema = z.object({
+  claimCandidateId: z.string().trim().min(1).max(160),
+  evidenceCandidateId: z.string().trim().min(1).max(160),
+  verified: z.boolean(),
+  entailmentScore: z.number().int().min(0).max(100),
+  note: z.string().trim().max(4_000),
+});
+export const researchAgentContradictionSchema = z.object({
+  candidateId: z.string().trim().min(1).max(160),
+  claimA: z.string().trim().min(2).max(4_000),
+  claimB: z.string().trim().min(2).max(4_000),
+  explanation: z.string().trim().max(4_000),
+  status: z.enum(["resolved", "limited", "unresolved"]),
+  impact: z.string().trim().max(4_000),
+});
+export const researchAgentActionDraftSchema = researchActionFieldsSchema.extend({
+  candidateId: z.string().trim().min(1).max(160),
+});
+export const researchAgentDraftSchema = z.object({
+  protocol: researchProtocolSchema,
+  evidence: z.array(researchAgentEvidenceDraftSchema).max(20),
+  claims: z.array(researchAgentClaimDraftSchema).max(12),
+  citationAudits: z.array(researchAgentCitationAuditSchema).max(100),
+  contradictions: z.array(researchAgentContradictionSchema).max(30),
+  actions: z.array(researchAgentActionDraftSchema).max(20),
+  summary: z.string().trim().max(12_000),
+  unresolvedGaps: z.array(z.string().trim().min(1).max(1_000)).max(20),
+  stopReason: z.string().trim().max(4_000),
+});
+export const EMPTY_RESEARCH_AGENT_DRAFT = {
+  protocol: EMPTY_RESEARCH_PROTOCOL,
+  evidence: [],
+  claims: [],
+  citationAudits: [],
+  contradictions: [],
+  actions: [],
+  summary: "",
+  unresolvedGaps: [],
+  stopReason: "",
+};
+export const researchAgentRunSchema = z.object({
+  runId: z.string(),
+  projectId: z.string(),
+  operationId: z.string(),
+  type: researchAgentTypeSchema,
+  mode: researchAgentModeSchema,
+  status: researchAgentRunStatusSchema,
+  phase: researchAgentPhaseSchema,
+  progress: z.number().int().min(0).max(100),
+  model: z.string(),
+  reviewModel: z.string(),
+  budget: z.object({
+    maximumModelCalls: z.number().int().min(1).max(30),
+    maximumSolCalls: z.number().int().min(0).max(10),
+    maximumSources: z.number().int().min(1).max(50),
+    maximumDurationMinutes: z.number().int().min(1).max(180),
+  }),
+  usage: z.object({
+    modelCalls: z.number().int().min(0),
+    solCalls: z.number().int().min(0),
+    sourcesDiscovered: z.number().int().min(0),
+    sourcesAccepted: z.number().int().min(0),
+    validatedClaims: z.number().int().min(0),
+  }),
+  draft: researchAgentDraftSchema,
+  logs: z.array(researchAgentLogEntrySchema).max(100),
+  error: z.string().nullable(),
+  appliedAt: z.string().nullable(),
+  startedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export const startResearchAgentRunSchema = z.object({
+  operationId: z.string().trim().min(8).max(160),
+  type: researchAgentTypeSchema,
+  mode: researchAgentModeSchema,
+  budget: z.object({
+    maximumModelCalls: z.number().int().min(1).max(30).optional(),
+    maximumSolCalls: z.number().int().min(0).max(10).optional(),
+    maximumSources: z.number().int().min(1).max(50).optional(),
+    maximumDurationMinutes: z.number().int().min(1).max(180).optional(),
+  }).optional(),
+});
+export const applyResearchAgentRunSchema = z.object({
+  operationId: z.string().trim().min(8).max(160),
+  includeProtocol: z.boolean(),
+  evidenceCandidateIds: z.array(z.string()).max(20),
+  claimCandidateIds: z.array(z.string()).max(12),
+  actionCandidateIds: z.array(z.string()).max(20),
 });
 
 export const CAREER_PIPELINE_STAGES = [
@@ -1095,16 +1369,48 @@ export type ResearchStage = z.infer<typeof researchStageSchema>;
 export type ResearchQualityGate = z.infer<typeof researchQualityGateSchema>;
 export type ResearchRisk = z.infer<typeof researchRiskSchema>;
 export type ResearchMilestone = z.infer<typeof researchMilestoneSchema>;
+export type ResearchProtocol = z.infer<typeof researchProtocolSchema>;
 export type CreateResearchProject = z.infer<typeof createResearchProjectSchema>;
 export type UpdateResearchProject = z.infer<typeof updateResearchProjectSchema>;
 export type ResearchProject = z.infer<typeof researchProjectSchema>;
 export type CreateResearchEvidence = z.infer<typeof createResearchEvidenceSchema>;
 export type UpdateResearchEvidence = z.infer<typeof updateResearchEvidenceSchema>;
 export type ResearchEvidence = z.infer<typeof researchEvidenceSchema>;
+export type ResearchEvidenceSourceKind = z.infer<typeof researchEvidenceSourceKindSchema>;
+export type ResearchEvidenceIndependence = z.infer<
+  typeof researchEvidenceIndependenceSchema
+>;
+export type ResearchEvidenceFreshness = z.infer<typeof researchEvidenceFreshnessSchema>;
+export type ResearchEvidenceRelationStance = z.infer<
+  typeof researchEvidenceRelationStanceSchema
+>;
+export type ResearchEvidenceRelation = z.infer<typeof researchEvidenceRelationSchema>;
 export type CreateResearchClaim = z.infer<typeof createResearchClaimSchema>;
 export type UpdateResearchClaim = z.infer<typeof updateResearchClaimSchema>;
 export type ResearchClaim = z.infer<typeof researchClaimSchema>;
 export type ResearchWorkspace = z.infer<typeof researchWorkspaceSchema>;
+export type ResearchMetrics = z.infer<typeof researchMetricsSchema>;
+export type ResearchActionType = z.infer<typeof researchActionTypeSchema>;
+export type ResearchActionStatus = z.infer<typeof researchActionStatusSchema>;
+export type ResearchAction = z.infer<typeof researchActionSchema>;
+export type UpdateResearchAction = z.infer<typeof updateResearchActionSchema>;
+export type ResearchAgentType = z.infer<typeof researchAgentTypeSchema>;
+export type ResearchAgentMode = z.infer<typeof researchAgentModeSchema>;
+export type ResearchAgentRunStatus = z.infer<typeof researchAgentRunStatusSchema>;
+export type ResearchAgentPhase = z.infer<typeof researchAgentPhaseSchema>;
+export type ResearchAgentLogEntry = z.infer<typeof researchAgentLogEntrySchema>;
+export type ResearchAgentEvidenceDraft = z.infer<typeof researchAgentEvidenceDraftSchema>;
+export type ResearchAgentEvidenceLinkDraft = z.infer<
+  typeof researchAgentEvidenceLinkDraftSchema
+>;
+export type ResearchAgentClaimDraft = z.infer<typeof researchAgentClaimDraftSchema>;
+export type ResearchAgentCitationAudit = z.infer<typeof researchAgentCitationAuditSchema>;
+export type ResearchAgentContradiction = z.infer<typeof researchAgentContradictionSchema>;
+export type ResearchAgentActionDraft = z.infer<typeof researchAgentActionDraftSchema>;
+export type ResearchAgentDraft = z.infer<typeof researchAgentDraftSchema>;
+export type ResearchAgentRun = z.infer<typeof researchAgentRunSchema>;
+export type StartResearchAgentRun = z.infer<typeof startResearchAgentRunSchema>;
+export type ApplyResearchAgentRun = z.infer<typeof applyResearchAgentRunSchema>;
 export type CareerPipelineStage = z.infer<typeof careerPipelineStageSchema>;
 export type CareerPriority = z.infer<typeof careerPrioritySchema>;
 export type CareerSearchMode = z.infer<typeof careerSearchModeSchema>;

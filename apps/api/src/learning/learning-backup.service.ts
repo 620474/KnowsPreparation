@@ -29,6 +29,8 @@ import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema
 import { ResearchProject } from "./schemas/research-project.schema";
 import { ResearchEvidenceEntry } from "./schemas/research-evidence.schema";
 import { ResearchClaimEntry } from "./schemas/research-claim.schema";
+import { ResearchAgentRunEntry } from "../research/schemas/research-agent-run.schema";
+import { ResearchActionEntry } from "../research/schemas/research-action.schema";
 
 @Injectable()
 export class LearningBackupService {
@@ -63,6 +65,10 @@ export class LearningBackupService {
     private readonly researchEvidenceModel: Model<ResearchEvidenceEntry>,
     @InjectModel(ResearchClaimEntry.name)
     private readonly researchClaimModel: Model<ResearchClaimEntry>,
+    @InjectModel(ResearchAgentRunEntry.name)
+    private readonly researchAgentRunModel: Model<ResearchAgentRunEntry>,
+    @InjectModel(ResearchActionEntry.name)
+    private readonly researchActionModel: Model<ResearchActionEntry>,
     @InjectModel(CareerApplicationEntry.name)
     private readonly careerApplicationModel: Model<CareerApplicationEntry>,
     @InjectModel(CareerActivityEntry.name)
@@ -92,6 +98,8 @@ export class LearningBackupService {
       researchProjects,
       researchEvidence,
       researchClaims,
+      researchAgentRuns,
+      researchActions,
       careerActivities,
       careerApplications,
       careerSettings,
@@ -114,6 +122,8 @@ export class LearningBackupService {
       this.researchProjectModel.find().lean().exec(),
       this.researchEvidenceModel.find().lean().exec(),
       this.researchClaimModel.find().lean().exec(),
+      this.researchAgentRunModel.find().lean().exec(),
+      this.researchActionModel.find().lean().exec(),
       this.careerActivityModel.find().lean().exec(),
       this.careerApplicationModel.find().lean().exec(),
       this.careerSettingsModel.find().lean().exec(),
@@ -142,6 +152,8 @@ export class LearningBackupService {
         researchProjects,
         researchEvidence,
         researchClaims,
+        researchAgentRuns,
+        researchActions,
         careerActivities,
         careerApplications,
         careerSettings,
@@ -211,6 +223,14 @@ export class LearningBackupService {
       researchClaims: await this.validateRecords(
         this.researchClaimModel,
         backup.data.researchClaims,
+      ),
+      researchAgentRuns: await this.validateRecords(
+        this.researchAgentRunModel,
+        backup.data.researchAgentRuns,
+      ),
+      researchActions: await this.validateRecords(
+        this.researchActionModel,
+        backup.data.researchActions,
       ),
       careerApplications: await this.validateRecords(
         this.careerApplicationModel,
@@ -313,6 +333,16 @@ export class LearningBackupService {
         this.researchClaimModel,
         prepared.researchClaims,
         (record) => ({ claimId: record.claimId }),
+      ),
+      this.mergeRecords(
+        this.researchAgentRunModel,
+        prepared.researchAgentRuns,
+        (record) => ({ runId: record.runId }),
+      ),
+      this.mergeRecords(
+        this.researchActionModel,
+        prepared.researchActions,
+        (record) => ({ actionId: record.actionId }),
       ),
       this.mergeRecords(
         this.careerApplicationModel,

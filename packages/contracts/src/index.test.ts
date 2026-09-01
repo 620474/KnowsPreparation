@@ -16,6 +16,7 @@ import {
   createCareerApplicationSchema,
   careerWorkspaceSchema,
   researchWorkspaceSchema,
+  researchAgentRunSchema,
   yandexPlatformMockAttemptSchema,
 } from "./index";
 
@@ -192,6 +193,7 @@ describe("shared API contracts", () => {
       nextAction: "Зафиксировать benchmark",
     });
     expect(input.design).toBe("computational");
+    expect(input.protocol.stoppingRule).toBe("");
 
     expect(researchWorkspaceSchema.parse({
       project: {
@@ -228,7 +230,82 @@ describe("shared API contracts", () => {
         createdAt: "2026-09-01T10:00:00.000Z",
         updatedAt: "2026-09-01T10:00:00.000Z",
       }],
+      metrics: {
+        depth: 50,
+        confidence: 50,
+        impact: 50,
+        coverage: 50,
+        claimCoverage: 100,
+        primarySourceRatio: 0,
+        triangulation: 0,
+        contradictionHandling: 100,
+        traceability: 100,
+        freshness: 25,
+        warnings: [],
+      },
     }).claims[0]?.evidenceIds).toEqual(["evidence-1"]);
+  });
+
+  it("validates autonomous research runs awaiting approval", () => {
+    const run = researchAgentRunSchema.parse({
+      runId: "run-1",
+      projectId: "project-1",
+      operationId: "operation-1",
+      type: "technical_topic",
+      mode: "standard",
+      status: "review_ready",
+      phase: "review",
+      progress: 100,
+      model: "gpt-5.6-sol",
+      reviewModel: "gpt-5.6-terra",
+      budget: {
+        maximumModelCalls: 6,
+        maximumSolCalls: 2,
+        maximumSources: 16,
+        maximumDurationMinutes: 30,
+      },
+      usage: {
+        modelCalls: 6,
+        solCalls: 2,
+        sourcesDiscovered: 8,
+        sourcesAccepted: 6,
+        validatedClaims: 2,
+      },
+      draft: {
+        protocol: {
+          subQuestions: "Что измеряем?",
+          workingHypotheses: "Подход работает",
+          alternativeHypotheses: "Эффект случаен",
+          sourceHierarchy: "Первичные источники",
+          inclusionCriteria: "Проверяемые данные",
+          exclusionCriteria: "Пересказы",
+          stoppingRule: "Два независимых подтверждения",
+          decisionChangeCriteria: "Сильное опровержение",
+          ethicalConstraints: "",
+          revisitDate: null,
+        },
+        evidence: [],
+        claims: [],
+        citationAudits: [],
+        contradictions: [],
+        actions: [],
+        summary: "Черновик готов",
+        unresolvedGaps: [],
+        stopReason: "Stopping rule выполнен",
+      },
+      logs: [{
+        phase: "review",
+        message: "Черновик готов",
+        at: "2026-09-02T10:00:00.000Z",
+      }],
+      error: null,
+      appliedAt: null,
+      startedAt: "2026-09-02T10:00:00.000Z",
+      createdAt: "2026-09-02T10:00:00.000Z",
+      updatedAt: "2026-09-02T10:01:00.000Z",
+    });
+
+    expect(run.status).toBe("review_ready");
   });
 
   it("validates the career pipeline and weekly activity", () => {

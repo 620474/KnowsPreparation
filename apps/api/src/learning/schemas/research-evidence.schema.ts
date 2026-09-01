@@ -30,6 +30,27 @@ export class ResearchEvidenceEntry {
   @Prop({ default: "" })
   notes!: string;
 
+  @Prop({ type: String, default: "unassessed" })
+  sourceKind!: ResearchEvidence["sourceKind"];
+
+  @Prop({ default: "" })
+  author!: string;
+
+  @Prop({ type: String, default: null })
+  publishedAt!: string | null;
+
+  @Prop({ type: String, default: null })
+  accessedAt!: string | null;
+
+  @Prop({ default: "" })
+  originId!: string;
+
+  @Prop({ type: String, default: "unknown" })
+  independence!: ResearchEvidence["independence"];
+
+  @Prop({ type: String, default: "unassessed" })
+  freshness!: ResearchEvidence["freshness"];
+
   createdAt!: Date;
   updatedAt!: Date;
 }

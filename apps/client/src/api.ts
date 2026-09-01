@@ -14,6 +14,8 @@ import {
   researchEvidenceSchema,
   researchProjectSchema,
   researchWorkspaceSchema,
+  researchAgentRunSchema,
+  researchActionSchema,
   yandexPlatformMockAttemptSchema,
 } from "@prep/contracts";
 import { z } from "zod";
@@ -63,6 +65,11 @@ import type {
   UpdateResearchClaim,
   ResearchClaim,
   ResearchWorkspace,
+  ResearchAgentRun,
+  ResearchAction,
+  ResearchActionStatus,
+  StartResearchAgentRun,
+  ApplyResearchAgentRun,
   CareerApplication,
   CareerSettings,
   CareerWorkspace,
@@ -307,6 +314,38 @@ export const learningApi = {
       `/learning/research/projects/${encodeURIComponent(projectId)}/claims/${encodeURIComponent(claimId)}`,
       { method: "DELETE" },
     ),
+  getLatestResearchAgentRun: (projectId: string) =>
+    request<ResearchAgentRun | null>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/agent-runs/latest`,
+    ).then((run) => run ? researchAgentRunSchema.parse(run) : null),
+  startResearchAgentRun: (projectId: string, data: StartResearchAgentRun) =>
+    request<ResearchAgentRun>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/agent-runs`,
+      { method: "POST", body: JSON.stringify({ data }) },
+    ).then((run) => researchAgentRunSchema.parse(run)),
+  cancelResearchAgentRun: (projectId: string, runId: string) =>
+    request<ResearchAgentRun>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/agent-runs/${encodeURIComponent(runId)}/cancel`,
+      { method: "POST" },
+    ).then((run) => researchAgentRunSchema.parse(run)),
+  applyResearchAgentRun: (
+    projectId: string,
+    runId: string,
+    data: ApplyResearchAgentRun,
+  ) =>
+    request<ResearchWorkspace>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/agent-runs/${encodeURIComponent(runId)}/apply`,
+      { method: "POST", body: JSON.stringify({ data }) },
+    ).then((workspace) => researchWorkspaceSchema.parse(workspace)),
+  updateResearchActionStatus: (
+    projectId: string,
+    actionId: string,
+    status: ResearchActionStatus,
+  ) =>
+    request<ResearchAction>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/actions/${encodeURIComponent(actionId)}`,
+      { method: "PATCH", body: JSON.stringify({ data: { status } }) },
+    ).then((action) => researchActionSchema.parse(action)),
   getCareerWorkspace: () =>
     request<CareerWorkspace>("/career").then((workspace) =>
       careerWorkspaceSchema.parse(workspace),

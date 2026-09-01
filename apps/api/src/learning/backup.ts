@@ -21,6 +21,8 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "researchProjects",
   "researchEvidence",
   "researchClaims",
+  "researchActions",
+  "researchAgentRuns",
   "careerActivities",
   "careerApplications",
   "careerSettings",
@@ -75,6 +77,8 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
       collection === "researchProjects" ||
       collection === "researchEvidence" ||
       collection === "researchClaims" ||
+      collection === "researchActions" ||
+      collection === "researchAgentRuns" ||
       collection === "careerActivities" ||
       collection === "careerApplications" ||
       collection === "careerSettings"

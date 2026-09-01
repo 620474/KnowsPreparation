@@ -55,6 +55,19 @@ const candidate = (id: string, minutes: number): AdaptivePlanItem => ({
   source: "task",
 });
 
+const researchProtocol = {
+  subQuestions: "Какие стратегии сравниваем?",
+  workingHypotheses: "Backoff устойчивее",
+  alternativeHypotheses: "Фиксированная задержка не хуже",
+  sourceHierarchy: "Первичные источники",
+  inclusionCriteria: "Проверяемые результаты",
+  exclusionCriteria: "Пересказы",
+  stoppingRule: "Два независимых подтверждения",
+  decisionChangeCriteria: "Воспроизводимое опровержение",
+  ethicalConstraints: "",
+  revisitDate: null,
+};
+
 describe("AiAgentService", () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -137,5 +150,212 @@ describe("AiAgentService", () => {
 
     expect(result.fitScore).toBe(78);
     expect(result.gaps[0]?.skillKeys).toEqual(["browser"]);
+  });
+
+  it("keeps only research evidence returned by web search", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
+      evidence: [{
+        title: "Reconnect study",
+        url: "https://example.com/study",
+        sourceType: "Эксперимент",
+        quality: "high",
+        sourceKind: "primary",
+        author: "Research team",
+        publishedAt: "2026-08-01",
+        originId: "study-1",
+        independence: "independent",
+        freshness: "current",
+        notes: "Сравнение стратегий",
+      }, {
+        title: "Invented source",
+        url: "https://invalid.example/invented",
+        sourceType: "Статья",
+        quality: "high",
+        sourceKind: "primary",
+        author: "Unknown",
+        publishedAt: null,
+        originId: "invented",
+        independence: "independent",
+        freshness: "current",
+        notes: "Не должен сохраниться",
+      }],
+      summary: "Найден один подтверждённый источник",
+      gaps: [],
+    }, [{ title: "Reconnect study", url: "https://example.com/study" }]));
+
+    const result = await createService().discoverResearchEvidence({
+      project: {
+        title: "Reconnect",
+        decisionStatement: "Выбрать стратегию",
+        primaryQuestion: "Что устойчивее?",
+        scope: "WebSocket",
+      },
+      protocol: researchProtocol,
+      searchQueries: ["reconnect backoff", "reconnect fixed delay"],
+      mode: "discovery",
+    });
+
+    expect(result.evidence).toHaveLength(1);
+    expect(result.evidence[0]).toMatchObject({
+      candidateId: "source-1",
+      title: "Reconnect study",
+      url: "https://example.com/study",
+    });
+  });
+
+  it("drops claim links that do not exist in collected evidence", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
+      claims: [{
+        text: "Backoff снижает пиковую нагрузку",
+        confidence: "moderate",
+        evidenceLinks: [{
+          url: "https://example.com/study",
+          stance: "supports",
+          excerpt: "Peak load decreased",
+          locator: "Results",
+          notes: "Прямое сравнение",
+        }, {
+          url: "https://invalid.example/invented",
+          stance: "supports",
+          excerpt: "Invented",
+          locator: "Nowhere",
+          notes: "Не должен сохраниться",
+        }],
+        alternativeExplanations: "Влияние jitter",
+        uncertainty: "Один профиль отказов",
+      }],
+      summary: "Backoff предпочтителен",
+      unresolvedGaps: [],
+      stopReason: "Правило выполнено частично",
+    }));
+    const evidence = [{
+      candidateId: "source-1",
+      title: "Reconnect study",
+      url: "https://example.com/study",
+      sourceType: "Эксперимент",
+      quality: "high" as const,
+      sourceKind: "primary" as const,
+      author: "Research team",
+      publishedAt: "2026-08-01",
+      accessedAt: "2026-09-02",
+      originId: "study-1",
+      independence: "independent" as const,
+      freshness: "current" as const,
+      notes: "Сравнение стратегий",
+    }];
+
+    const result = await createService().synthesizeResearch({
+      project: {
+        decisionStatement: "Выбрать стратегию",
+        primaryQuestion: "Что устойчивее?",
+        scope: "WebSocket",
+      },
+      protocol: researchProtocol,
+      evidence,
+      discoverySummary: "Найдено подтверждение",
+      challengeSummary: "Сильных опровержений нет",
+      gaps: [],
+    });
+
+    expect(result.claims[0]?.evidenceLinks).toEqual([expect.objectContaining({
+      candidateId: "source-1",
+    })]);
+  });
+
+  it("keeps citation audits only for real claim-evidence pairs", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
+      audits: [{
+        claimCandidateId: "claim-1",
+        evidenceCandidateId: "source-1",
+        verified: true,
+        entailmentScore: 93,
+        note: "Прямое подтверждение",
+      }, {
+        claimCandidateId: "claim-invented",
+        evidenceCandidateId: "source-1",
+        verified: true,
+        entailmentScore: 100,
+        note: "Не должно сохраниться",
+      }],
+      contradictions: [{
+        claimA: "Backoff полезен",
+        claimB: "Без jitter клиенты синхронизируются",
+        explanation: "Вывод ограничен реализацией",
+        status: "limited",
+        impact: "Добавить jitter",
+      }],
+    }));
+
+    const result = await createService().auditResearchClaims({
+      type: "technical_topic",
+      mode: "standard",
+      claims: [{
+        candidateId: "claim-1",
+        text: "Backoff снижает пиковую нагрузку",
+        confidence: "moderate",
+        evidenceLinks: [{
+          candidateId: "source-1",
+          stance: "supports",
+          excerpt: "Peak load decreased",
+          locator: "Results",
+          notes: "Прямое сравнение",
+        }],
+        alternativeExplanations: "Jitter",
+        uncertainty: "Один профиль отказов",
+      }],
+      evidence: [{
+        candidateId: "source-1",
+        title: "Reconnect study",
+        url: "https://example.com/study",
+        sourceType: "Эксперимент",
+        quality: "high",
+        sourceKind: "primary",
+        author: "Research team",
+        publishedAt: "2026-08-01",
+        accessedAt: "2026-09-02",
+        originId: "study-1",
+        independence: "independent",
+        freshness: "current",
+        notes: "Сравнение стратегий",
+      }],
+    });
+
+    expect(result.audits).toHaveLength(1);
+    expect(result.contradictions[0]).toMatchObject({
+      candidateId: "contradiction-1",
+      status: "limited",
+    });
+  });
+
+  it("maps verified findings to typed product actions", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
+      actions: [{
+        type: "CREATE_PRACTICE_TASK",
+        title: "Сделать reconnect-задачу",
+        reason: "Вывод нужно закрепить кодом",
+        expectedOutcome: "Реализовать backoff без подсказки",
+        priority: 1,
+        payload: {
+          details: "Добавить тесты jitter и максимальной задержки",
+          targetId: null,
+        },
+      }],
+    }));
+
+    const result = await createService().mapResearchActions({
+      type: "technical_topic",
+      mode: "standard",
+      decisionStatement: "Подготовиться к вопросу про WebSocket",
+      summary: "Backoff с jitter устойчивее",
+      claims: [],
+      contradictions: [],
+      unresolvedGaps: [],
+    });
+
+    expect(result[0]).toMatchObject({
+      candidateId: "action-1",
+      type: "CREATE_PRACTICE_TASK",
+      priority: 1,
+    });
   });
 });

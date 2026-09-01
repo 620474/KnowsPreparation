@@ -12,6 +12,14 @@ import {
   type AdaptivePlanItem,
   type CareerVacancyAnalysis,
   type InterviewQuestion,
+  type ResearchAgentClaimDraft,
+  type ResearchAgentActionDraft,
+  type ResearchAgentCitationAudit,
+  type ResearchAgentContradiction,
+  type ResearchAgentEvidenceDraft,
+  type ResearchAgentMode,
+  type ResearchAgentType,
+  type ResearchProtocol,
 } from "@prep/contracts";
 import { z } from "zod";
 
@@ -64,6 +72,171 @@ const planOrderingSchema = z.object({
   orderedIds: z.array(z.string().trim().min(1).max(300)).max(20),
   rationale: z.string().trim().min(1).max(2_000),
 });
+
+const researchPlanSchema = z.object({
+  protocol: z.object({
+    subQuestions: z.string().trim().max(12_000),
+    workingHypotheses: z.string().trim().max(12_000),
+    alternativeHypotheses: z.string().trim().max(12_000),
+    sourceHierarchy: z.string().trim().max(8_000),
+    inclusionCriteria: z.string().trim().max(8_000),
+    exclusionCriteria: z.string().trim().max(8_000),
+    stoppingRule: z.string().trim().max(4_000),
+    decisionChangeCriteria: z.string().trim().max(4_000),
+    ethicalConstraints: z.string().trim().max(4_000),
+    revisitDate: z.string().nullable(),
+  }),
+  searchQueries: z.array(z.string().trim().min(3).max(500)).min(2).max(8),
+});
+
+const researchEvidenceCandidateSchema = z.object({
+  title: z.string().trim().min(2).max(300),
+  url: z.url(),
+  sourceType: z.string().trim().max(120),
+  quality: z.enum(["unassessed", "low", "medium", "high"]),
+  sourceKind: z.enum(["unassessed", "primary", "secondary", "official"]),
+  author: z.string().trim().max(500),
+  publishedAt: z.string().nullable(),
+  originId: z.string().trim().max(500),
+  independence: z.enum(["unknown", "independent", "dependent"]),
+  freshness: z.enum(["unassessed", "current", "aging", "outdated"]),
+  notes: z.string().trim().max(8_000),
+});
+
+const researchDiscoverySchema = z.object({
+  evidence: z.array(researchEvidenceCandidateSchema).max(20),
+  summary: z.string().trim().max(8_000),
+  gaps: z.array(z.string().trim().min(1).max(1_000)).max(20),
+});
+
+const researchSynthesisSchema = z.object({
+  claims: z.array(z.object({
+    text: z.string().trim().min(2).max(8_000),
+    confidence: z.enum(["unassessed", "low", "moderate", "high"]),
+    evidenceLinks: z.array(z.object({
+      url: z.url(),
+      stance: z.enum(["supports", "contradicts", "limits", "context"]),
+      excerpt: z.string().trim().max(8_000),
+      locator: z.string().trim().max(500),
+      notes: z.string().trim().max(4_000),
+    })).max(30),
+    alternativeExplanations: z.string().trim().max(8_000),
+    uncertainty: z.string().trim().max(8_000),
+  })).max(12),
+  summary: z.string().trim().max(12_000),
+  unresolvedGaps: z.array(z.string().trim().min(1).max(1_000)).max(20),
+  stopReason: z.string().trim().max(4_000),
+});
+
+const researchAuditSchema = z.object({
+  audits: z.array(z.object({
+    claimCandidateId: z.string().trim().min(1).max(160),
+    evidenceCandidateId: z.string().trim().min(1).max(160),
+    verified: z.boolean(),
+    entailmentScore: z.number().int().min(0).max(100),
+    note: z.string().trim().max(4_000),
+  })).max(100),
+  contradictions: z.array(z.object({
+    claimA: z.string().trim().min(2).max(4_000),
+    claimB: z.string().trim().min(2).max(4_000),
+    explanation: z.string().trim().max(4_000),
+    status: z.enum(["resolved", "limited", "unresolved"]),
+    impact: z.string().trim().max(4_000),
+  })).max(30),
+});
+
+const researchActionsSchema = z.object({
+  actions: z.array(z.object({
+    type: z.enum([
+      "CREATE_LESSON",
+      "CREATE_QUIZ",
+      "CREATE_PRACTICE_TASK",
+      "ADD_REVIEW_ITEMS",
+      "CREATE_MOCK_PROFILE",
+      "UPDATE_VACANCY_PLAN",
+      "ADD_CAREER_ACTION",
+      "CREATE_DAILY_PLAN",
+      "NO_ACTION",
+    ]),
+    title: z.string().trim().min(2).max(300),
+    reason: z.string().trim().min(2).max(4_000),
+    expectedOutcome: z.string().trim().min(2).max(4_000),
+    priority: z.number().int().min(1).max(5),
+    payload: z.object({
+      details: z.string().trim().max(8_000),
+      targetId: z.string().trim().max(300).nullable(),
+    }),
+  })).max(20),
+});
+
+const researchProtocolJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    subQuestions: { type: "string" },
+    workingHypotheses: { type: "string" },
+    alternativeHypotheses: { type: "string" },
+    sourceHierarchy: { type: "string" },
+    inclusionCriteria: { type: "string" },
+    exclusionCriteria: { type: "string" },
+    stoppingRule: { type: "string" },
+    decisionChangeCriteria: { type: "string" },
+    ethicalConstraints: { type: "string" },
+    revisitDate: { anyOf: [{ type: "string" }, { type: "null" }] },
+  },
+  required: [
+    "subQuestions",
+    "workingHypotheses",
+    "alternativeHypotheses",
+    "sourceHierarchy",
+    "inclusionCriteria",
+    "exclusionCriteria",
+    "stoppingRule",
+    "decisionChangeCriteria",
+    "ethicalConstraints",
+    "revisitDate",
+  ],
+} as const;
+
+const researchEvidenceJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "string" },
+    url: { type: "string" },
+    sourceType: { type: "string" },
+    quality: { type: "string", enum: ["unassessed", "low", "medium", "high"] },
+    sourceKind: {
+      type: "string",
+      enum: ["unassessed", "primary", "secondary", "official"],
+    },
+    author: { type: "string" },
+    publishedAt: { anyOf: [{ type: "string" }, { type: "null" }] },
+    originId: { type: "string" },
+    independence: {
+      type: "string",
+      enum: ["unknown", "independent", "dependent"],
+    },
+    freshness: {
+      type: "string",
+      enum: ["unassessed", "current", "aging", "outdated"],
+    },
+    notes: { type: "string" },
+  },
+  required: [
+    "title",
+    "url",
+    "sourceType",
+    "quality",
+    "sourceKind",
+    "author",
+    "publishedAt",
+    "originId",
+    "independence",
+    "freshness",
+    "notes",
+  ],
+} as const;
 
 const jsonSchema = {
   sourceVerification: {
@@ -185,6 +358,180 @@ const jsonSchema = {
       "recommendedPriority",
     ],
   },
+  researchPlan: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      protocol: researchProtocolJsonSchema,
+      searchQueries: {
+        type: "array",
+        minItems: 2,
+        maxItems: 8,
+        items: { type: "string" },
+      },
+    },
+    required: ["protocol", "searchQueries"],
+  },
+  researchDiscovery: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      evidence: { type: "array", maxItems: 20, items: researchEvidenceJsonSchema },
+      summary: { type: "string" },
+      gaps: { type: "array", maxItems: 20, items: { type: "string" } },
+    },
+    required: ["evidence", "summary", "gaps"],
+  },
+  researchSynthesis: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      claims: {
+        type: "array",
+        maxItems: 12,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            text: { type: "string" },
+            confidence: {
+              type: "string",
+              enum: ["unassessed", "low", "moderate", "high"],
+            },
+            evidenceLinks: {
+              type: "array",
+              maxItems: 30,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  url: { type: "string" },
+                  stance: {
+                    type: "string",
+                    enum: ["supports", "contradicts", "limits", "context"],
+                  },
+                  excerpt: { type: "string" },
+                  locator: { type: "string" },
+                  notes: { type: "string" },
+                },
+                required: ["url", "stance", "excerpt", "locator", "notes"],
+              },
+            },
+            alternativeExplanations: { type: "string" },
+            uncertainty: { type: "string" },
+          },
+          required: [
+            "text",
+            "confidence",
+            "evidenceLinks",
+            "alternativeExplanations",
+            "uncertainty",
+          ],
+        },
+      },
+      summary: { type: "string" },
+      unresolvedGaps: { type: "array", maxItems: 20, items: { type: "string" } },
+      stopReason: { type: "string" },
+    },
+    required: ["claims", "summary", "unresolvedGaps", "stopReason"],
+  },
+  researchAudit: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      audits: {
+        type: "array",
+        maxItems: 100,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            claimCandidateId: { type: "string" },
+            evidenceCandidateId: { type: "string" },
+            verified: { type: "boolean" },
+            entailmentScore: { type: "integer", minimum: 0, maximum: 100 },
+            note: { type: "string" },
+          },
+          required: [
+            "claimCandidateId",
+            "evidenceCandidateId",
+            "verified",
+            "entailmentScore",
+            "note",
+          ],
+        },
+      },
+      contradictions: {
+        type: "array",
+        maxItems: 30,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            claimA: { type: "string" },
+            claimB: { type: "string" },
+            explanation: { type: "string" },
+            status: { type: "string", enum: ["resolved", "limited", "unresolved"] },
+            impact: { type: "string" },
+          },
+          required: ["claimA", "claimB", "explanation", "status", "impact"],
+        },
+      },
+    },
+    required: ["audits", "contradictions"],
+  },
+  researchActions: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      actions: {
+        type: "array",
+        maxItems: 20,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            type: {
+              type: "string",
+              enum: [
+                "CREATE_LESSON",
+                "CREATE_QUIZ",
+                "CREATE_PRACTICE_TASK",
+                "ADD_REVIEW_ITEMS",
+                "CREATE_MOCK_PROFILE",
+                "UPDATE_VACANCY_PLAN",
+                "ADD_CAREER_ACTION",
+                "CREATE_DAILY_PLAN",
+                "NO_ACTION",
+              ],
+            },
+            title: { type: "string" },
+            reason: { type: "string" },
+            expectedOutcome: { type: "string" },
+            priority: { type: "integer", minimum: 1, maximum: 5 },
+            payload: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                details: { type: "string" },
+                targetId: { anyOf: [{ type: "string" }, { type: "null" }] },
+              },
+              required: ["details", "targetId"],
+            },
+          },
+          required: [
+            "type",
+            "title",
+            "reason",
+            "expectedOutcome",
+            "priority",
+            "payload",
+          ],
+        },
+      },
+    },
+    required: ["actions"],
+  },
 } as const;
 
 export type SourceVerification = z.infer<typeof sourceVerificationSchema>;
@@ -206,6 +553,22 @@ export class AiAgentService {
     return (
       this.config.get<string>("OPENAI_AGENT_MODEL")?.trim() ||
       this.config.get<string>("OPENAI_REVIEW_MODEL")?.trim() ||
+      "gpt-5.6-terra"
+    );
+  }
+
+  get researchModel() {
+    return (
+      this.config.get<string>("OPENAI_RESEARCH_MODEL")?.trim() ||
+      this.config.get<string>("OPENAI_MODEL")?.trim() ||
+      "gpt-5.6-sol"
+    );
+  }
+
+  get researchReviewModel() {
+    return (
+      this.config.get<string>("OPENAI_REVIEW_MODEL")?.trim() ||
+      this.config.get<string>("OPENAI_AGENT_MODEL")?.trim() ||
       "gpt-5.6-terra"
     );
   }
@@ -353,6 +716,214 @@ export class AiAgentService {
       .parse(response.data);
   }
 
+  async planResearch(input: {
+    title: string;
+    decisionStatement: string;
+    primaryQuestion: string;
+    scope: string;
+    existingProtocol: ResearchProtocol;
+  }, signal?: AbortSignal, model = this.researchModel) {
+    const response = await this.request(
+      "autonomous_research_plan",
+      jsonSchema.researchPlan,
+      [
+        "Ты lead researcher. Составь воспроизводимый протокол до начала поиска.",
+        "Сохрани полезные ограничения existingProtocol, но дополни пропуски.",
+        "Подвопросы, гипотезы и критерии пиши отдельными строками.",
+        "Stopping rule должен быть проверяемым, а searchQueries — покрывать основной вопрос и альтернативные объяснения.",
+        "Не делай выводов до поиска. Пиши по-русски.",
+      ].join(" "),
+      input,
+      3_000,
+      signal,
+      {},
+      { model },
+    );
+    return researchPlanSchema.parse(response.data);
+  }
+
+  async discoverResearchEvidence(input: {
+    project: {
+      title: string;
+      decisionStatement: string;
+      primaryQuestion: string;
+      scope: string;
+    };
+    protocol: ResearchProtocol;
+    searchQueries: string[];
+    existingEvidence?: ResearchAgentEvidenceDraft[];
+    mode: "discovery" | "challenge";
+  }, signal?: AbortSignal, model?: string) {
+    const challenge = input.mode === "challenge";
+    const response = await this.request(
+      challenge ? "autonomous_research_challenge" : "autonomous_research_discovery",
+      jsonSchema.researchDiscovery,
+      [
+        challenge
+          ? "Ты независимый red-team исследователь. Ищи опровержения, ограничения, зависимые пересказы и пропущенные альтернативы."
+          : "Ты evidence researcher. Найди наиболее сильные первичные, официальные и независимые источники для исследовательского вопроса.",
+        "Используй web search. Не придумывай URL, автора, дату или содержание.",
+        "Каждая запись evidence должна ссылаться на реально открытый источник и объяснять, что он добавляет и чего не доказывает.",
+        "Не считай несколько пересказов одного origin независимыми подтверждениями.",
+        "Верни не больше 12 действительно полезных источников. Пиши по-русски.",
+      ].join(" "),
+      input,
+      6_000,
+      signal,
+      {
+        tools: [{ type: "web_search" }],
+        include: ["web_search_call.action.sources"],
+      },
+      {
+        model: model ?? (challenge ? this.researchReviewModel : this.researchModel),
+        sourcePolicy: "all",
+      },
+    );
+    const parsed = researchDiscoverySchema.parse(response.data);
+    const consulted = new Map(response.sources.map((source) => [source.url, source]));
+    const accessedAt = new Date().toISOString().slice(0, 10);
+    const evidence = parsed.evidence
+      .filter((entry) => consulted.has(entry.url))
+      .map((entry, index): ResearchAgentEvidenceDraft => ({
+        ...entry,
+        candidateId: `source-${index + 1}`,
+        title: consulted.get(entry.url)?.title || entry.title,
+        accessedAt,
+      }));
+    return { ...parsed, evidence };
+  }
+
+  async synthesizeResearch(input: {
+    project: {
+      decisionStatement: string;
+      primaryQuestion: string;
+      scope: string;
+    };
+    protocol: ResearchProtocol;
+    evidence: ResearchAgentEvidenceDraft[];
+    discoverySummary: string;
+    challengeSummary: string;
+    gaps: string[];
+  }, signal?: AbortSignal, model = this.researchReviewModel): Promise<{
+    claims: ResearchAgentClaimDraft[];
+    summary: string;
+    unresolvedGaps: string[];
+    stopReason: string;
+  }> {
+    const response = await this.request(
+      "autonomous_research_synthesis",
+      jsonSchema.researchSynthesis,
+      [
+        "Ты senior research analyst. Синтезируй только те выводы, которые подтверждаются переданным evidence.",
+        "Каждая evidenceLinks.url должна точно совпадать с URL из evidence. Не добавляй новые сведения и ссылки.",
+        "Отделяй факт от inference, учитывай опровержения, ограничения и зависимость источников.",
+        "Высокая уверенность допустима только при сильных независимых подтверждениях.",
+        "stopReason должен честно объяснять, выполнен ли stopping rule. Пиши по-русски.",
+      ].join(" "),
+      input,
+      6_000,
+      signal,
+      {},
+      { model },
+    );
+    const parsed = researchSynthesisSchema.parse(response.data);
+    const evidenceByUrl = new Map(input.evidence.map((entry) => [entry.url, entry]));
+    const claims = parsed.claims.flatMap((claim, index): ResearchAgentClaimDraft[] => {
+      const evidenceLinks = claim.evidenceLinks.flatMap((link) => {
+        const evidence = evidenceByUrl.get(link.url);
+        return evidence ? [{
+          candidateId: evidence.candidateId,
+          stance: link.stance,
+          excerpt: link.excerpt,
+          locator: link.locator,
+          notes: link.notes,
+        }] : [];
+      });
+      if (evidenceLinks.length === 0) return [];
+      return [{
+        candidateId: `claim-${index + 1}`,
+        text: claim.text,
+        confidence: claim.confidence,
+        evidenceLinks,
+        alternativeExplanations: claim.alternativeExplanations,
+        uncertainty: claim.uncertainty,
+      }];
+    });
+    return { ...parsed, claims };
+  }
+
+  async auditResearchClaims(input: {
+    type: ResearchAgentType;
+    mode: ResearchAgentMode;
+    claims: ResearchAgentClaimDraft[];
+    evidence: ResearchAgentEvidenceDraft[];
+  }, signal?: AbortSignal, model = this.researchReviewModel): Promise<{
+    audits: ResearchAgentCitationAudit[];
+    contradictions: ResearchAgentContradiction[];
+  }> {
+    const response = await this.request(
+      "autonomous_research_audit",
+      jsonSchema.researchAudit,
+      [
+        "Ты независимый evidence auditor.",
+        "Проверь каждую переданную связь claim → evidence: действительно ли точный фрагмент и контекст подтверждают заявленную силу вывода.",
+        "verified=false, если ссылка лишь тематически связана, вывод сильнее evidence, фрагмент пуст или источник противоречит связи.",
+        "Найди содержательные противоречия между выводами или источниками. Не создавай новые факты.",
+        "Пиши краткие объяснения по-русски.",
+      ].join(" "),
+      input,
+      5_000,
+      signal,
+      {},
+      { model },
+    );
+    const parsed = researchAuditSchema.parse(response.data);
+    const allowedPairs = new Set(input.claims.flatMap((claim) =>
+      claim.evidenceLinks.map((link) => `${claim.candidateId}:${link.candidateId}`),
+    ));
+    const audits = parsed.audits.filter((audit) =>
+      allowedPairs.has(`${audit.claimCandidateId}:${audit.evidenceCandidateId}`),
+    );
+    return {
+      audits,
+      contradictions: parsed.contradictions.map((entry, index) => ({
+        ...entry,
+        candidateId: `contradiction-${index + 1}`,
+      })),
+    };
+  }
+
+  async mapResearchActions(input: {
+    type: ResearchAgentType;
+    mode: ResearchAgentMode;
+    decisionStatement: string;
+    summary: string;
+    claims: ResearchAgentClaimDraft[];
+    contradictions: ResearchAgentContradiction[];
+    unresolvedGaps: string[];
+  }, signal?: AbortSignal, model = this.researchReviewModel): Promise<ResearchAgentActionDraft[]> {
+    const response = await this.request(
+      "autonomous_research_actions",
+      jsonSchema.researchActions,
+      [
+        "Ты Action Mapper приложения подготовки frontend-разработчика к собеседованиям.",
+        "Переведи только подтверждённые результаты исследования в небольшой набор конкретных следующих действий.",
+        "Не предлагай автоматически считать навык освоенным, удалять данные или отправлять сообщения.",
+        "Действия будут показаны как diff и применены только после подтверждения пользователя.",
+        "Обычно достаточно 1–5 действий. Пиши по-русски.",
+      ].join(" "),
+      input,
+      4_000,
+      signal,
+      {},
+      { model },
+    );
+    return researchActionsSchema.parse(response.data).actions.map((action, index) => ({
+      ...action,
+      candidateId: `action-${index + 1}`,
+    }));
+  }
+
   private async request(
     name: string,
     schema: Record<string, unknown>,
@@ -361,6 +932,10 @@ export class AiAgentService {
     maxOutputTokens: number,
     externalSignal?: AbortSignal,
     extras: Record<string, unknown> = {},
+    options: {
+      model?: string;
+      sourcePolicy?: "official" | "all";
+    } = {},
   ) {
     const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
     if (!apiKey) {
@@ -375,7 +950,7 @@ export class AiAgentService {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: this.model,
+          model: options.model ?? this.model,
           instructions,
           input: JSON.stringify(input),
           max_output_tokens: maxOutputTokens,
@@ -391,7 +966,10 @@ export class AiAgentService {
         throw new BadGatewayException(`AI-агент не ответил (HTTP ${response.status}).`);
       }
       const data = JSON.parse(extractResponseText(body)) as unknown;
-      return { data, sources: this.extractSources(body) };
+      return {
+        data,
+        sources: this.extractSources(body, options.sourcePolicy ?? "official"),
+      };
     } catch (error) {
       if (
         error instanceof ServiceUnavailableException ||
@@ -413,7 +991,7 @@ export class AiAgentService {
     }
   }
 
-  private extractSources(value: unknown) {
+  private extractSources(value: unknown, sourcePolicy: "official" | "all") {
     if (typeof value !== "object" || value === null || !("output" in value)) return [];
     const output = (value as { output?: unknown }).output;
     if (!Array.isArray(output)) return [];
@@ -430,7 +1008,9 @@ export class AiAgentService {
         const title = "title" in source && typeof source.title === "string"
           ? source.title
           : url;
-        if (url && this.isAllowedOfficialUrl(url)) sources.set(url, { title, url });
+        if (url && (sourcePolicy === "all" || this.isAllowedOfficialUrl(url))) {
+          sources.set(url, { title, url });
+        }
       }
     }
     return [...sources.values()];
