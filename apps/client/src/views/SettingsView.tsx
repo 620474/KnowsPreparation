@@ -13,6 +13,7 @@ import {
   LogOut,
   Server,
   ShieldCheck,
+  FlaskConical,
   Sparkles,
   Upload,
 } from "lucide-react";
@@ -30,6 +31,7 @@ interface SettingsViewProps {
   onOpenAlgorithms: () => void;
   onOpenQuestions: () => void;
   onOpenResources: () => void;
+  onOpenResearch: () => void;
   onUpdateSettings: (settings: SettingsPatch) => Promise<boolean>;
   onExportBackup: () => Promise<boolean>;
   onImportBackup: (backup: LearningBackup) => Promise<number | null>;
@@ -44,6 +46,7 @@ export function SettingsView({
   onOpenAlgorithms,
   onOpenQuestions,
   onOpenResources,
+  onOpenResearch,
   onUpdateSettings,
   onExportBackup,
   onImportBackup,
@@ -131,6 +134,17 @@ export function SettingsView({
       </header>
 
       {status ? <p className="settings-status" role="status">{status}</p> : null}
+
+      <section className="settings-card">
+        <div className="settings-icon"><FlaskConical /></div>
+        <div>
+          <h2>Исследования</h2>
+          <p>Протокол, этапы, источники, выводы, риски и проверки качества в одном месте.</p>
+          <Button className="primary-button" type="button" onClick={onOpenResearch}>
+            Открыть исследования
+          </Button>
+        </div>
+      </section>
 
       <section className="settings-card">
         <div className="settings-icon"><LibraryBig /></div>

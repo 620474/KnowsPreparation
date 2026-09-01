@@ -549,6 +549,168 @@ export const learningAnalyticsSchema = z.object({
   skills: z.array(learningAnalyticsSkillSchema),
 });
 
+export const RESEARCH_STAGE_KEYS = [
+  "decision",
+  "scope",
+  "questions",
+  "protocol",
+  "evidence",
+  "data",
+  "analysis",
+  "validation",
+  "bias",
+  "ethics",
+  "synthesis",
+  "reporting",
+] as const;
+export const researchStageKeySchema = z.enum(RESEARCH_STAGE_KEYS);
+export const researchStageStatusSchema = z.enum([
+  "pending",
+  "in_progress",
+  "complete",
+  "blocked",
+  "not_applicable",
+]);
+export const RESEARCH_QUALITY_GATE_KEYS = [
+  "construct_validity",
+  "selection",
+  "alternative_explanations",
+  "uncertainty",
+  "robustness",
+  "negative_evidence",
+  "traceability",
+  "reproducibility",
+  "ethics",
+  "applicability",
+] as const;
+export const researchQualityGateKeySchema = z.enum(RESEARCH_QUALITY_GATE_KEYS);
+export const researchQualityGateStatusSchema = z.enum([
+  "pending",
+  "passed",
+  "blocked",
+  "not_applicable",
+]);
+export const researchProjectStatusSchema = z.enum([
+  "draft",
+  "active",
+  "paused",
+  "completed",
+]);
+export const researchDesignSchema = z.enum([
+  "systematic_review",
+  "experiment",
+  "observational",
+  "qualitative",
+  "mixed_methods",
+  "computational",
+  "case_study",
+  "other",
+]);
+export const researchStageSchema = z.object({
+  key: researchStageKeySchema,
+  status: researchStageStatusSchema,
+  note: z.string(),
+});
+export const researchQualityGateSchema = z.object({
+  key: researchQualityGateKeySchema,
+  status: researchQualityGateStatusSchema,
+  note: z.string(),
+});
+export const researchRiskSchema = z.object({
+  riskId: z.string(),
+  title: z.string(),
+  mitigation: z.string(),
+  severity: z.enum(["low", "medium", "high", "critical"]),
+  status: z.enum(["open", "mitigated", "accepted"]),
+});
+export const researchMilestoneSchema = z.object({
+  milestoneId: z.string(),
+  title: z.string(),
+  dueDate: z.string().nullable(),
+  status: z.enum(["pending", "complete"]),
+});
+const researchProjectFieldsSchema = z.object({
+  title: z.string().trim().min(2).max(180),
+  decisionStatement: z.string().trim().max(4000),
+  primaryQuestion: z.string().trim().max(4000),
+  scope: z.string().trim().max(8000),
+  design: researchDesignSchema,
+  status: researchProjectStatusSchema,
+  startDate: z.string().nullable(),
+  targetDate: z.string().nullable(),
+  nextAction: z.string().trim().max(2000),
+});
+export const createResearchProjectSchema = researchProjectFieldsSchema;
+export const updateResearchProjectSchema = researchProjectFieldsSchema.partial().extend({
+  stages: z.array(researchStageSchema).optional(),
+  qualityGates: z.array(researchQualityGateSchema).optional(),
+  risks: z.array(researchRiskSchema).max(100).optional(),
+  milestones: z.array(researchMilestoneSchema).max(100).optional(),
+});
+export const researchProjectSchema = researchProjectFieldsSchema.extend({
+  projectId: z.string(),
+  stages: z.array(researchStageSchema),
+  qualityGates: z.array(researchQualityGateSchema),
+  risks: z.array(researchRiskSchema),
+  milestones: z.array(researchMilestoneSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export const researchEvidenceStanceSchema = z.enum([
+  "supports",
+  "contradicts",
+  "neutral",
+]);
+export const researchEvidenceQualitySchema = z.enum([
+  "unassessed",
+  "low",
+  "medium",
+  "high",
+]);
+const researchEvidenceFieldsSchema = z.object({
+  title: z.string().trim().min(2).max(300),
+  url: z.string().trim().max(2000),
+  sourceType: z.string().trim().max(120),
+  stance: researchEvidenceStanceSchema,
+  quality: researchEvidenceQualitySchema,
+  notes: z.string().trim().max(8000),
+});
+export const createResearchEvidenceSchema = researchEvidenceFieldsSchema;
+export const updateResearchEvidenceSchema = researchEvidenceFieldsSchema.partial();
+export const researchEvidenceSchema = researchEvidenceFieldsSchema.extend({
+  evidenceId: z.string(),
+  projectId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export const researchClaimConfidenceSchema = z.enum([
+  "unassessed",
+  "low",
+  "moderate",
+  "high",
+]);
+const researchClaimFieldsSchema = z.object({
+  text: z.string().trim().min(2).max(8000),
+  status: z.enum(["draft", "validated", "rejected"]),
+  confidence: researchClaimConfidenceSchema,
+  evidenceIds: z.array(z.string()).max(100),
+  alternativeExplanations: z.string().trim().max(8000),
+  uncertainty: z.string().trim().max(8000),
+});
+export const createResearchClaimSchema = researchClaimFieldsSchema;
+export const updateResearchClaimSchema = researchClaimFieldsSchema.partial();
+export const researchClaimSchema = researchClaimFieldsSchema.extend({
+  claimId: z.string(),
+  projectId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export const researchWorkspaceSchema = z.object({
+  project: researchProjectSchema,
+  evidence: z.array(researchEvidenceSchema),
+  claims: z.array(researchClaimSchema),
+});
+
 export const learningBackupSchema = z.object({
   format: z.literal("knows-preparation-backup"),
   version: z.literal(1),
@@ -697,6 +859,29 @@ export type AdaptivePlan = z.infer<typeof adaptivePlanSchema>;
 export type LearningAnalyticsDay = z.infer<typeof learningAnalyticsDaySchema>;
 export type LearningAnalyticsSkill = z.infer<typeof learningAnalyticsSkillSchema>;
 export type LearningAnalytics = z.infer<typeof learningAnalyticsSchema>;
+export type ResearchStageKey = z.infer<typeof researchStageKeySchema>;
+export type ResearchStageStatus = z.infer<typeof researchStageStatusSchema>;
+export type ResearchQualityGateKey = z.infer<typeof researchQualityGateKeySchema>;
+export type ResearchQualityGateStatus = z.infer<typeof researchQualityGateStatusSchema>;
+export type ResearchProjectStatus = z.infer<typeof researchProjectStatusSchema>;
+export type ResearchDesign = z.infer<typeof researchDesignSchema>;
+export type ResearchEvidenceStance = z.infer<typeof researchEvidenceStanceSchema>;
+export type ResearchEvidenceQuality = z.infer<typeof researchEvidenceQualitySchema>;
+export type ResearchClaimConfidence = z.infer<typeof researchClaimConfidenceSchema>;
+export type ResearchStage = z.infer<typeof researchStageSchema>;
+export type ResearchQualityGate = z.infer<typeof researchQualityGateSchema>;
+export type ResearchRisk = z.infer<typeof researchRiskSchema>;
+export type ResearchMilestone = z.infer<typeof researchMilestoneSchema>;
+export type CreateResearchProject = z.infer<typeof createResearchProjectSchema>;
+export type UpdateResearchProject = z.infer<typeof updateResearchProjectSchema>;
+export type ResearchProject = z.infer<typeof researchProjectSchema>;
+export type CreateResearchEvidence = z.infer<typeof createResearchEvidenceSchema>;
+export type UpdateResearchEvidence = z.infer<typeof updateResearchEvidenceSchema>;
+export type ResearchEvidence = z.infer<typeof researchEvidenceSchema>;
+export type CreateResearchClaim = z.infer<typeof createResearchClaimSchema>;
+export type UpdateResearchClaim = z.infer<typeof updateResearchClaimSchema>;
+export type ResearchClaim = z.infer<typeof researchClaimSchema>;
+export type ResearchWorkspace = z.infer<typeof researchWorkspaceSchema>;
 export type LearningBackup = z.infer<typeof learningBackupSchema>;
 export type BootstrapContent = z.infer<typeof bootstrapContentSchema>;
 export type BootstrapProgress = z.infer<typeof bootstrapProgressSchema>;

@@ -67,6 +67,9 @@ const ResourcesView = lazy(() =>
 const ReviewView = lazy(() =>
   import("./views/ReviewView").then((module) => ({ default: module.ReviewView })),
 );
+const ResearchView = lazy(() =>
+  import("./views/ResearchView").then((module) => ({ default: module.ResearchView })),
+);
 const SettingsView = lazy(() =>
   import("./views/SettingsView").then((module) => ({ default: module.SettingsView })),
 );
@@ -102,6 +105,7 @@ export default function App() {
     quizFocusItemId,
     dayReader,
     yandexMockDayId,
+    researchProjectId,
     chatOpen,
     chatItemId,
     chatDraftRequest,
@@ -110,6 +114,7 @@ export default function App() {
     navigateToLesson,
     navigateToTrackDay,
     navigateToYandexMock,
+    navigateToResearchProject,
     openLessonReader,
     closeLessonReader,
     openChat,
@@ -285,6 +290,7 @@ export default function App() {
           onOpenAnalytics={() => navigateToView("analytics")}
           onOpenMock={() => navigateToView("interview")}
           onOpenReview={() => navigateToView("review")}
+          onOpenResearch={() => navigateToResearchProject(null)}
           onOpenAdaptiveItem={(item) => {
             if (item.kind === "review") {
               navigateToView("review");
@@ -469,6 +475,12 @@ export default function App() {
           onOpenReview={() => navigateToView("review")}
         />
       ) : null}
+      {activeView === "research" ? (
+        <ResearchView
+          projectId={researchProjectId}
+          onOpenProject={navigateToResearchProject}
+        />
+      ) : null}
       {activeView === "algorithms" ? (
         <AlgorithmsView
           data={data}
@@ -489,6 +501,7 @@ export default function App() {
           onOpenPlan={() => navigateToView("plan")}
           onOpenQuestions={() => navigateToView("questions")}
           onOpenResources={() => navigateToView("resources")}
+          onOpenResearch={() => navigateToResearchProject(null)}
           onUpdateSettings={updateSettings}
           onLogout={logout}
         />

@@ -27,6 +27,9 @@ const createBackup = (): LearningBackupV1 => ({
     mockInterviews: [],
     interviewSessions: [],
     yandexPlatformMockAttempts: [],
+    researchProjects: [],
+    researchEvidence: [],
+    researchClaims: [],
   },
 });
 
@@ -84,5 +87,18 @@ describe("parseLearningBackup", () => {
 
     expect(parseLearningBackup({ ...backup, data: legacyData }).data.interviewSessions)
       .toEqual([]);
+  });
+
+  it("accepts backups created before research tracking was added", () => {
+    const backup = createBackup();
+    const legacyData: Partial<LearningBackupV1["data"]> = { ...backup.data };
+    delete legacyData.researchProjects;
+    delete legacyData.researchEvidence;
+    delete legacyData.researchClaims;
+
+    const data = parseLearningBackup({ ...backup, data: legacyData }).data;
+    expect(data.researchProjects).toEqual([]);
+    expect(data.researchEvidence).toEqual([]);
+    expect(data.researchClaims).toEqual([]);
   });
 });

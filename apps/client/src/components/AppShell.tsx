@@ -48,13 +48,14 @@ const mobileNavigation = (["yandex", "ozon", "interview", "today", "settings"] a
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
   navigationId === activeView ||
   (navigationId === "settings" && activeView === "ai-course") ||
+  (navigationId === "settings" && activeView === "research") ||
   (navigationId === "questions" &&
     ["review", "mock-interview", "analytics"].includes(activeView));
 
 const isMobileNavigationActive = (navigationId: AppView, activeView: AppView) =>
   isNavigationActive(navigationId, activeView) ||
   (navigationId === "settings" &&
-    ["ai-course", "plan", "resources", "questions", "review", "mock-interview", "analytics", "algorithms"].includes(activeView));
+    ["ai-course", "research", "plan", "resources", "questions", "review", "mock-interview", "analytics", "algorithms"].includes(activeView));
 
 function ThemeToggle() {
   const { setColorScheme } = useMantineColorScheme();

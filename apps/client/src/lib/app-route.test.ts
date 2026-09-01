@@ -83,4 +83,21 @@ describe("app routes", () => {
     expect(formatAppRoute(route)).toBe("#/yandex/mock/yandex-d07");
     expect(parseAppRoute("#/yandex/mock/yandex-d07")).toEqual(route);
   });
+
+  it("round-trips a research project route", () => {
+    const route = {
+      view: "research" as const,
+      lessonReader: null,
+      researchProjectId: "rag/надёжность",
+    };
+    expect(formatAppRoute(route)).toBe(
+      "#/research/rag%2F%D0%BD%D0%B0%D0%B4%D1%91%D0%B6%D0%BD%D0%BE%D1%81%D1%82%D1%8C",
+    );
+    expect(parseAppRoute(formatAppRoute(route))).toEqual(route);
+    expect(parseAppRoute("#/research")).toEqual({
+      view: "research",
+      lessonReader: null,
+      researchProjectId: null,
+    });
+  });
 });

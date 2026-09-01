@@ -6,6 +6,10 @@ import {
   practiceAttemptHistorySchema,
   practiceAttemptSchema,
   practiceSolutionSaveResultSchema,
+  researchClaimSchema,
+  researchEvidenceSchema,
+  researchProjectSchema,
+  researchWorkspaceSchema,
   yandexPlatformMockAttemptSchema,
 } from "@prep/contracts";
 import { z } from "zod";
@@ -44,6 +48,16 @@ import type {
   YandexPlatformMockAttempt,
   AppSettings,
   SettingsPatch,
+  CreateResearchProject,
+  UpdateResearchProject,
+  ResearchProject,
+  CreateResearchEvidence,
+  UpdateResearchEvidence,
+  ResearchEvidence,
+  CreateResearchClaim,
+  UpdateResearchClaim,
+  ResearchClaim,
+  ResearchWorkspace,
 } from "./types";
 import { SseParser } from "./lib/sse";
 
@@ -211,6 +225,67 @@ export const learningApi = {
   getLearningAnalytics: (days: 7 | 30) =>
     request<LearningAnalytics>(`/learning/analytics?days=${days}`).then((result) =>
       learningAnalyticsSchema.parse(result),
+    ),
+  listResearchProjects: () =>
+    request<ResearchProject[]>("/learning/research/projects").then((projects) =>
+      projects.map((project) => researchProjectSchema.parse(project)),
+    ),
+  getResearchWorkspace: (projectId: string) =>
+    request<ResearchWorkspace>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}`,
+    ).then((workspace) => researchWorkspaceSchema.parse(workspace)),
+  createResearchProject: (data: CreateResearchProject) =>
+    request<ResearchProject>("/learning/research/projects", {
+      method: "POST",
+      body: JSON.stringify({ data }),
+    }).then((project) => researchProjectSchema.parse(project)),
+  updateResearchProject: (projectId: string, data: UpdateResearchProject) =>
+    request<ResearchProject>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}`,
+      { method: "PATCH", body: JSON.stringify({ data }) },
+    ).then((project) => researchProjectSchema.parse(project)),
+  deleteResearchProject: (projectId: string) =>
+    request<{ deleted: boolean }>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}`,
+      { method: "DELETE" },
+    ),
+  createResearchEvidence: (projectId: string, data: CreateResearchEvidence) =>
+    request<ResearchEvidence>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/evidence`,
+      { method: "POST", body: JSON.stringify({ data }) },
+    ).then((entry) => researchEvidenceSchema.parse(entry)),
+  updateResearchEvidence: (
+    projectId: string,
+    evidenceId: string,
+    data: UpdateResearchEvidence,
+  ) =>
+    request<ResearchEvidence>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/evidence/${encodeURIComponent(evidenceId)}`,
+      { method: "PATCH", body: JSON.stringify({ data }) },
+    ).then((entry) => researchEvidenceSchema.parse(entry)),
+  deleteResearchEvidence: (projectId: string, evidenceId: string) =>
+    request<{ deleted: boolean }>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/evidence/${encodeURIComponent(evidenceId)}`,
+      { method: "DELETE" },
+    ),
+  createResearchClaim: (projectId: string, data: CreateResearchClaim) =>
+    request<ResearchClaim>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/claims`,
+      { method: "POST", body: JSON.stringify({ data }) },
+    ).then((claim) => researchClaimSchema.parse(claim)),
+  updateResearchClaim: (
+    projectId: string,
+    claimId: string,
+    data: UpdateResearchClaim,
+  ) =>
+    request<ResearchClaim>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/claims/${encodeURIComponent(claimId)}`,
+      { method: "PATCH", body: JSON.stringify({ data }) },
+    ).then((claim) => researchClaimSchema.parse(claim)),
+  deleteResearchClaim: (projectId: string, claimId: string) =>
+    request<{ deleted: boolean }>(
+      `/learning/research/projects/${encodeURIComponent(projectId)}/claims/${encodeURIComponent(claimId)}`,
+      { method: "DELETE" },
     ),
   exportBackup: () => request<LearningBackup>("/learning/backup"),
   importBackup: (backup: LearningBackup) =>

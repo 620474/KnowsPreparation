@@ -12,6 +12,8 @@ import {
   studyExerciseRunnerSchema,
   trackKeySchema,
   TRACK_KEYS,
+  createResearchProjectSchema,
+  researchWorkspaceSchema,
   yandexPlatformMockAttemptSchema,
 } from "./index";
 
@@ -173,5 +175,57 @@ describe("shared API contracts", () => {
       }],
     });
     expect(attempt.questions[0]?.expectedAnswer).toBeNull();
+  });
+
+  it("validates research projects and traceable claims", () => {
+    const input = createResearchProjectSchema.parse({
+      title: "Надёжность RAG",
+      decisionStatement: "Выбрать конфигурацию retrieval",
+      primaryQuestion: "Какая конфигурация устойчива к обновлению документации?",
+      scope: "Русскоязычная техническая документация",
+      design: "computational",
+      status: "active",
+      startDate: "2026-09-01",
+      targetDate: "2026-10-01",
+      nextAction: "Зафиксировать benchmark",
+    });
+    expect(input.design).toBe("computational");
+
+    expect(researchWorkspaceSchema.parse({
+      project: {
+        ...input,
+        projectId: "project-1",
+        stages: [{ key: "decision", status: "complete", note: "" }],
+        qualityGates: [{ key: "traceability", status: "pending", note: "" }],
+        risks: [],
+        milestones: [],
+        createdAt: "2026-09-01T10:00:00.000Z",
+        updatedAt: "2026-09-01T10:00:00.000Z",
+      },
+      evidence: [{
+        evidenceId: "evidence-1",
+        projectId: "project-1",
+        title: "Benchmark",
+        url: "",
+        sourceType: "Эксперимент",
+        stance: "supports",
+        quality: "high",
+        notes: "Независимый holdout",
+        createdAt: "2026-09-01T10:00:00.000Z",
+        updatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+      claims: [{
+        claimId: "claim-1",
+        projectId: "project-1",
+        text: "Конфигурация A устойчивее baseline",
+        status: "validated",
+        confidence: "moderate",
+        evidenceIds: ["evidence-1"],
+        alternativeExplanations: "Различие корпуса",
+        uncertainty: "Небольшая выборка",
+        createdAt: "2026-09-01T10:00:00.000Z",
+        updatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+    }).claims[0]?.evidenceIds).toEqual(["evidence-1"]);
   });
 });

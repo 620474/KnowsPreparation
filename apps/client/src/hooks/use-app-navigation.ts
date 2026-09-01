@@ -27,6 +27,9 @@ export function useAppNavigation() {
   const [yandexMockDayId, setYandexMockDayId] = useState<string | null>(
     () => parseAppRoute(window.location.hash).yandexMockDayId ?? null,
   );
+  const [researchProjectId, setResearchProjectId] = useState<string | null>(
+    () => parseAppRoute(window.location.hash).researchProjectId ?? null,
+  );
   const [chatOpen, setChatOpen] = useState(false);
   const [chatItemId, setChatItemId] = useState<string | null>(null);
   const [chatDraftRequest, setChatDraftRequest] = useState<{
@@ -44,6 +47,7 @@ export function useAppNavigation() {
       setLessonReader(route.lessonReader);
       setDayReader(route.dayReader ?? null);
       setYandexMockDayId(route.yandexMockDayId ?? null);
+      setResearchProjectId(route.researchProjectId ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -83,6 +87,7 @@ export function useAppNavigation() {
       setLessonReader(route.lessonReader);
       setDayReader(route.dayReader ?? null);
       setYandexMockDayId(route.yandexMockDayId ?? null);
+      setResearchProjectId(route.researchProjectId ?? null);
       setChatOpen(false);
       setChatItemId(route.lessonReader?.itemId ?? null);
       setChatDraftRequest(null);
@@ -126,6 +131,16 @@ export function useAppNavigation() {
         lessonReader: null,
         dayReader: { track: "yandex", dayId },
         yandexMockDayId: dayId,
+      }),
+    [navigateToRoute],
+  );
+
+  const navigateToResearchProject = useCallback(
+    (projectId: string | null) =>
+      navigateToRoute({
+        view: "research",
+        lessonReader: null,
+        researchProjectId: projectId,
       }),
     [navigateToRoute],
   );
@@ -189,6 +204,7 @@ export function useAppNavigation() {
     quizFocusItemId,
     dayReader,
     yandexMockDayId,
+    researchProjectId,
     chatOpen,
     chatItemId,
     chatDraftRequest,
@@ -197,6 +213,7 @@ export function useAppNavigation() {
     navigateToLesson,
     navigateToTrackDay,
     navigateToYandexMock,
+    navigateToResearchProject,
     openLessonReader: navigateToLesson,
     closeLessonReader,
     openChat,

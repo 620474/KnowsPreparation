@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Alert, Button, Loader, Progress } from "@mantine/core";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   BarChart3,
@@ -12,11 +13,14 @@ import {
   RefreshCw,
   Target,
   Trophy,
+  FlaskConical,
 } from "lucide-react";
 
+import { learningApi } from "../api";
 import { useAdaptivePlan } from "../hooks/use-adaptive-plan";
 import { getDateForOffset, getDayForOffset, getStudyPosition, getWeekForDay } from "../lib/date";
 import { buildReviewQueue } from "../lib/review-queue";
+import { RESEARCH_PROJECTS_QUERY_KEY } from "../lib/research";
 import type { AdaptivePlanItem, BootstrapData, SkillKey } from "../types";
 
 interface TodayViewProps {
@@ -26,6 +30,7 @@ interface TodayViewProps {
   onOpenMock: () => void;
   onOpenReview: () => void;
   onOpenAdaptiveItem: (item: AdaptivePlanItem) => void;
+  onOpenResearch: () => void;
 }
 
 const kindLabels = {
@@ -55,7 +60,12 @@ export function TodayView({
   onOpenMock,
   onOpenReview,
   onOpenAdaptiveItem,
+  onOpenResearch,
 }: TodayViewProps) {
+  const researchProjects = useQuery({
+    queryKey: RESEARCH_PROJECTS_QUERY_KEY,
+    queryFn: learningApi.listResearchProjects,
+  });
   const adaptive = useAdaptivePlan(data.settings.adaptiveTodayEnabled);
   const position = getStudyPosition(data.settings.startDate);
   const day = getDayForOffset(data.curriculum, position.rawOffset);
@@ -77,6 +87,7 @@ export function TodayView({
     : 0;
   const dialStyle = { "--progress": `${totalProgress * 3.6}deg` } as CSSProperties;
   const reviewQueue = buildReviewQueue(data.questions, data.progress.questions);
+  const activeResearch = researchProjects.data?.find((project) => project.status === "active");
 
   if (!day || !week) return null;
 
@@ -175,6 +186,22 @@ export function TodayView({
           <Button className="secondary-button" type="button" variant="default" onClick={onOpenAnalytics}>Открыть аналитику</Button>
         </article>
       </section>
+
+      {activeResearch ? (
+        <section className="today-focus-panel research-today-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Активное исследование</p>
+              <h2>{activeResearch.title}</h2>
+            </div>
+            <FlaskConical size={25} />
+          </div>
+          <p>{activeResearch.nextAction || "Определи следующее конкретное действие по проекту."}</p>
+          <Button className="secondary-button" type="button" variant="default" onClick={onOpenResearch}>
+            Открыть контрольный центр
+          </Button>
+        </section>
+      ) : null}
 
       {data.settings.adaptiveTodayEnabled ? (
         <section className="adaptive-today-panel">

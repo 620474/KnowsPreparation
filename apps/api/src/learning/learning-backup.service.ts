@@ -22,6 +22,9 @@ import { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
 import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
+import { ResearchProject } from "./schemas/research-project.schema";
+import { ResearchEvidenceEntry } from "./schemas/research-evidence.schema";
+import { ResearchClaimEntry } from "./schemas/research-claim.schema";
 
 @Injectable()
 export class LearningBackupService {
@@ -50,6 +53,12 @@ export class LearningBackupService {
     private readonly interviewSessionModel: Model<InterviewSession>,
     @InjectModel(YandexPlatformMockAttempt.name)
     private readonly yandexPlatformMockAttemptModel: Model<YandexPlatformMockAttempt>,
+    @InjectModel(ResearchProject.name)
+    private readonly researchProjectModel: Model<ResearchProject>,
+    @InjectModel(ResearchEvidenceEntry.name)
+    private readonly researchEvidenceModel: Model<ResearchEvidenceEntry>,
+    @InjectModel(ResearchClaimEntry.name)
+    private readonly researchClaimModel: Model<ResearchClaimEntry>,
   ) {}
 
   async exportBackup() {
@@ -68,6 +77,9 @@ export class LearningBackupService {
       mockInterviews,
       interviewSessions,
       yandexPlatformMockAttempts,
+      researchProjects,
+      researchEvidence,
+      researchClaims,
     ] = await Promise.all([
       this.settingsModel.find().lean().exec(),
       this.taskModel.find().lean().exec(),
@@ -83,6 +95,9 @@ export class LearningBackupService {
       this.mockInterviewModel.find().lean().exec(),
       this.interviewSessionModel.find().lean().exec(),
       this.yandexPlatformMockAttemptModel.find().lean().exec(),
+      this.researchProjectModel.find().lean().exec(),
+      this.researchEvidenceModel.find().lean().exec(),
+      this.researchClaimModel.find().lean().exec(),
     ]);
 
     return {
@@ -104,6 +119,9 @@ export class LearningBackupService {
         mockInterviews,
         interviewSessions,
         yandexPlatformMockAttempts,
+        researchProjects,
+        researchEvidence,
+        researchClaims,
       },
     };
   }
@@ -157,6 +175,18 @@ export class LearningBackupService {
       yandexPlatformMockAttempts: await this.validateRecords(
         this.yandexPlatformMockAttemptModel,
         backup.data.yandexPlatformMockAttempts,
+      ),
+      researchProjects: await this.validateRecords(
+        this.researchProjectModel,
+        backup.data.researchProjects,
+      ),
+      researchEvidence: await this.validateRecords(
+        this.researchEvidenceModel,
+        backup.data.researchEvidence,
+      ),
+      researchClaims: await this.validateRecords(
+        this.researchClaimModel,
+        backup.data.researchClaims,
       ),
     };
 
@@ -228,6 +258,21 @@ export class LearningBackupService {
         this.yandexPlatformMockAttemptModel,
         prepared.yandexPlatformMockAttempts,
         (record) => ({ _id: record._id }),
+      ),
+      this.mergeRecords(
+        this.researchProjectModel,
+        prepared.researchProjects,
+        (record) => ({ projectId: record.projectId }),
+      ),
+      this.mergeRecords(
+        this.researchEvidenceModel,
+        prepared.researchEvidence,
+        (record) => ({ evidenceId: record.evidenceId }),
+      ),
+      this.mergeRecords(
+        this.researchClaimModel,
+        prepared.researchClaims,
+        (record) => ({ claimId: record.claimId }),
       ),
     ]);
 

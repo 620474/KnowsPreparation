@@ -154,6 +154,76 @@ describe("Learning API", () => {
       .expect(404);
   });
 
+  it("tracks a research project from protocol to traceable claim", async () => {
+    const projectResponse = await request(app.getHttpServer())
+      .post("/api/v1/learning/research/projects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          title: "Надёжность RAG",
+          decisionStatement: "Выбрать retrieval-конфигурацию",
+          primaryQuestion: "Какая конфигурация устойчивее?",
+          scope: "Русскоязычная документация",
+          design: "computational",
+          status: "active",
+          startDate: "2026-09-01",
+          targetDate: "2026-10-01",
+          nextAction: "Зафиксировать benchmark",
+        },
+      })
+      .expect(201);
+    const projectId = projectResponse.body.projectId as string;
+    expect(projectResponse.body.stages).toHaveLength(12);
+    expect(projectResponse.body.qualityGates).toHaveLength(10);
+
+    const evidenceResponse = await request(app.getHttpServer())
+      .post(`/api/v1/learning/research/projects/${projectId}/evidence`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          title: "Locked benchmark",
+          url: "",
+          sourceType: "Вычислительный эксперимент",
+          stance: "supports",
+          quality: "high",
+          notes: "Holdout не использован при настройке",
+        },
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/learning/research/projects/${projectId}/claims`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          text: "Конфигурация A устойчивее baseline",
+          status: "validated",
+          confidence: "moderate",
+          evidenceIds: [evidenceResponse.body.evidenceId],
+          alternativeExplanations: "Различие corpus mix",
+          uncertainty: "Один домен документации",
+        },
+      })
+      .expect(201);
+
+    const workspace = await request(app.getHttpServer())
+      .get(`/api/v1/learning/research/projects/${projectId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(workspace.body.evidence).toHaveLength(1);
+    expect(workspace.body.claims[0].evidenceIds).toEqual([
+      evidenceResponse.body.evidenceId,
+    ]);
+
+    const backup = await request(app.getHttpServer())
+      .get("/api/v1/learning/backup")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(backup.body.data.researchProjects).toHaveLength(1);
+    expect(backup.body.data.researchEvidence).toHaveLength(1);
+    expect(backup.body.data.researchClaims).toHaveLength(1);
+  });
+
   it("rejects an unknown track key", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/learning/tracks/sprint/items/anything/lesson")

@@ -46,6 +46,7 @@ import {
   UpdateTaskDto,
   SendInterviewAiMessageDto,
   SaveYandexMockResponseDto,
+  ResearchPayloadDto,
 } from "./dto/learning.dto";
 import { InterviewSessionService } from "./interview-session.service";
 import { LearningService } from "./learning.service";
@@ -56,6 +57,7 @@ import { LearningBootstrapService } from "./learning-bootstrap.service";
 import { ParseTrackKeyPipe } from "./parse-track-key.pipe";
 import type { TrackKey } from "./track-registry";
 import { YandexPlatformMockService } from "./yandex-platform-mock.service";
+import { ResearchService } from "./research.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning")
@@ -70,7 +72,88 @@ export class LearningController {
     private readonly backupService: LearningBackupService,
     private readonly interviewSessionService: InterviewSessionService,
     private readonly yandexPlatformMockService: YandexPlatformMockService,
+    private readonly researchService: ResearchService,
   ) {}
+
+  @Get("research/projects")
+  @Header("Cache-Control", "private, no-store")
+  listResearchProjects() {
+    return this.researchService.listProjects();
+  }
+
+  @Post("research/projects")
+  createResearchProject(@Body() dto: ResearchPayloadDto) {
+    return this.researchService.createProject(dto.data);
+  }
+
+  @Get("research/projects/:projectId")
+  @Header("Cache-Control", "private, no-store")
+  getResearchWorkspace(@Param("projectId") projectId: string) {
+    return this.researchService.getWorkspace(projectId);
+  }
+
+  @Patch("research/projects/:projectId")
+  updateResearchProject(
+    @Param("projectId") projectId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchService.updateProject(projectId, dto.data);
+  }
+
+  @Delete("research/projects/:projectId")
+  deleteResearchProject(@Param("projectId") projectId: string) {
+    return this.researchService.deleteProject(projectId);
+  }
+
+  @Post("research/projects/:projectId/evidence")
+  createResearchEvidence(
+    @Param("projectId") projectId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchService.createEvidence(projectId, dto.data);
+  }
+
+  @Patch("research/projects/:projectId/evidence/:evidenceId")
+  updateResearchEvidence(
+    @Param("projectId") projectId: string,
+    @Param("evidenceId") evidenceId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchService.updateEvidence(projectId, evidenceId, dto.data);
+  }
+
+  @Delete("research/projects/:projectId/evidence/:evidenceId")
+  deleteResearchEvidence(
+    @Param("projectId") projectId: string,
+    @Param("evidenceId") evidenceId: string,
+  ) {
+    return this.researchService.deleteEvidence(projectId, evidenceId);
+  }
+
+  @Post("research/projects/:projectId/claims")
+  createResearchClaim(
+    @Param("projectId") projectId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchService.createClaim(projectId, dto.data);
+  }
+
+  @Patch("research/projects/:projectId/claims/:claimId")
+  updateResearchClaim(
+    @Param("projectId") projectId: string,
+    @Param("claimId") claimId: string,
+    @Body() dto: ResearchPayloadDto,
+  ) {
+    return this.researchService.updateClaim(projectId, claimId, dto.data);
+  }
+
+  @Delete("research/projects/:projectId/claims/:claimId")
+  deleteResearchClaim(
+    @Param("projectId") projectId: string,
+    @Param("claimId") claimId: string,
+  ) {
+    return this.researchService.deleteClaim(projectId, claimId);
+  }
 
   @Get("adaptive/today")
   @Header("Cache-Control", "private, no-store")

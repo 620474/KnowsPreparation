@@ -4822,6 +4822,325 @@ p {
   }
 }
 
+.research-page {
+  padding-bottom: 110px;
+}
+
+.research-header,
+.research-workspace-header {
+  background:
+    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--mint) 16%, transparent), transparent 34%),
+    var(--surface);
+}
+
+.research-project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+
+.research-project-grid > button {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 22px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  cursor: pointer;
+}
+
+.research-project-grid > button:hover {
+  border-color: color-mix(in srgb, var(--mint) 55%, var(--line));
+  transform: translateY(-1px);
+}
+
+.research-project-grid > button > strong {
+  overflow-wrap: anywhere;
+  font-size: 1.25rem;
+}
+
+.research-project-grid > button > p {
+  min-height: 3.2em;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.research-project-card-top,
+.research-project-card-bottom,
+.research-record-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 10px;
+}
+
+.research-project-card-top small,
+.research-project-card-bottom small {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.research-project-card-bottom small:last-child {
+  max-width: 55%;
+}
+
+.research-form-card,
+.research-section {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: clamp(18px, 3vw, 28px);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.research-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.research-form-wide {
+  grid-column: 1 / -1;
+}
+
+.research-section {
+  padding: 0;
+  overflow: clip;
+}
+
+.research-section > summary {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+  padding: 18px 24px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 850;
+  list-style: none;
+}
+
+.research-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.research-section > summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.research-section[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.research-section > form,
+.research-section > div,
+.research-section > p {
+  margin: 0;
+  padding: 24px;
+}
+
+.research-progress-summary {
+  display: grid;
+  width: min(100%, 240px);
+  gap: 8px;
+}
+
+.research-progress-summary strong {
+  font-size: 2.4rem;
+}
+
+.research-progress-summary span,
+.research-section-note {
+  color: var(--muted);
+}
+
+.research-check-list,
+.research-record-list {
+  display: grid;
+  gap: 10px;
+}
+
+.research-check-list > article,
+.research-record-list > article,
+.research-compact-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.2fr) minmax(170px, 230px);
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--surface-soft);
+}
+
+.research-check-list > article.blocked,
+.research-record-list > article.warning {
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--line));
+}
+
+.research-check-list article > div,
+.research-compact-row span {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.research-check-list small,
+.research-compact-row small {
+  color: var(--muted);
+}
+
+.research-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.research-control-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.research-control-grid h3 {
+  margin: 0 0 4px;
+}
+
+.research-compact-row {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.research-compact-row > button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--mint-strong);
+  background: var(--surface);
+}
+
+.research-inline-create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.research-inline-create > div:first-child {
+  flex: 1 1 180px;
+}
+
+.research-subform {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--mint) 4%, var(--surface));
+}
+
+.research-record-list > article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.research-record-list article > div {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.research-record-list strong,
+.research-record-list p {
+  overflow-wrap: anywhere;
+}
+
+.research-record-list p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.research-record-list a {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  gap: 6px;
+  color: var(--mint-strong);
+  font-weight: 750;
+}
+
+.research-record-meta {
+  justify-content: flex-start;
+}
+
+.research-today-card > p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .research-form-grid,
+  .research-control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .research-form-wide {
+    grid-column: auto;
+  }
+
+  .research-workspace-header {
+    align-items: stretch;
+  }
+
+  .research-progress-summary {
+    width: 100%;
+  }
+
+  .research-section > summary,
+  .research-section > form,
+  .research-section > div,
+  .research-section > p {
+    padding: 17px;
+  }
+
+  .research-check-list > article {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .research-project-grid > button,
+  .research-form-card,
+  .research-section {
+    border-radius: 18px;
+  }
+
+  .research-project-card-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .research-project-card-bottom small:last-child {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .research-inline-create,
+  .research-inline-create > *,
+  .research-form-grid > .mantine-Button-root {
+    width: 100%;
+  }
+}
+
 .settings-controls {
   display: flex;
   align-items: center;
