@@ -6,6 +6,7 @@ const applicationPaths = [
   "today",
   "preparation",
   "knowledge",
+  "career",
   "yandex",
   "yandex/lesson/:itemId",
   "yandex/day/:dayId",

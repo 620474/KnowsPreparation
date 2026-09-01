@@ -75,6 +75,31 @@ export interface GeneratedLesson {
   summary: string;
 }
 
+export const AI_LESSON_REVIEW_VERDICTS = [
+  "approved",
+  "revised",
+  "rejected",
+] as const;
+export type AiLessonReviewVerdict =
+  (typeof AI_LESSON_REVIEW_VERDICTS)[number];
+
+export const AI_LESSON_REVIEW_SEVERITIES = ["warning", "critical"] as const;
+export type AiLessonReviewSeverity =
+  (typeof AI_LESSON_REVIEW_SEVERITIES)[number];
+
+export interface GeneratedLessonReviewIssue {
+  severity: AiLessonReviewSeverity;
+  category: string;
+  message: string;
+}
+
+export interface GeneratedLessonReview {
+  verdict: AiLessonReviewVerdict;
+  score: number;
+  issues: GeneratedLessonReviewIssue[];
+  correctedLesson: GeneratedLesson | null;
+}
+
 const asRecord = (value: unknown, label: string) => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`${label} must be an object`);
@@ -326,6 +351,55 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
     }),
     summary: asText(lesson.summary, "lesson.summary", 2_000),
   };
+}
+
+export function normalizeGeneratedLessonReview(
+  value: unknown,
+): GeneratedLessonReview {
+  const review = asRecord(value, "review");
+  if (
+    typeof review.verdict !== "string" ||
+    !AI_LESSON_REVIEW_VERDICTS.includes(
+      review.verdict as AiLessonReviewVerdict,
+    )
+  ) {
+    throw new Error("review.verdict is invalid");
+  }
+  const verdict = review.verdict as AiLessonReviewVerdict;
+  const score = Number(review.score);
+  if (!Number.isInteger(score) || score < 0 || score > 100) {
+    throw new Error("review.score must be an integer between 0 and 100");
+  }
+  if (!Array.isArray(review.issues)) {
+    throw new Error("review.issues must be an array");
+  }
+  const issues = review.issues.slice(0, 20).map((value, index) => {
+    const issue = asRecord(value, `review.issues.${index}`);
+    if (
+      typeof issue.severity !== "string" ||
+      !AI_LESSON_REVIEW_SEVERITIES.includes(
+        issue.severity as AiLessonReviewSeverity,
+      )
+    ) {
+      throw new Error(`review.issues.${index}.severity is invalid`);
+    }
+    return {
+      severity: issue.severity as AiLessonReviewSeverity,
+      category: asText(issue.category, `review.issues.${index}.category`, 80),
+      message: asText(issue.message, `review.issues.${index}.message`, 1_000),
+    };
+  });
+  const correctedLesson =
+    review.correctedLesson === null
+      ? null
+      : normalizeGeneratedLesson(review.correctedLesson);
+  if (verdict === "revised" && !correctedLesson) {
+    throw new Error("review.correctedLesson is required for a revised lesson");
+  }
+  if (verdict !== "revised" && correctedLesson) {
+    throw new Error("review.correctedLesson must be null unless the lesson is revised");
+  }
+  return { verdict, score, issues, correctedLesson };
 }
 
 const PRIORITY_SCORE = { must: 3, should: 2, optional: 1 } as const;

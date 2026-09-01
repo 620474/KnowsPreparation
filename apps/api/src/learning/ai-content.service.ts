@@ -10,6 +10,8 @@ import {
   extractResponseText,
   normalizeGeneratedCourse,
   normalizeGeneratedLesson,
+  normalizeGeneratedLessonReview,
+  type GeneratedLesson,
 } from "./ai-course";
 import {
   normalizeInterviewDefenseQuestions,
@@ -217,6 +219,33 @@ const lessonSchema = {
   ],
 } as const;
 
+const lessonReviewSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    verdict: { type: "string", enum: ["approved", "revised", "rejected"] },
+    score: { type: "integer", minimum: 0, maximum: 100 },
+    issues: {
+      type: "array",
+      maxItems: 20,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          severity: { type: "string", enum: ["warning", "critical"] },
+          category: { type: "string" },
+          message: { type: "string" },
+        },
+        required: ["severity", "category", "message"],
+      },
+    },
+    correctedLesson: {
+      anyOf: [lessonSchema, { type: "null" }],
+    },
+  },
+  required: ["verdict", "score", "issues", "correctedLesson"],
+} as const;
+
 const mockEvaluationSchema = {
   type: "object",
   additionalProperties: false,
@@ -309,6 +338,13 @@ export class AiContentService {
 
   get chatModel() {
     return this.config.get<string>("OPENAI_CHAT_MODEL")?.trim() || this.model;
+  }
+
+  get reviewModel() {
+    return (
+      this.config.get<string>("OPENAI_REVIEW_MODEL")?.trim() ||
+      "gpt-5.6-terra"
+    );
   }
 
   get transcriptionModel() {
@@ -491,6 +527,43 @@ export class AiContentService {
     }
   }
 
+  async reviewGeneratedLesson(
+    context: {
+      track: string;
+      title: string;
+      objective: string;
+    },
+    lesson: GeneratedLesson,
+    signal?: AbortSignal,
+  ) {
+    const result = await this.request<unknown>(
+      "frontend_interview_lesson_review",
+      lessonReviewSchema,
+      [
+        "Ты независимый senior frontend-инженер и технический редактор.",
+        "Проверь подготовленный урок на фактическую и логическую корректность, согласованность объяснений с примерами кода, правильность квиза, практики, testCases и referenceSolution, а также ясность русского текста.",
+        "Не одобряй материал с ошибочной семантикой JavaScript, TypeScript, React, браузерной платформы, алгоритмов или неверными ответами квиза.",
+        "Если существенных замечаний нет, верни verdict approved и correctedLesson null.",
+        "Если ошибки можно безопасно исправить, верни verdict revised и полный исправленный урок в correctedLesson, сохранив строгую структуру, ровно 10 вопросов и запускаемую практику.",
+        "Если материал нельзя уверенно исправить без полной повторной генерации, верни verdict rejected и correctedLesson null.",
+        "Не добавляй ссылки, не раскрывай referenceSolution в объяснении и не меняй тему урока.",
+      ].join(" "),
+      JSON.stringify({ context, lesson }),
+      16_000,
+      undefined,
+      signal,
+      this.reviewModel,
+    );
+    try {
+      return normalizeGeneratedLessonReview(result);
+    } catch (error) {
+      this.logNormalizationError("frontend_interview_lesson_review", error);
+      throw new BadGatewayException(
+        "Terra вернула некорректный результат проверки. Предыдущий урок сохранён.",
+      );
+    }
+  }
+
   async generateChatReply(
     lessonContext: string,
     history: AiChatHistoryMessage[],
@@ -640,9 +713,10 @@ export class AiContentService {
     maxOutputTokens: number,
     onDelta?: AiDeltaHandler,
     signal?: AbortSignal,
+    model = this.model,
   ) {
     const payload = {
-      model: this.model,
+      model,
       instructions,
       input,
       max_output_tokens: maxOutputTokens,
@@ -658,7 +732,7 @@ export class AiContentService {
     };
     const text = onDelta
       ? await this.performStreamingRequest(payload, onDelta, schemaName, signal)
-      : extractResponseText(await this.performRequest(payload, schemaName));
+      : extractResponseText(await this.performRequest(payload, schemaName, signal));
 
     try {
       return JSON.parse(text) as T;
@@ -686,7 +760,7 @@ export class AiContentService {
       const text = (
         onDelta
           ? await this.performStreamingRequest(payload, onDelta, "chat_reply", signal)
-          : extractResponseText(await this.performRequest(payload, "chat_reply"))
+          : extractResponseText(await this.performRequest(payload, "chat_reply", signal))
       ).trim();
       if (!text) throw new Error("Empty response");
       return text;
@@ -784,7 +858,11 @@ export class AiContentService {
     }
   }
 
-  private async performRequest(payload: Record<string, unknown>, operation: string) {
+  private async performRequest(
+    payload: Record<string, unknown>,
+    operation: string,
+    externalSignal?: AbortSignal,
+  ) {
     const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
     if (!apiKey) {
       throw new ServiceUnavailableException(
@@ -792,7 +870,7 @@ export class AiContentService {
       );
     }
 
-    const abortContext = createOpenAiAbortContext();
+    const abortContext = createOpenAiAbortContext(externalSignal);
     try {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -814,6 +892,10 @@ export class AiContentService {
 
       return body;
     } catch (error) {
+      if (externalSignal?.aborted) {
+        this.logger.debug({ event: "openai_request_cancelled", operation, streaming: false });
+        throw error;
+      }
       if (error instanceof ServiceUnavailableException || error instanceof BadGatewayException) {
         throw error;
       }

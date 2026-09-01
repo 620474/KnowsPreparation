@@ -6,7 +6,7 @@ import {
   offlineMutationKeys,
   type SkipRecommendationMutationVariables,
 } from "../lib/offline-mutation-keys";
-import type { AdaptivePlan } from "../types";
+import type { AdaptivePlan, AdaptivePlanCheckIn } from "../types";
 
 export const ADAPTIVE_TODAY_QUERY_KEY = ["adaptive-today"] as const;
 
@@ -50,11 +50,23 @@ export function useAdaptivePlan(enabled: boolean) {
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ADAPTIVE_TODAY_QUERY_KEY }),
   });
+  const generateMutation = useMutation({
+    mutationFn: (checkIn: AdaptivePlanCheckIn) =>
+      learningApi.generateAdaptiveToday(checkIn),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(ADAPTIVE_TODAY_QUERY_KEY, plan);
+    },
+  });
 
   return {
     plan: query.data,
     isPending: query.isPending,
     isFallback: query.isError,
+    isGenerating: generateMutation.isPending,
+    error: generateMutation.error,
+    generate(checkIn: AdaptivePlanCheckIn) {
+      generateMutation.mutate(checkIn);
+    },
     skip(recommendationId: string) {
       skipMutation.mutate({ recommendationId, operationId: createOperationId() });
     },

@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
 import { AuthModule } from "../auth/auth.module";
+import { AgentModule } from "../agents/agent.module";
+import { CareerModule } from "../career/career.module";
 import { ResearchModule } from "../research/research.module";
 import { AiContentService } from "./ai-content.service";
 import { AdaptivePlanService } from "./adaptive-plan.service";
@@ -56,6 +58,10 @@ import {
 import { Settings, SettingsSchema } from "./schemas/settings.schema";
 import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema";
 import {
+  AdaptiveDayPlan,
+  AdaptiveDayPlanSchema,
+} from "./schemas/adaptive-day-plan.schema";
+import {
   YandexPlatformMockAttempt,
   YandexPlatformMockAttemptSchema,
 } from "./schemas/yandex-platform-mock.schema";
@@ -63,9 +69,12 @@ import {
 @Module({
   imports: [
     AuthModule,
+    AgentModule,
+    CareerModule,
     ResearchModule,
     MongooseModule.forFeature([
       { name: Settings.name, schema: SettingsSchema },
+      { name: AdaptiveDayPlan.name, schema: AdaptiveDayPlanSchema },
       { name: TaskProgress.name, schema: TaskProgressSchema },
       { name: QuestionProgress.name, schema: QuestionProgressSchema },
       { name: AlgorithmEntry.name, schema: AlgorithmEntrySchema },

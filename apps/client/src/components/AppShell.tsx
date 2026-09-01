@@ -35,6 +35,7 @@ const navigation: Array<{
 
 const preparationViews: AppView[] = [
   "preparation",
+  "career",
   "yandex",
   "ozon",
   "plan",

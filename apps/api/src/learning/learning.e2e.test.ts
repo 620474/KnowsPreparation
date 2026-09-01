@@ -10,8 +10,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { AppController } from "../app.controller";
 import { AuthModule } from "../auth/auth.module";
+import { AiAgentService } from "../agents/ai-agent.service";
 import { QUESTION_BANK, TASK_IDS } from "./curriculum";
 import { AiContentService } from "./ai-content.service";
+import type { GeneratedLesson } from "./ai-course";
 import { getStaticRunnerValidationCases } from "./exercise-runners";
 import { LearningModule } from "./learning.module";
 import { AiLesson } from "./schemas/ai-course.schema";
@@ -20,6 +22,39 @@ import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
 
 const TEST_PASSWORD = "integration-test-password";
+
+const createGeneratedLesson = (explanation = "Исходное объяснение"): GeneratedLesson => ({
+  goals: ["Понять сложение"],
+  explanation,
+  codeExamples: [],
+  diagrams: [],
+  commonMistakes: [],
+  interviewQuestions: ["Как работает сложение?"],
+  practice: {
+    title: "Сумма",
+    statement: "Верни сумму двух чисел",
+    constraints: [],
+    examples: [],
+    runner: {
+      starterCode: "function sum(left, right) {}",
+      testCases: [
+        { title: "Положительные", expression: "sum(2, 3)", expected: 5 },
+        { title: "Нули", expression: "sum(0, 0)", expected: 0 },
+        { title: "Отрицательные", expression: "sum(-2, -3)", expected: -5 },
+      ],
+    },
+    referenceSolution: "function sum(left, right) { return left + right; }",
+  },
+  quiz: Array.from({ length: 10 }, (_, index) => ({
+    id: `quiz-${String(index + 1).padStart(2, "0")}`,
+    prompt: `Вопрос ${index + 1}`,
+    options: ["A", "B", "C", `D${index}`],
+    correctOptionIndex: index % 4,
+    explanation: "Объяснение",
+    topic: "JavaScript",
+  })),
+  summary: "Итог",
+});
 
 describe("Learning API", () => {
   let app: INestApplication;
@@ -114,6 +149,167 @@ describe("Learning API", () => {
       completed: true,
       note: "Проверено интеграционным тестом",
     });
+  });
+
+  it("stores only the Terra-reviewed lesson and its metadata", async () => {
+    const track = getStaticTrack("yandex");
+    const itemId = track.days[0]?.blocks.find((block) => block.kind !== "review")?.id;
+    if (!itemId) throw new Error("Yandex track must contain a lesson-capable block");
+    const aiContent = app.get(AiContentService);
+    const draft = createGeneratedLesson();
+    const corrected = createGeneratedLesson("Исправленное объяснение");
+    const generationSpy = vi
+      .spyOn(aiContent, "generateTrackLesson")
+      .mockResolvedValue(draft);
+    const reviewSpy = vi
+      .spyOn(aiContent, "reviewGeneratedLesson")
+      .mockResolvedValue({
+        verdict: "revised",
+        score: 91,
+        issues: [{
+          severity: "warning",
+          category: "clarity",
+          message: "Уточнена формулировка",
+        }],
+        correctedLesson: corrected,
+      });
+
+    try {
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/learning/tracks/yandex/items/${itemId}/lesson`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201);
+
+      expect(response.body).toMatchObject({
+        explanation: "Исправленное объяснение",
+        generationModel: "gpt-5.6-sol",
+        reviewModel: "gpt-5.6-terra",
+        reviewStatus: "revised",
+        reviewScore: 91,
+        reviewIssues: [{ category: "clarity" }],
+      });
+      expect(response.body.practice).not.toHaveProperty("referenceSolution");
+      expect(reviewSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ track: "yandex" }),
+        draft,
+        undefined,
+      );
+    } finally {
+      generationSpy.mockRestore();
+      reviewSpy.mockRestore();
+    }
+  });
+
+  it("regenerates when the Terra-corrected runner fails validation", async () => {
+    const track = getStaticTrack("yandex");
+    const itemId = track.days[0]?.blocks.find((block) => block.kind !== "review")?.id;
+    if (!itemId) throw new Error("Yandex track must contain a lesson-capable block");
+    const aiContent = app.get(AiContentService);
+    const draft = createGeneratedLesson();
+    const invalidCorrection = createGeneratedLesson("Некорректное исправление");
+    invalidCorrection.practice.referenceSolution =
+      "function sum(left, right) { return left - right; }";
+    const generationSpy = vi
+      .spyOn(aiContent, "generateTrackLesson")
+      .mockResolvedValue(draft);
+    const reviewSpy = vi
+      .spyOn(aiContent, "reviewGeneratedLesson")
+      .mockResolvedValueOnce({
+        verdict: "revised",
+        score: 75,
+        issues: [{
+          severity: "warning",
+          category: "clarity",
+          message: "Попытка исправления",
+        }],
+        correctedLesson: invalidCorrection,
+      })
+      .mockResolvedValueOnce({
+        verdict: "approved",
+        score: 95,
+        issues: [],
+        correctedLesson: null,
+      });
+
+    try {
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/learning/tracks/yandex/items/${itemId}/lesson`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201);
+
+      expect(generationSpy).toHaveBeenCalledTimes(2);
+      expect(reviewSpy).toHaveBeenCalledTimes(2);
+      expect(response.body).toMatchObject({
+        explanation: "Исходное объяснение",
+        reviewStatus: "approved",
+        reviewScore: 95,
+      });
+    } finally {
+      generationSpy.mockRestore();
+      reviewSpy.mockRestore();
+    }
+  });
+
+  it("keeps the previous lesson when Terra rejects every generated version", async () => {
+    const track = getStaticTrack("yandex");
+    const itemId = track.days[0]?.blocks.find((block) => block.kind !== "review")?.id;
+    if (!itemId) throw new Error("Yandex track must contain a lesson-capable block");
+    await lessonModel.create({
+      courseKey: track.courseKey,
+      courseVersion: track.courseVersion,
+      itemId,
+      title: "Существующий урок",
+      goals: [],
+      explanation: "Не перезаписывать",
+      codeExamples: [],
+      diagrams: [],
+      commonMistakes: [],
+      interviewQuestions: [],
+      practice: {
+        title: "Практика",
+        statement: "Условие",
+        constraints: [],
+        examples: [],
+      },
+      quiz: [],
+      summary: "Итог",
+      resourceIds: [],
+      version: 1,
+      generatedAt: new Date().toISOString(),
+    });
+    const aiContent = app.get(AiContentService);
+    const generationSpy = vi
+      .spyOn(aiContent, "generateTrackLesson")
+      .mockResolvedValue(createGeneratedLesson());
+    const reviewSpy = vi
+      .spyOn(aiContent, "reviewGeneratedLesson")
+      .mockResolvedValue({
+        verdict: "rejected",
+        score: 30,
+        issues: [{
+          severity: "critical",
+          category: "logic",
+          message: "Материал требует полной переработки",
+        }],
+        correctedLesson: null,
+      });
+
+    try {
+      await request(app.getHttpServer())
+        .post(`/api/v1/learning/tracks/yandex/items/${itemId}/lesson`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(502);
+
+      expect(reviewSpy).toHaveBeenCalledTimes(3);
+      const stored = await lessonModel.findOne({ itemId }).lean().exec();
+      expect(stored).toMatchObject({
+        explanation: "Не перезаписывать",
+        version: 1,
+      });
+    } finally {
+      generationSpy.mockRestore();
+      reviewSpy.mockRestore();
+    }
   });
 
   it("serves cacheable content and dynamic progress separately", async () => {
@@ -222,6 +418,98 @@ describe("Learning API", () => {
     expect(backup.body.data.researchProjects).toHaveLength(1);
     expect(backup.body.data.researchEvidence).toHaveLength(1);
     expect(backup.body.data.researchClaims).toHaveLength(1);
+  });
+
+  it("tracks job applications, interviews, weekly activity, and backup", async () => {
+    const applicationResponse = await request(app.getHttpServer())
+      .post("/api/v1/career/applications")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          company: "Maps Company",
+          role: "Frontend Engineer",
+          url: "https://example.com/job",
+          source: "Career page",
+          description: "React, TypeScript, WebSocket и realtime-интерфейсы.",
+          priority: "high",
+          stage: "applied",
+          fitScore: 92,
+          salary: "",
+          workFormat: "remote",
+          level: "Middle+",
+          stack: ["React", "TypeScript"],
+          recruiterName: "",
+          recruiterContact: "",
+          hiringManagerName: "",
+          hiringManagerContact: "",
+          publishedAt: "2026-09-01",
+          appliedAt: "2026-09-01",
+          followUpAt: "2026-09-08",
+          nextAction: "Подготовить кейс про карты",
+          rejectionReason: "",
+          notes: "",
+        },
+      })
+      .expect(201);
+    const applicationId = applicationResponse.body.applicationId as string;
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/career/applications/${applicationId}/interviews`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          type: "technical",
+          status: "planned",
+          scheduledAt: "2026-09-10T12:00:00.000Z",
+          format: "Zoom",
+          participants: "Team lead",
+          questions: [],
+          notes: "",
+          outcome: "",
+          nextAction: "Повторить WebSocket",
+        },
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post("/api/v1/career/activities")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          applicationId,
+          type: "application",
+          occurredAt: "2026-09-01T12:00:00.000Z",
+          note: "Качественный отклик",
+        },
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch("/api/v1/career/settings")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          searchMode: "intensive",
+          weeklyGoals: { applications: 15, outreach: 10, referrals: 4, interviews: 3 },
+        },
+      })
+      .expect(200);
+
+    const workspace = await request(app.getHttpServer())
+      .get("/api/v1/career")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(workspace.body.applications[0].interviews).toHaveLength(1);
+    expect(workspace.body.activities).toHaveLength(1);
+    expect(workspace.body.settings.searchMode).toBe("intensive");
+
+    const backup = await request(app.getHttpServer())
+      .get("/api/v1/learning/backup")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(backup.body.data.careerApplications).toHaveLength(1);
+    expect(backup.body.data.careerActivities).toHaveLength(1);
+    expect(backup.body.data.careerSettings).toHaveLength(1);
   });
 
   it("rejects an unknown track key", async () => {
@@ -663,9 +951,17 @@ describe("Learning API", () => {
 
   it("runs and restores a complete interview simulator session", async () => {
     const aiContent = app.get(AiContentService);
-    const followUpSpy = vi
-      .spyOn(aiContent, "generateInterviewFollowUp")
-      .mockResolvedValue("Почему этот подход уместен?");
+    const agents = app.get(AiAgentService);
+    const assessmentSpy = vi
+      .spyOn(agents, "assessInterviewAnswer")
+      .mockImplementation(async (input) => ({
+        score: input.followUpCount ? 82 : 70,
+        confidence: "high",
+        strengths: ["Практический пример"],
+        gaps: input.followUpCount ? [] : ["Нужен компромисс"],
+        followUpQuestion: input.followUpCount ? null : "Почему этот подход уместен?",
+        nextQuestionId: input.candidateQuestions[0]?.id ?? null,
+      }));
     const assistantSpy = vi
       .spyOn(aiContent, "generateInterviewAssistantReply")
       .mockResolvedValue("Проверь граничный случай и сложность.");
@@ -698,7 +994,8 @@ describe("Learning API", () => {
         currentStage: "platform",
         durationMinutes: 35,
       });
-      expect(started.body.platformItems).toHaveLength(2);
+      expect(started.body.platformItems).toHaveLength(1);
+      expect(started.body.platformQuestionTarget).toBe(2);
 
       const restored = await request(app.getHttpServer())
         .get("/api/v1/learning/interview-sessions/current")
@@ -707,7 +1004,11 @@ describe("Learning API", () => {
       expect(restored.body.id).toBe(started.body.id);
 
       let session = started.body;
-      for (const item of session.platformItems) {
+      while (session.currentStage === "platform") {
+        const item = session.platformItems.find(
+          (candidate: { completed?: boolean }) => !candidate.completed,
+        );
+        if (!item) throw new Error("Active adaptive question is missing");
         session = (
           await request(app.getHttpServer())
             .put(`/api/v1/learning/interview-sessions/${session.id}/platform/${item.question.id}`)
@@ -810,7 +1111,7 @@ describe("Learning API", () => {
         .expect(200);
       expect(backup.body.data.interviewSessions).toHaveLength(1);
     } finally {
-      followUpSpy.mockRestore();
+      assessmentSpy.mockRestore();
       assistantSpy.mockRestore();
       defenseSpy.mockRestore();
       evaluationSpy.mockRestore();

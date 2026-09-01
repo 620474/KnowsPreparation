@@ -21,6 +21,9 @@ const KnowledgeHub = lazy(() =>
 const ResearchView = lazy(() =>
   import("../research").then((module) => ({ default: module.ResearchView })),
 );
+const CareerView = lazy(() =>
+  import("../career/CareerView").then((module) => ({ default: module.CareerView })),
+);
 const AiCourseView = lazy(() =>
   import("../../views/AiCourseView").then((module) => ({ default: module.AiCourseView })),
 );
@@ -123,12 +126,14 @@ export function AppViewContent({
         data={data}
         onOpenDay={(dayId) => navigateToTrackDay("curriculum", dayId)}
         onOpenAnalytics={() => navigateToView("analytics")}
+        onOpenCareer={() => navigateToView("career")}
         onOpenMock={() => navigateToView("interview")}
         onOpenReview={() => navigateToView("review")}
         onOpenResearch={() => navigateToResearchProject(null)}
         onOpenAdaptiveItem={(item) => {
           if (item.kind === "review") navigateToView("review");
           else if (item.kind === "mock") navigateToView("interview");
+          else if (item.kind === "career") navigateToView("career");
           else if (
             item.track &&
             item.itemId &&
@@ -144,6 +149,7 @@ export function AppViewContent({
     return (
       <PreparationHub
         data={data}
+        onOpenCareer={() => navigateToView("career")}
         onOpenInterview={() => navigateToView("interview")}
         onOpenOzon={() => navigateToView("ozon")}
         onOpenPlan={() => navigateToView("plan")}
@@ -164,6 +170,10 @@ export function AppViewContent({
         onOpenReview={() => navigateToView("review")}
       />
     );
+  }
+
+  if (activeView === "career") {
+    return <CareerView onOpenInterview={() => navigateToView("interview")} />;
   }
 
   if (activeView === "yandex" && yandexMockDayId) {

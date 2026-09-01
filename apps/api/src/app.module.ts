@@ -8,6 +8,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 
 import { AppController } from "./app.controller";
+import { AgentModule } from "./agents/agent.module";
 import { AuthModule } from "./auth/auth.module";
 import { LearningModule } from "./learning/learning.module";
 
@@ -76,6 +77,7 @@ function validateEnvironment(config: Record<string, unknown>) {
       }),
     }),
     AuthModule,
+    AgentModule,
     LearningModule,
   ],
   controllers: [AppController],

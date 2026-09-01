@@ -9,7 +9,11 @@ import {
   type LearningBackupRecord,
 } from "./backup";
 import type { ImportBackupDto } from "./dto/learning.dto";
+import { CareerActivityEntry } from "../career/schemas/career-activity.schema";
+import { CareerApplicationEntry } from "../career/schemas/career-application.schema";
+import { CareerSettingsEntry } from "../career/schemas/career-settings.schema";
 import { AlgorithmEntry } from "./schemas/algorithm-entry.schema";
+import { AdaptiveDayPlan } from "./schemas/adaptive-day-plan.schema";
 import { AiChatMessage } from "./schemas/ai-chat-message.schema";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
@@ -59,6 +63,14 @@ export class LearningBackupService {
     private readonly researchEvidenceModel: Model<ResearchEvidenceEntry>,
     @InjectModel(ResearchClaimEntry.name)
     private readonly researchClaimModel: Model<ResearchClaimEntry>,
+    @InjectModel(CareerApplicationEntry.name)
+    private readonly careerApplicationModel: Model<CareerApplicationEntry>,
+    @InjectModel(CareerActivityEntry.name)
+    private readonly careerActivityModel: Model<CareerActivityEntry>,
+    @InjectModel(CareerSettingsEntry.name)
+    private readonly careerSettingsModel: Model<CareerSettingsEntry>,
+    @InjectModel(AdaptiveDayPlan.name)
+    private readonly adaptiveDayPlanModel: Model<AdaptiveDayPlan>,
   ) {}
 
   async exportBackup() {
@@ -80,6 +92,10 @@ export class LearningBackupService {
       researchProjects,
       researchEvidence,
       researchClaims,
+      careerActivities,
+      careerApplications,
+      careerSettings,
+      adaptiveDayPlans,
     ] = await Promise.all([
       this.settingsModel.find().lean().exec(),
       this.taskModel.find().lean().exec(),
@@ -98,6 +114,10 @@ export class LearningBackupService {
       this.researchProjectModel.find().lean().exec(),
       this.researchEvidenceModel.find().lean().exec(),
       this.researchClaimModel.find().lean().exec(),
+      this.careerActivityModel.find().lean().exec(),
+      this.careerApplicationModel.find().lean().exec(),
+      this.careerSettingsModel.find().lean().exec(),
+      this.adaptiveDayPlanModel.find().lean().exec(),
     ]);
 
     return {
@@ -122,6 +142,10 @@ export class LearningBackupService {
         researchProjects,
         researchEvidence,
         researchClaims,
+        careerActivities,
+        careerApplications,
+        careerSettings,
+        adaptiveDayPlans,
       },
     };
   }
@@ -187,6 +211,22 @@ export class LearningBackupService {
       researchClaims: await this.validateRecords(
         this.researchClaimModel,
         backup.data.researchClaims,
+      ),
+      careerApplications: await this.validateRecords(
+        this.careerApplicationModel,
+        backup.data.careerApplications,
+      ),
+      careerActivities: await this.validateRecords(
+        this.careerActivityModel,
+        backup.data.careerActivities,
+      ),
+      careerSettings: await this.validateRecords(
+        this.careerSettingsModel,
+        backup.data.careerSettings,
+      ),
+      adaptiveDayPlans: await this.validateRecords(
+        this.adaptiveDayPlanModel,
+        backup.data.adaptiveDayPlans,
       ),
     };
 
@@ -273,6 +313,26 @@ export class LearningBackupService {
         this.researchClaimModel,
         prepared.researchClaims,
         (record) => ({ claimId: record.claimId }),
+      ),
+      this.mergeRecords(
+        this.careerApplicationModel,
+        prepared.careerApplications,
+        (record) => ({ applicationId: record.applicationId }),
+      ),
+      this.mergeRecords(
+        this.careerActivityModel,
+        prepared.careerActivities,
+        (record) => ({ activityId: record.activityId }),
+      ),
+      this.mergeRecords(
+        this.careerSettingsModel,
+        prepared.careerSettings,
+        (record) => ({ key: record.key }),
+      ),
+      this.mergeRecords(
+        this.adaptiveDayPlanModel,
+        prepared.adaptiveDayPlans,
+        (record) => ({ date: record.date }),
       ),
     ]);
 

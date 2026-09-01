@@ -1,10 +1,11 @@
-import type { CSSProperties } from "react";
-import { Alert, Button, Loader, Progress } from "@mantine/core";
+import { useState, type CSSProperties } from "react";
+import { Alert, Button, Loader, NumberInput, Progress, Select, Textarea } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   BarChart3,
   BrainCircuit,
+  BriefcaseBusiness,
   Check,
   Clock3,
   Flame,
@@ -17,16 +18,18 @@ import {
 } from "lucide-react";
 
 import { learningApi } from "../api";
+import { CAREER_QUERY_KEY, getDueCareerApplications, getUpcomingCareerInterviews } from "../features/career/career";
 import { useAdaptivePlan } from "../hooks/use-adaptive-plan";
 import { getDateForOffset, getDayForOffset, getStudyPosition, getWeekForDay } from "../lib/date";
 import { buildReviewQueue } from "../lib/review-queue";
 import { RESEARCH_PROJECTS_QUERY_KEY } from "../lib/research";
-import type { AdaptivePlanItem, BootstrapData, SkillKey } from "../types";
+import type { AdaptivePlanCheckIn, AdaptivePlanItem, BootstrapData, SkillKey } from "../types";
 
 interface TodayViewProps {
   data: BootstrapData;
   onOpenDay: (dayId: string) => void;
   onOpenAnalytics: () => void;
+  onOpenCareer: () => void;
   onOpenMock: () => void;
   onOpenReview: () => void;
   onOpenAdaptiveItem: (item: AdaptivePlanItem) => void;
@@ -57,6 +60,7 @@ export function TodayView({
   data,
   onOpenDay,
   onOpenAnalytics,
+  onOpenCareer,
   onOpenMock,
   onOpenReview,
   onOpenAdaptiveItem,
@@ -66,7 +70,17 @@ export function TodayView({
     queryKey: RESEARCH_PROJECTS_QUERY_KEY,
     queryFn: learningApi.listResearchProjects,
   });
+  const careerWorkspace = useQuery({
+    queryKey: CAREER_QUERY_KEY,
+    queryFn: learningApi.getCareerWorkspace,
+  });
   const adaptive = useAdaptivePlan(data.settings.adaptiveTodayEnabled);
+  const [checkIn, setCheckIn] = useState<AdaptivePlanCheckIn>({
+    availableMinutes: data.settings.dailyMinutes,
+    energy: "normal",
+    focus: "mixed",
+    note: "",
+  });
   const position = getStudyPosition(data.settings.startDate);
   const day = getDayForOffset(data.curriculum, position.rawOffset);
   const week = getWeekForDay(data.curriculum, day);
@@ -88,6 +102,12 @@ export function TodayView({
   const dialStyle = { "--progress": `${totalProgress * 3.6}deg` } as CSSProperties;
   const reviewQueue = buildReviewQueue(data.questions, data.progress.questions);
   const activeResearch = researchProjects.data?.find((project) => project.status === "active");
+  const dueCareerActions = careerWorkspace.data
+    ? getDueCareerApplications(careerWorkspace.data.applications)
+    : [];
+  const upcomingCareerInterviews = careerWorkspace.data
+    ? getUpcomingCareerInterviews(careerWorkspace.data.applications)
+    : [];
 
   if (!day || !week) return null;
 
@@ -196,12 +216,89 @@ export function TodayView({
             </div>
             <FlaskConical size={25} />
           </div>
+          <details className="adaptive-check-in">
+            <summary>Настроить сегодняшний день</summary>
+            <div>
+              <NumberInput
+                label="Сколько минут есть"
+                min={15}
+                max={360}
+                value={checkIn.availableMinutes}
+                onChange={(value) => setCheckIn({
+                  ...checkIn,
+                  availableMinutes: typeof value === "number" ? value : 120,
+                })}
+              />
+              <Select
+                label="Энергия"
+                data={[
+                  { value: "low", label: "Низкая" },
+                  { value: "normal", label: "Обычная" },
+                  { value: "high", label: "Высокая" },
+                ]}
+                value={checkIn.energy}
+                onChange={(value) => setCheckIn({
+                  ...checkIn,
+                  energy: (value ?? "normal") as AdaptivePlanCheckIn["energy"],
+                })}
+              />
+              <Select
+                label="Главный фокус"
+                data={[
+                  { value: "mixed", label: "Смешанный" },
+                  { value: "yandex", label: "Яндекс" },
+                  { value: "ozon", label: "Ozon" },
+                  { value: "core", label: "Frontend core" },
+                  { value: "job_search", label: "Поиск работы" },
+                ]}
+                value={checkIn.focus}
+                onChange={(value) => setCheckIn({
+                  ...checkIn,
+                  focus: (value ?? "mixed") as AdaptivePlanCheckIn["focus"],
+                })}
+              />
+              <Textarea
+                label="Что обязательно учесть"
+                placeholder="Например: завтра интервью, тяжело концентрироваться…"
+                value={checkIn.note}
+                onChange={(event) => setCheckIn({ ...checkIn, note: event.currentTarget.value })}
+              />
+              <Button
+                className="primary-button"
+                loading={adaptive.isGenerating}
+                type="button"
+                onClick={() => adaptive.generate(checkIn)}
+              >
+                Пересобрать план
+              </Button>
+            </div>
+          </details>
+          {adaptive.plan?.rationale ? <p className="adaptive-rationale">{adaptive.plan.rationale}</p> : null}
+          {adaptive.error ? <Alert color="yellow">{adaptive.error.message}</Alert> : null}
           <p>{activeResearch.nextAction || "Определи следующее конкретное действие по проекту."}</p>
           <Button className="secondary-button" type="button" variant="default" onClick={onOpenResearch}>
             Открыть контрольный центр
           </Button>
         </section>
       ) : null}
+
+      <section className="today-focus-panel research-today-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Поиск работы</p>
+            <h2>{dueCareerActions.length ? `${dueCareerActions.length} действий требуют внимания` : "Карьерная воронка"}</h2>
+          </div>
+          <BriefcaseBusiness size={25} />
+        </div>
+        <p>
+          {upcomingCareerInterviews.length
+            ? `Ближайших интервью: ${upcomingCareerInterviews.length}. Проверь подготовку и договорённости.`
+            : "Фиксируй отклики, follow-up и результаты собеседований, чтобы видеть реальную конверсию."}
+        </p>
+        <Button className="secondary-button" type="button" variant="default" onClick={onOpenCareer}>
+          Открыть поиск работы
+        </Button>
+      </section>
 
       {data.settings.adaptiveTodayEnabled ? (
         <section className="adaptive-today-panel">

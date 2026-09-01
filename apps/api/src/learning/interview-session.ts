@@ -37,6 +37,24 @@ export function selectInterviewQuestions(mode: InterviewSessionMode, offset = 0)
   return selected;
 }
 
+export function getInterviewQuestionCandidates(
+  usedIds: string[],
+  offset = 0,
+  limit = 16,
+) {
+  const used = new Set(usedIds);
+  return rotate(QUESTION_BANK, offset)
+    .filter((question) => !used.has(question.id))
+    .slice(0, limit);
+}
+
+export function selectAdaptiveInterviewQuestion(
+  candidates: ReturnType<typeof getInterviewQuestionCandidates>,
+  preferredId: string | null,
+) {
+  return candidates.find((question) => question.id === preferredId) ?? candidates[0] ?? null;
+}
+
 interface ExerciseCandidate {
   id: string;
   title: string;

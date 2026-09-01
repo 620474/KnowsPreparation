@@ -1,17 +1,23 @@
+import { createHash } from "node:crypto";
+
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
   AdaptivePlan,
   AdaptivePlanItem,
+  AdaptivePlanCheckIn,
   SkillKey,
   TrackKey,
 } from "@prep/contracts";
 import type { Model } from "mongoose";
 
+import { AiAgentService } from "../agents/ai-agent.service";
+import { CareerApplicationEntry } from "../career/schemas/career-application.schema";
 import { CURRICULUM, QUESTION_BANK } from "./curriculum";
 import { inferSkillKeys } from "./skills";
 import { LearningSignalService } from "./learning-signal.service";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
+import { AdaptiveDayPlan } from "./schemas/adaptive-day-plan.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { LearningSignal } from "./schemas/learning-signal.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
@@ -74,7 +80,12 @@ export class AdaptivePlanService {
     private readonly mockModel: Model<MockInterview>,
     @InjectModel(LearningSignal.name)
     private readonly signalModel: Model<LearningSignal>,
+    @InjectModel(AdaptiveDayPlan.name)
+    private readonly dayPlanModel: Model<AdaptiveDayPlan>,
+    @InjectModel(CareerApplicationEntry.name)
+    private readonly careerApplicationModel: Model<CareerApplicationEntry>,
     private readonly signals: LearningSignalService,
+    private readonly agents: AiAgentService,
   ) {}
 
   async skipRecommendation(recommendationId: string, operationId: string) {
@@ -86,7 +97,7 @@ export class AdaptivePlanService {
     return { skipped: true };
   }
 
-  async getToday(now = new Date()): Promise<AdaptivePlan> {
+  async getToday(now = new Date(), checkIn?: AdaptivePlanCheckIn): Promise<AdaptivePlan> {
     const date = dateKey(now);
     const startOfDay = new Date(`${date}T00:00:00.000Z`);
     const [
@@ -99,6 +110,7 @@ export class AdaptivePlanService {
       aiCourse,
       latestMock,
       latestMockSignal,
+      careerApplications,
       skippedSignals,
     ] = await Promise.all([
       this.settingsModel.findOne({ key: "main" }).lean().exec(),
@@ -112,6 +124,12 @@ export class AdaptivePlanService {
       this.signalModel
         .findOne({ type: "mock_completed" })
         .sort({ occurredAt: -1 })
+        .lean()
+        .exec(),
+      this.careerApplicationModel
+        .find({ stage: { $nin: ["offer", "rejected", "withdrawn"] } })
+        .sort({ priority: -1, updatedAt: -1 })
+        .limit(20)
         .lean()
         .exec(),
       this.signalModel
@@ -255,6 +273,41 @@ export class AdaptivePlanService {
       });
     }
 
+    for (const application of careerApplications) {
+      const highGaps = application.analysis?.gaps.filter(
+        (gap) => gap.severity === "high",
+      ) ?? [];
+      const upcomingInterview = application.interviews.find((interview) =>
+        interview.status === "planned" &&
+        Boolean(interview.scheduledAt) &&
+        new Date(interview.scheduledAt ?? "").getTime() <= now.getTime() + 14 * DAY_MS,
+      );
+      const followUpDue = Boolean(
+        application.followUpAt &&
+        new Date(`${application.followUpAt}T23:59:59.999Z`).getTime() <= now.getTime(),
+      );
+      if (!highGaps.length && !upcomingInterview && !followUpDue) continue;
+      const reason = upcomingInterview
+        ? `Подготовка к интервью: ${upcomingInterview.type}`
+        : highGaps.length
+          ? `Критичные пробелы вакансии: ${highGaps.length}`
+          : "Пора сделать follow-up";
+      candidates.push({
+        id: recommendationId(date, "career", null, application.applicationId, null),
+        kind: "career",
+        title: `${application.company} · ${application.role}`,
+        reason,
+        minutes: upcomingInterview || highGaps.length ? 25 : 10,
+        score: 70 + highGaps.length * 6 + (upcomingInterview ? 20 : 0),
+        skillKeys: highGaps.length
+          ? [...new Set(highGaps.flatMap((gap) => gap.skillKeys))]
+          : [],
+        track: null,
+        itemId: application.applicationId,
+        source: null,
+      });
+    }
+
     const skippedIds = new Set(
       skippedSignals.flatMap((signal) =>
         typeof signal.payload.recommendationId === "string"
@@ -262,14 +315,89 @@ export class AdaptivePlanService {
           : [],
       ),
     );
-    const items = selectAdaptivePlanItems(candidates, budgetMinutes, skippedIds);
+    const candidateMap = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+    if (!checkIn) {
+      const cached = await this.dayPlanModel.findOne({ date }).lean().exec();
+      if (cached) {
+        const items = cached.items.filter(
+          (item) => candidateMap.has(item.id) && !skippedIds.has(item.id),
+        );
+        return {
+          date,
+          budgetMinutes: cached.checkIn.availableMinutes,
+          totalMinutes: items.reduce((sum, item) => sum + item.minutes, 0),
+          generatedAt: cached.updatedAt.toISOString(),
+          strategy: cached.strategy,
+          rationale: cached.rationale,
+          checkIn: cached.checkIn,
+          items,
+        };
+      }
+    }
+
+    const effectiveCheckIn = checkIn ?? {
+      availableMinutes: budgetMinutes,
+      energy: "normal",
+      focus: "mixed",
+      note: "",
+    };
+    const availableCandidates = candidates.filter((candidate) => !skippedIds.has(candidate.id));
+    let items = selectAdaptivePlanItems(
+      availableCandidates,
+      effectiveCheckIn.availableMinutes,
+    );
+    let strategy: "ai" | "deterministic" = "deterministic";
+    let rationale = "План собран по срочности, результатам тестов и срокам.";
+    if (checkIn && this.agents.enabled && availableCandidates.length > 0) {
+      try {
+        const generated = await this.agents.orderAdaptivePlan({
+          checkIn: effectiveCheckIn,
+          candidates: availableCandidates,
+        });
+        items = generated.items;
+        rationale = generated.rationale;
+        strategy = "ai";
+      } catch {
+        rationale = "AI-планировщик недоступен — применён проверенный порядок по приоритетам.";
+      }
+    }
+
+    if (checkIn) {
+      const fingerprint = createHash("sha256")
+        .update(JSON.stringify({
+          checkIn: effectiveCheckIn,
+          candidates: availableCandidates.map(({ id, score, minutes }) => ({ id, score, minutes })),
+        }))
+        .digest("hex");
+      await this.dayPlanModel.findOneAndUpdate(
+        { date },
+        {
+          $set: {
+            date,
+            fingerprint,
+            checkIn: effectiveCheckIn,
+            items,
+            strategy,
+            rationale,
+          },
+        },
+        { upsert: true, returnDocument: "after" },
+      ).exec();
+    }
     return {
       date,
-      budgetMinutes,
+      budgetMinutes: effectiveCheckIn.availableMinutes,
       totalMinutes: items.reduce((sum, item) => sum + item.minutes, 0),
       generatedAt: new Date().toISOString(),
+      strategy,
+      rationale,
+      checkIn: effectiveCheckIn,
       items,
     };
+  }
+
+  generateToday(checkIn: AdaptivePlanCheckIn) {
+    return this.getToday(new Date(), checkIn);
   }
 
   private resolveTrack(

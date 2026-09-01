@@ -13,6 +13,7 @@ describe("app routes", () => {
     ["today", "#/today"],
     ["preparation", "#/preparation"],
     ["knowledge", "#/knowledge"],
+    ["career", "#/career"],
     ["yandex", "#/yandex"],
     ["ozon", "#/ozon"],
     ["ai-course", "#/ai"],

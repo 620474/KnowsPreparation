@@ -76,6 +76,23 @@ export class SkipAdaptiveRecommendationDto {
   operationId!: string;
 }
 
+export class GenerateAdaptivePlanDto {
+  @IsInt()
+  @Min(15)
+  @Max(360)
+  availableMinutes!: number;
+
+  @IsIn(["low", "normal", "high"])
+  energy!: "low" | "normal" | "high";
+
+  @IsIn(["mixed", "yandex", "ozon", "core", "job_search"])
+  focus!: "mixed" | "yandex" | "ozon" | "core" | "job_search";
+
+  @IsString()
+  @MaxLength(1000)
+  note!: string;
+}
+
 export class ImportBackupDto {
   @IsObject()
   backup!: Record<string, unknown>;
@@ -266,6 +283,11 @@ export class StartInterviewSessionDto {
 
   @IsIn(INTERVIEW_SESSION_COMPANIES)
   company!: InterviewSessionCompany;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  applicationId?: string;
 }
 
 export class ListInterviewSessionsDto {
@@ -288,6 +310,12 @@ export class UpdateInterviewPlatformAnswerDto {
   @MinLength(1)
   @MaxLength(12_000)
   followUpAnswer?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  secondFollowUpAnswer?: string;
 }
 
 export class SubmitInterviewExerciseDto {

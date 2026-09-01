@@ -11,12 +11,18 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import { isValidObjectId, Model } from "mongoose";
 
+import { AiAgentService } from "../agents/ai-agent.service";
+
 import { AiContentService, type AiDeltaHandler } from "./ai-content.service";
 import {
   buildAiChatContext,
   buildTrackAiChatContext,
 } from "./ai-chat";
-import { selectResourcesForCourseItem, type GeneratedLesson } from "./ai-course";
+import {
+  selectResourcesForCourseItem,
+  type GeneratedLesson,
+  type GeneratedLessonReviewIssue,
+} from "./ai-course";
 import {
   CURRICULUM_BUFFER_WEEKS,
   CURRICULUM_CORE_WEEKS,
@@ -41,9 +47,10 @@ import {
 } from "./dto/learning.dto";
 import { selectMockInterviewQuestions } from "./mock-interview";
 import {
-  generateValidatedLesson,
-  GeneratedRunnerValidationError,
+  MAX_GENERATION_ATTEMPTS,
+  omitReferenceSolution,
   runPracticeSolution,
+  validateGeneratedRunner,
 } from "./generated-runner";
 import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningSignalService } from "./learning-signal.service";
@@ -92,6 +99,32 @@ interface AiChatScope {
   context: string;
 }
 
+interface LessonReviewContext {
+  track: string;
+  title: string;
+  objective: string;
+}
+
+interface ReviewedRunnableLesson {
+  generationModel: string;
+  reviewModel: string;
+  reviewStatus: "approved" | "revised";
+  reviewScore: number;
+  reviewIssues: GeneratedLessonReviewIssue[];
+  reviewedAt: string;
+  sourceVerificationStatus: "verified" | "partial";
+  sourceVerificationScore: number;
+  sourceVerificationModel: string;
+  sourceVerificationIssues: Array<{
+    severity: "warning" | "critical";
+    claim: string;
+    message: string;
+    sourceUrls: string[];
+  }>;
+  verifiedSources: Array<{ title: string; url: string }>;
+  sourceVerifiedAt: string;
+}
+
 @Injectable()
 export class LearningService {
   private readonly logger = new Logger(LearningService.name);
@@ -116,6 +149,7 @@ export class LearningService {
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
     private readonly aiContent: AiContentService,
+    private readonly agents: AiAgentService,
     private readonly cleanup: LearningCleanupService,
     private readonly signals: LearningSignalService,
   ) {}
@@ -207,6 +241,11 @@ export class LearningService {
     const progressHandler = this.createSafeLessonProgressHandler(onDelta);
     const generated = await this.generateRunnableLesson(
       "course",
+      {
+        track: "course",
+        title: item.title,
+        objective: item.objective,
+      },
       () => this.aiContent.generateLesson(
         {
           goal: course.goal,
@@ -221,6 +260,7 @@ export class LearningService {
         progressHandler,
         signal,
       ),
+      signal,
     );
     const current = await this.aiLessonModel
       .findOne({ courseKey: course.key, courseVersion: course.version, itemId })
@@ -271,15 +311,23 @@ export class LearningService {
     }
     const resources = this.resolveResources(block.resourceIds);
     const progressHandler = this.createSafeLessonProgressHandler(onDelta);
-    const generated = await this.generateRunnableLesson(track.key, () =>
-      this.aiContent.generateTrackLesson(
-        track.lessonPrompt,
-        day,
-        block,
-        resources,
-        progressHandler,
-        signal,
-      ),
+    const generated = await this.generateRunnableLesson(
+      track.key,
+      {
+        track: track.key,
+        title: block.title,
+        objective: block.description,
+      },
+      () =>
+        this.aiContent.generateTrackLesson(
+          track.lessonPrompt,
+          day,
+          block,
+          resources,
+          progressHandler,
+          signal,
+        ),
+      signal,
     );
     const scope = {
       courseKey: track.courseKey,
@@ -341,22 +389,134 @@ export class LearningService {
 
   private async generateRunnableLesson(
     scope: string,
+    context: LessonReviewContext,
     generate: (attempt: number) => Promise<GeneratedLesson>,
+    signal?: AbortSignal,
   ) {
-    try {
-      return await generateValidatedLesson(generate, (validation, attempt) => {
+    for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
+      const draft = await generate(attempt);
+      const draftValidation = await validateGeneratedRunner(draft);
+      if (!draftValidation.valid) {
         this.logger.warn({
           event: "generated_runner_validation_failed",
           scope,
           attempt,
-          failureCount: validation.failures.length,
+          stage: "generation",
+          failureCount: draftValidation.failures.length,
         });
-      });
-    } catch (error) {
-      if (!(error instanceof GeneratedRunnerValidationError)) throw error;
-      throw new BadGatewayException(
-        "AI не смог создать корректно запускаемую задачу после трёх попыток.",
+        continue;
+      }
+
+      const review = await this.aiContent.reviewGeneratedLesson(
+        context,
+        draft,
+        signal,
       );
+      if (review.verdict === "rejected") {
+        this.logger.warn({
+          event: "generated_lesson_review_rejected",
+          scope,
+          attempt,
+          reviewScore: review.score,
+          issueCount: review.issues.length,
+        });
+        continue;
+      }
+
+      const reviewedLesson = review.correctedLesson ?? draft;
+      const reviewedValidation = await validateGeneratedRunner(reviewedLesson);
+      if (!reviewedValidation.valid) {
+        this.logger.warn({
+          event: "generated_runner_validation_failed",
+          scope,
+          attempt,
+          stage: "review",
+          failureCount: reviewedValidation.failures.length,
+        });
+        continue;
+      }
+
+      const sourceVerification = await this.verifyLessonSources(
+        scope,
+        context,
+        reviewedLesson,
+        signal,
+      );
+      if (sourceVerification.status === "rejected") {
+        this.logger.warn({
+          event: "generated_lesson_source_rejected",
+          scope,
+          attempt,
+          sourceScore: sourceVerification.score,
+          issueCount: sourceVerification.issues.length,
+        });
+        continue;
+      }
+
+      return {
+        ...omitReferenceSolution(reviewedLesson),
+        generationModel: this.aiContent.model,
+        reviewModel: this.aiContent.reviewModel,
+        reviewStatus: review.verdict,
+        reviewScore: review.score,
+        reviewIssues: review.issues,
+        reviewedAt: new Date().toISOString(),
+        sourceVerificationStatus: sourceVerification.status,
+        sourceVerificationScore: sourceVerification.score,
+        sourceVerificationModel: this.agents.model,
+        sourceVerificationIssues: sourceVerification.issues,
+        verifiedSources: sourceVerification.sources,
+        sourceVerifiedAt: new Date().toISOString(),
+      } satisfies ReviewedRunnableLesson &
+        ReturnType<typeof omitReferenceSolution>;
+    }
+
+    throw new BadGatewayException(
+      "AI не смог создать и проверить корректный урок после трёх попыток. Предыдущий урок сохранён.",
+    );
+  }
+
+  private async verifyLessonSources(
+    scope: string,
+    context: LessonReviewContext,
+    lesson: GeneratedLesson,
+    signal?: AbortSignal,
+  ) {
+    if (!this.agents.enabled) {
+      return {
+        status: "partial" as const,
+        score: 0,
+        issues: [{
+          severity: "warning" as const,
+          claim: "Проверка официальных источников",
+          message: "AI-проверка источников не настроена.",
+          sourceUrls: [],
+        }],
+        sources: [],
+      };
+    }
+    try {
+      return await this.agents.verifyLesson(
+        { track: context.track, title: context.title, lesson },
+        signal,
+      );
+    } catch (error) {
+      this.logger.warn({
+        event: "generated_lesson_source_fallback",
+        scope,
+        errorType: error instanceof Error ? error.name : "UnknownError",
+      });
+      return {
+        status: "partial" as const,
+        score: 0,
+        issues: [{
+          severity: "warning" as const,
+          claim: "Проверка официальных источников",
+          message: "Источники временно не удалось проверить; урок сохранён после технической проверки.",
+          sourceUrls: [],
+        }],
+        sources: [],
+      };
     }
   }
 

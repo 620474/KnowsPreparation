@@ -5,7 +5,7 @@ import type { GeneratedLesson } from "./ai-course";
 
 const RUNNER_TIMEOUT_MS = 750;
 const RUNNER_MEMORY_LIMIT_BYTES = 32 * 1024 * 1024;
-const MAX_GENERATION_ATTEMPTS = 3;
+export const MAX_GENERATION_ATTEMPTS = 3;
 
 export interface GeneratedRunnerValidation {
   valid: boolean;

@@ -25,6 +25,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import {
   CreateAlgorithmDto,
   GenerateAiCourseDto,
+  GenerateAdaptivePlanDto,
   GradeYandexMockResponseDto,
   GetLearningAnalyticsDto,
   ImportBackupDto,
@@ -76,6 +77,12 @@ export class LearningController {
   @Header("Cache-Control", "private, no-store")
   adaptiveToday() {
     return this.adaptivePlanService.getToday();
+  }
+
+  @Post("adaptive/today/generate")
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  generateAdaptiveToday(@Body() dto: GenerateAdaptivePlanDto) {
+    return this.adaptivePlanService.generateToday(dto);
   }
 
   @Post("adaptive/today/skip")

@@ -4,6 +4,7 @@ export type AppView =
   | "today"
   | "preparation"
   | "knowledge"
+  | "career"
   | "yandex"
   | "ozon"
   | "ai-course"
@@ -44,6 +45,7 @@ const viewPaths: Record<AppView, string> = {
   today: "today",
   preparation: "preparation",
   knowledge: "knowledge",
+  career: "career",
   yandex: "yandex",
   ozon: "ozon",
   "ai-course": "ai",

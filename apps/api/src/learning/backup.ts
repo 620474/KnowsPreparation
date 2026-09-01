@@ -21,6 +21,10 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "researchProjects",
   "researchEvidence",
   "researchClaims",
+  "careerActivities",
+  "careerApplications",
+  "careerSettings",
+  "adaptiveDayPlans",
 ] as const;
 
 export type LearningBackupCollection = (typeof LEARNING_BACKUP_COLLECTIONS)[number];
@@ -70,7 +74,11 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
       collection === "yandexPlatformMockAttempts" ||
       collection === "researchProjects" ||
       collection === "researchEvidence" ||
-      collection === "researchClaims"
+      collection === "researchClaims" ||
+      collection === "careerActivities" ||
+      collection === "careerApplications" ||
+      collection === "careerSettings"
+      || collection === "adaptiveDayPlans"
         ? []
         : undefined);
     if (!Array.isArray(records)) {

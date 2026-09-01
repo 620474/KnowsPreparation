@@ -2,6 +2,7 @@ import { Button, Progress } from "@mantine/core";
 import {
   ArrowRight,
   Building2,
+  BriefcaseBusiness,
   CalendarDays,
   Clock3,
   MessagesSquare,
@@ -13,6 +14,7 @@ import type { BootstrapData, TaskProgress } from "../../types";
 interface PreparationHubProps {
   data: BootstrapData;
   onOpenInterview: () => void;
+  onOpenCareer: () => void;
   onOpenOzon: () => void;
   onOpenPlan: () => void;
   onOpenYandex: () => void;
@@ -38,6 +40,7 @@ const summarizeTrack = (
 export function PreparationHub({
   data,
   onOpenInterview,
+  onOpenCareer,
   onOpenOzon,
   onOpenPlan,
   onOpenYandex,
@@ -105,6 +108,15 @@ export function PreparationHub({
       </section>
 
       <section className="section-hub-secondary-grid">
+        <button type="button" className="section-hub-link-card" onClick={onOpenCareer}>
+          <BriefcaseBusiness />
+          <span>
+            <small>Карьерный контроль</small>
+            <strong>Поиск работы</strong>
+            <span>Вакансии, follow-up, интервью и недельные KPI</span>
+          </span>
+          <ArrowRight />
+        </button>
         <button type="button" className="section-hub-link-card" onClick={onOpenPlan}>
           <CalendarDays />
           <span>

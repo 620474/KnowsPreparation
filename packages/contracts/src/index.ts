@@ -221,6 +221,30 @@ export const aiQuizQuestionSchema = z.object({
   topic: z.string(),
 });
 
+export const aiLessonReviewIssueSchema = z.object({
+  severity: z.enum(["warning", "critical"]),
+  category: z.string(),
+  message: z.string(),
+});
+
+export const aiLessonSourceVerificationStatusSchema = z.enum([
+  "verified",
+  "partial",
+  "rejected",
+]);
+
+export const aiLessonVerifiedSourceSchema = z.object({
+  title: z.string(),
+  url: z.url(),
+});
+
+export const aiLessonSourceIssueSchema = z.object({
+  severity: z.enum(["warning", "critical"]),
+  claim: z.string(),
+  message: z.string(),
+  sourceUrls: z.array(z.url()),
+});
+
 export const aiLessonSchema = z.object({
   itemId: z.string(),
   courseVersion: z.number(),
@@ -251,6 +275,18 @@ export const aiLessonSchema = z.object({
   resourceIds: z.array(z.string()),
   version: z.number(),
   generatedAt: z.string(),
+  generationModel: z.string().optional(),
+  reviewModel: z.string().optional(),
+  reviewStatus: z.enum(["approved", "revised"]).optional(),
+  reviewScore: z.number().int().min(0).max(100).optional(),
+  reviewIssues: z.array(aiLessonReviewIssueSchema).optional(),
+  reviewedAt: z.string().optional(),
+  sourceVerificationStatus: aiLessonSourceVerificationStatusSchema.optional(),
+  sourceVerificationScore: z.number().int().min(0).max(100).optional(),
+  sourceVerificationModel: z.string().optional(),
+  sourceVerificationIssues: z.array(aiLessonSourceIssueSchema).optional(),
+  verifiedSources: z.array(aiLessonVerifiedSourceSchema).optional(),
+  sourceVerifiedAt: z.string().optional(),
 });
 
 export const lessonQuizAnswerSchema = z.object({
@@ -408,6 +444,16 @@ export const interviewSessionQuestionSchema = z.object({
   answer: z.string(),
   followUpQuestion: z.string().nullable(),
   followUpAnswer: z.string(),
+  secondFollowUpQuestion: z.string().nullable().optional(),
+  secondFollowUpAnswer: z.string().optional(),
+  completed: z.boolean().optional(),
+  assessment: z.object({
+    score: z.number().int().min(0).max(100),
+    confidence: z.enum(["low", "medium", "high"]),
+    strengths: z.array(z.string()),
+    gaps: z.array(z.string()),
+    evaluatedAt: z.string(),
+  }).nullable().optional(),
 });
 
 export const interviewExerciseResultSchema = z.object({
@@ -461,11 +507,14 @@ export const interviewSessionSchema = z.object({
   status: interviewSessionStatusSchema,
   mode: interviewSessionModeSchema,
   company: interviewSessionCompanySchema,
+  applicationId: z.string().nullable().optional(),
+  vacancyContext: z.string().optional(),
   currentStage: interviewSessionStageSchema,
   durationMinutes: z.number(),
   startedAt: z.string(),
   completedAt: z.string().nullable(),
   platformItems: z.array(interviewSessionQuestionSchema),
+  platformQuestionTarget: z.number().int().min(1).max(10).optional(),
   codingExercise: interviewExerciseSchema,
   aiExercise: interviewExerciseSchema,
   aiMessages: z.array(interviewSessionMessageSchema),
@@ -490,7 +539,24 @@ export const adaptivePlanItemKindSchema = z.enum([
   "lesson",
   "mock",
   "plan",
+  "career",
 ]);
+
+export const adaptivePlanEnergySchema = z.enum(["low", "normal", "high"]);
+export const adaptivePlanFocusSchema = z.enum([
+  "mixed",
+  "yandex",
+  "ozon",
+  "core",
+  "job_search",
+]);
+
+export const adaptivePlanCheckInSchema = z.object({
+  availableMinutes: z.number().int().min(15).max(360),
+  energy: adaptivePlanEnergySchema,
+  focus: adaptivePlanFocusSchema,
+  note: z.string().trim().max(1000),
+});
 
 export const adaptivePlanItemSchema = z.object({
   id: z.string(),
@@ -510,6 +576,9 @@ export const adaptivePlanSchema = z.object({
   budgetMinutes: z.number(),
   totalMinutes: z.number(),
   generatedAt: z.string(),
+  strategy: z.enum(["ai", "deterministic"]).optional(),
+  rationale: z.string().optional(),
+  checkIn: adaptivePlanCheckInSchema.optional(),
   items: z.array(adaptivePlanItemSchema),
 });
 
@@ -711,6 +780,151 @@ export const researchWorkspaceSchema = z.object({
   claims: z.array(researchClaimSchema),
 });
 
+export const CAREER_PIPELINE_STAGES = [
+  "saved",
+  "applied",
+  "screening",
+  "technical",
+  "final",
+  "offer",
+  "rejected",
+  "withdrawn",
+] as const;
+export const careerPipelineStageSchema = z.enum(CAREER_PIPELINE_STAGES);
+export const careerPrioritySchema = z.enum(["low", "medium", "high"]);
+export const careerSearchModeSchema = z.enum(["minimal", "working", "intensive"]);
+export const careerInterviewTypeSchema = z.enum([
+  "recruiter",
+  "technical",
+  "live_coding",
+  "system_design",
+  "final",
+  "other",
+]);
+export const careerInterviewStatusSchema = z.enum([
+  "planned",
+  "completed",
+  "cancelled",
+]);
+export const careerActivityTypeSchema = z.enum([
+  "application",
+  "outreach",
+  "referral",
+  "follow_up",
+  "interview",
+  "other",
+]);
+
+const careerApplicationFieldsSchema = z.object({
+  company: z.string().trim().min(2).max(180),
+  role: z.string().trim().min(2).max(180),
+  url: z.string().trim().max(2000),
+  source: z.string().trim().max(120),
+  description: z.string().trim().max(30_000).default(""),
+  priority: careerPrioritySchema,
+  stage: careerPipelineStageSchema,
+  fitScore: z.number().int().min(0).max(100),
+  salary: z.string().trim().max(120),
+  workFormat: z.string().trim().max(120),
+  level: z.string().trim().max(120),
+  stack: z.array(z.string().trim().min(1).max(80)).max(30),
+  recruiterName: z.string().trim().max(180),
+  recruiterContact: z.string().trim().max(500),
+  hiringManagerName: z.string().trim().max(180),
+  hiringManagerContact: z.string().trim().max(500),
+  publishedAt: z.string().nullable(),
+  appliedAt: z.string().nullable(),
+  followUpAt: z.string().nullable(),
+  nextAction: z.string().trim().max(2000),
+  rejectionReason: z.string().trim().max(2000),
+  notes: z.string().trim().max(8000),
+});
+
+export const careerVacancyGapSchema = z.object({
+  requirement: z.string(),
+  severity: z.enum(["low", "medium", "high"]),
+  action: z.string(),
+  skillKeys: z.array(skillKeySchema),
+});
+
+export const careerVacancyAnalysisSchema = z.object({
+  fitScore: z.number().int().min(0).max(100),
+  summary: z.string(),
+  matchedRequirements: z.array(z.string()),
+  gaps: z.array(careerVacancyGapSchema),
+  likelyInterviewTopics: z.array(z.string()),
+  resumeKeywords: z.array(z.string()),
+  clarificationQuestions: z.array(z.string()),
+  preparationActions: z.array(z.string()),
+  recommendedPriority: careerPrioritySchema,
+  model: z.string(),
+  analyzedAt: z.string(),
+});
+
+export const createCareerApplicationSchema = careerApplicationFieldsSchema;
+export const updateCareerApplicationSchema = careerApplicationFieldsSchema.partial();
+
+const careerInterviewFieldsSchema = z.object({
+  type: careerInterviewTypeSchema,
+  status: careerInterviewStatusSchema,
+  scheduledAt: z.string().nullable(),
+  format: z.string().trim().max(180),
+  participants: z.string().trim().max(500),
+  questions: z.array(z.string().trim().min(1).max(1000)).max(100),
+  notes: z.string().trim().max(8000),
+  outcome: z.string().trim().max(2000),
+  nextAction: z.string().trim().max(2000),
+});
+
+export const createCareerInterviewSchema = careerInterviewFieldsSchema;
+export const updateCareerInterviewSchema = careerInterviewFieldsSchema.partial();
+export const careerInterviewSchema = careerInterviewFieldsSchema.extend({
+  interviewId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const careerApplicationSchema = careerApplicationFieldsSchema.extend({
+  applicationId: z.string(),
+  analysis: careerVacancyAnalysisSchema.nullable().optional(),
+  interviews: z.array(careerInterviewSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const careerWeeklyGoalsSchema = z.object({
+  applications: z.number().int().min(0).max(100),
+  outreach: z.number().int().min(0).max(100),
+  referrals: z.number().int().min(0).max(100),
+  interviews: z.number().int().min(0).max(50),
+});
+export const careerSettingsSchema = z.object({
+  searchMode: careerSearchModeSchema,
+  weeklyGoals: careerWeeklyGoalsSchema,
+  strategyNotes: z.string().trim().max(12000),
+  candidateProfile: z.string().trim().max(20_000).default(""),
+  updatedAt: z.string(),
+});
+export const updateCareerSettingsSchema = careerSettingsSchema
+  .omit({ updatedAt: true })
+  .partial();
+const careerActivityFieldsSchema = z.object({
+  applicationId: z.string().nullable(),
+  type: careerActivityTypeSchema,
+  occurredAt: z.string(),
+  note: z.string().trim().max(2000),
+});
+export const createCareerActivitySchema = careerActivityFieldsSchema;
+export const careerActivitySchema = careerActivityFieldsSchema.extend({
+  activityId: z.string(),
+  createdAt: z.string(),
+});
+export const careerWorkspaceSchema = z.object({
+  applications: z.array(careerApplicationSchema),
+  activities: z.array(careerActivitySchema),
+  settings: careerSettingsSchema,
+});
+
 export const learningBackupSchema = z.object({
   format: z.literal("knows-preparation-backup"),
   version: z.literal(1),
@@ -803,6 +1017,12 @@ export type AiDiagramNode = z.infer<typeof aiDiagramNodeSchema>;
 export type AiDiagramEdge = z.infer<typeof aiDiagramEdgeSchema>;
 export type AiDiagram = z.infer<typeof aiDiagramSchema>;
 export type AiQuizQuestion = z.infer<typeof aiQuizQuestionSchema>;
+export type AiLessonReviewIssue = z.infer<typeof aiLessonReviewIssueSchema>;
+export type AiLessonSourceVerificationStatus = z.infer<
+  typeof aiLessonSourceVerificationStatusSchema
+>;
+export type AiLessonVerifiedSource = z.infer<typeof aiLessonVerifiedSourceSchema>;
+export type AiLessonSourceIssue = z.infer<typeof aiLessonSourceIssueSchema>;
 export type AiLesson = z.infer<typeof aiLessonSchema>;
 export type LessonQuizAnswer = z.infer<typeof lessonQuizAnswerSchema>;
 export type LessonQuizAttempt = z.infer<typeof lessonQuizAttemptSchema>;
@@ -856,6 +1076,9 @@ export type SettingsPatch = Partial<
 export type AdaptivePlanItemKind = z.infer<typeof adaptivePlanItemKindSchema>;
 export type AdaptivePlanItem = z.infer<typeof adaptivePlanItemSchema>;
 export type AdaptivePlan = z.infer<typeof adaptivePlanSchema>;
+export type AdaptivePlanCheckIn = z.infer<typeof adaptivePlanCheckInSchema>;
+export type AdaptivePlanEnergy = z.infer<typeof adaptivePlanEnergySchema>;
+export type AdaptivePlanFocus = z.infer<typeof adaptivePlanFocusSchema>;
 export type LearningAnalyticsDay = z.infer<typeof learningAnalyticsDaySchema>;
 export type LearningAnalyticsSkill = z.infer<typeof learningAnalyticsSkillSchema>;
 export type LearningAnalytics = z.infer<typeof learningAnalyticsSchema>;
@@ -882,6 +1105,25 @@ export type CreateResearchClaim = z.infer<typeof createResearchClaimSchema>;
 export type UpdateResearchClaim = z.infer<typeof updateResearchClaimSchema>;
 export type ResearchClaim = z.infer<typeof researchClaimSchema>;
 export type ResearchWorkspace = z.infer<typeof researchWorkspaceSchema>;
+export type CareerPipelineStage = z.infer<typeof careerPipelineStageSchema>;
+export type CareerPriority = z.infer<typeof careerPrioritySchema>;
+export type CareerSearchMode = z.infer<typeof careerSearchModeSchema>;
+export type CareerInterviewType = z.infer<typeof careerInterviewTypeSchema>;
+export type CareerInterviewStatus = z.infer<typeof careerInterviewStatusSchema>;
+export type CareerActivityType = z.infer<typeof careerActivityTypeSchema>;
+export type CreateCareerApplication = z.infer<typeof createCareerApplicationSchema>;
+export type UpdateCareerApplication = z.infer<typeof updateCareerApplicationSchema>;
+export type CreateCareerInterview = z.infer<typeof createCareerInterviewSchema>;
+export type UpdateCareerInterview = z.infer<typeof updateCareerInterviewSchema>;
+export type CareerInterview = z.infer<typeof careerInterviewSchema>;
+export type CareerApplication = z.infer<typeof careerApplicationSchema>;
+export type CareerVacancyAnalysis = z.infer<typeof careerVacancyAnalysisSchema>;
+export type CareerWeeklyGoals = z.infer<typeof careerWeeklyGoalsSchema>;
+export type CareerSettings = z.infer<typeof careerSettingsSchema>;
+export type UpdateCareerSettings = z.infer<typeof updateCareerSettingsSchema>;
+export type CreateCareerActivity = z.infer<typeof createCareerActivitySchema>;
+export type CareerActivity = z.infer<typeof careerActivitySchema>;
+export type CareerWorkspace = z.infer<typeof careerWorkspaceSchema>;
 export type LearningBackup = z.infer<typeof learningBackupSchema>;
 export type BootstrapContent = z.infer<typeof bootstrapContentSchema>;
 export type BootstrapProgress = z.infer<typeof bootstrapProgressSchema>;

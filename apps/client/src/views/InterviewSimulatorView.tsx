@@ -107,7 +107,7 @@ export function InterviewSimulatorView() {
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState(0);
   const [platformDrafts, setPlatformDrafts] = useState<
-    Record<string, { answer: string; followUpAnswer: string }>
+    Record<string, { answer: string; followUpAnswer: string; secondFollowUpAnswer: string }>
   >({});
   const [codingDraft, setCodingDraft] = useState<{ sessionId: string; value: string } | null>(null);
   const [aiCodeDraft, setAiCodeDraft] = useState<{ sessionId: string; value: string } | null>(null);
@@ -163,7 +163,7 @@ export function InterviewSimulatorView() {
 
   const activePlatformItem = useMemo(
     () =>
-      session?.platformItems.find((item) => !item.followUpAnswer.trim()) ??
+      session?.platformItems.find((item) => !item.completed) ??
       session?.platformItems.at(-1),
     [session],
   );
@@ -171,6 +171,7 @@ export function InterviewSimulatorView() {
     ? platformDrafts[activePlatformItem.question.id] ?? {
         answer: activePlatformItem.answer,
         followUpAnswer: activePlatformItem.followUpAnswer,
+        secondFollowUpAnswer: activePlatformItem.secondFollowUpAnswer ?? "",
       }
     : null;
   const defenseIndex = useMemo(
@@ -296,6 +297,10 @@ export function InterviewSimulatorView() {
 
       {session.currentStage === "platform" && activePlatformItem ? (
         <section className="interview-stage-card">
+          <div className="interview-platform-progress">
+            Вопрос {session.platformItems.filter((item) => item.completed).length + 1}
+            {session.platformQuestionTarget ? ` из ${session.platformQuestionTarget}` : ""}
+          </div>
           <div className="interview-stage-heading">
             <MessageSquareText />
             <div><span>{activePlatformItem.question.category}</span><h2>{activePlatformItem.question.prompt}</h2></div>
@@ -315,6 +320,9 @@ export function InterviewSimulatorView() {
                   followUpAnswer:
                     current[activePlatformItem.question.id]?.followUpAnswer ??
                     activePlatformItem.followUpAnswer,
+                  secondFollowUpAnswer:
+                    current[activePlatformItem.question.id]?.secondFollowUpAnswer ??
+                    activePlatformItem.secondFollowUpAnswer ?? "",
                 },
               }));
             }}
@@ -336,6 +344,31 @@ export function InterviewSimulatorView() {
                         current[activePlatformItem.question.id]?.answer ??
                         activePlatformItem.answer,
                       followUpAnswer: value,
+                      secondFollowUpAnswer:
+                        current[activePlatformItem.question.id]?.secondFollowUpAnswer ??
+                        activePlatformItem.secondFollowUpAnswer ?? "",
+                    },
+                  }));
+                }}
+              />
+            </div>
+          ) : null}
+          {activePlatformItem.secondFollowUpQuestion ? (
+            <div className="interview-follow-up">
+              <span>Второе уточнение</span>
+              <h3>{activePlatformItem.secondFollowUpQuestion}</h3>
+              <Textarea
+                minRows={5}
+                maxLength={12_000}
+                value={activePlatformDraft?.secondFollowUpAnswer ?? ""}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setPlatformDrafts((current) => ({
+                    ...current,
+                    [activePlatformItem.question.id]: {
+                      answer: current[activePlatformItem.question.id]?.answer ?? activePlatformItem.answer,
+                      followUpAnswer: current[activePlatformItem.question.id]?.followUpAnswer ?? activePlatformItem.followUpAnswer,
+                      secondFollowUpAnswer: value,
                     },
                   }));
                 }}
@@ -349,8 +382,13 @@ export function InterviewSimulatorView() {
                 const draft = current[activePlatformItem.question.id] ?? {
                   answer: activePlatformItem.answer,
                   followUpAnswer: activePlatformItem.followUpAnswer,
+                  secondFollowUpAnswer: activePlatformItem.secondFollowUpAnswer ?? "",
                 };
-                const key = activePlatformItem.followUpQuestion ? "followUpAnswer" : "answer";
+                const key = activePlatformItem.secondFollowUpQuestion
+                  ? "secondFollowUpAnswer"
+                  : activePlatformItem.followUpQuestion
+                    ? "followUpAnswer"
+                    : "answer";
                 return {
                   ...current,
                   [activePlatformItem.question.id]: {
@@ -370,6 +408,12 @@ export function InterviewSimulatorView() {
               if (activePlatformItem.followUpQuestion && !draft.followUpAnswer.trim()) {
                 return setError("Ответь на уточняющий вопрос.");
               }
+              if (
+                activePlatformItem.secondFollowUpQuestion &&
+                !draft.secondFollowUpAnswer.trim()
+              ) {
+                return setError("Ответь на второе уточнение.");
+              }
               void run("platform", () =>
                 learningApi.updateInterviewPlatformAnswer(
                   session.id,
@@ -378,12 +422,25 @@ export function InterviewSimulatorView() {
                   activePlatformItem.followUpQuestion
                     ? draft.followUpAnswer.trim()
                     : undefined,
+                  activePlatformItem.secondFollowUpQuestion
+                    ? draft.secondFollowUpAnswer.trim()
+                    : undefined,
                 ),
               );
             }}
           >
-            {activePlatformItem.followUpQuestion ? "Сохранить и продолжить" : "Получить уточнение"}
+            {activePlatformItem.followUpQuestion ? "Оценить и продолжить" : "Оценить ответ"}
           </Button>
+          {session.platformItems.some((item) => item.completed && item.assessment) ? (
+            <div className="interview-answer-assessments">
+              {session.platformItems.filter((item) => item.completed && item.assessment).map((item) => (
+                <article key={item.question.id}>
+                  <strong>{item.assessment?.score}/100 · {item.question.category}</strong>
+                  {item.assessment?.gaps.map((gap) => <span key={gap}>{gap}</span>)}
+                </article>
+              ))}
+            </div>
+          ) : null}
         </section>
       ) : null}
 

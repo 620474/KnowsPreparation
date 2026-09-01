@@ -14,6 +14,8 @@ import type {
 } from "@prep/contracts";
 import { isValidObjectId, type Model } from "mongoose";
 
+import { AiAgentService, type InterviewAnswerAssessment } from "../agents/ai-agent.service";
+import { CareerApplicationEntry } from "../career/schemas/career-application.schema";
 import { AiContentService, type AiDeltaHandler } from "./ai-content.service";
 import type {
   SendInterviewAiMessageDto,
@@ -25,10 +27,12 @@ import type {
 import { runPracticeSolution } from "./generated-runner";
 import {
   getReadinessConfidence,
+  getInterviewQuestionCandidates,
   interviewCompanyLabel,
   interviewDurationMinutes,
   selectInterviewExercises,
   selectInterviewQuestions,
+  selectAdaptiveInterviewQuestion,
 } from "./interview-session";
 import { serializeInterviewSession } from "./learning-serialization";
 import { LearningSignalService } from "./learning-signal.service";
@@ -52,6 +56,11 @@ const scoreExercise = (exercise: InterviewExercise) =>
 
 const clampScore = (score: number) => Math.min(100, Math.max(0, Math.round(score)));
 
+const isPlatformItemComplete = (item: InterviewSessionDocument["platformItems"][number]) =>
+  item.completed ?? Boolean(
+    item.answer.trim() && item.followUpQuestion && item.followUpAnswer.trim(),
+  );
+
 @Injectable()
 export class InterviewSessionService {
   private readonly logger = new Logger(InterviewSessionService.name);
@@ -59,7 +68,10 @@ export class InterviewSessionService {
   constructor(
     @InjectModel(InterviewSession.name)
     private readonly interviewModel: Model<InterviewSession>,
+    @InjectModel(CareerApplicationEntry.name)
+    private readonly careerApplicationModel: Model<CareerApplicationEntry>,
     private readonly aiContent: AiContentService,
+    private readonly agents: AiAgentService,
     private readonly signals: LearningSignalService,
   ) {}
 
@@ -89,6 +101,20 @@ export class InterviewSessionService {
       status: "completed",
     });
     const questions = selectInterviewQuestions(dto.mode, completedCount);
+    const application = dto.applicationId
+      ? await this.careerApplicationModel.findOne({ applicationId: dto.applicationId }).lean().exec()
+      : null;
+    if (dto.applicationId && !application) {
+      throw new NotFoundException("Вакансия для интервью не найдена");
+    }
+    const vacancyContext = application
+      ? [
+          `${application.company} · ${application.role}`,
+          application.description,
+          application.analysis?.summary,
+          application.analysis?.likelyInterviewTopics.join(", "),
+        ].filter(Boolean).join("\n").slice(0, 12_000)
+      : "";
     const [codingExercise, aiExercise] = selectInterviewExercises(
       dto.company,
       completedCount,
@@ -97,15 +123,22 @@ export class InterviewSessionService {
       status: "in_progress",
       mode: dto.mode,
       company: dto.company,
+      applicationId: application?.applicationId ?? null,
+      vacancyContext,
       currentStage: "platform",
       durationMinutes: interviewDurationMinutes(dto.mode),
       startedAt: new Date(),
       completedAt: null,
-      platformItems: questions.map((question) => ({
+      platformQuestionTarget: questions.length,
+      platformItems: questions.slice(0, 1).map((question) => ({
         question,
         answer: "",
         followUpQuestion: null,
         followUpAnswer: "",
+        secondFollowUpQuestion: null,
+        secondFollowUpAnswer: "",
+        completed: false,
+        assessment: null,
       })),
       codingExercise,
       aiExercise,
@@ -129,23 +162,78 @@ export class InterviewSessionService {
     );
     if (!item) throw new NotFoundException("Вопрос не входит в эту сессию");
     item.answer = dto.answer.trim();
-    if (!item.followUpQuestion) {
-      item.followUpQuestion = await this.followUpOrFallback(
-        interviewCompanyLabel(interview.company),
-        item.question.prompt,
-        item.answer,
-      );
-    }
     if (dto.followUpAnswer) item.followUpAnswer = dto.followUpAnswer.trim();
-    if (
-      interview.platformItems.every(
-        (candidate) =>
-          candidate.answer.trim() &&
-          candidate.followUpQuestion &&
-          candidate.followUpAnswer.trim(),
-      )
+    if (dto.secondFollowUpAnswer) {
+      item.secondFollowUpAnswer = dto.secondFollowUpAnswer.trim();
+    }
+    const answeredFollowUps = [
+      item.followUpQuestion && item.followUpAnswer.trim()
+        ? { question: item.followUpQuestion, answer: item.followUpAnswer.trim() }
+        : null,
+      item.secondFollowUpQuestion && item.secondFollowUpAnswer?.trim()
+        ? { question: item.secondFollowUpQuestion, answer: item.secondFollowUpAnswer.trim() }
+        : null,
+    ].filter((value): value is { question: string; answer: string } => Boolean(value));
+    const candidates = getInterviewQuestionCandidates(
+      interview.platformItems.map((candidate) => candidate.question.id),
+      interview.platformItems.length,
+    );
+    const assessment = await this.assessAnswerOrFallback({
+      company: interviewCompanyLabel(interview.company),
+      vacancyContext: interview.vacancyContext,
+      question: item.question,
+      answer: item.answer,
+      followUps: answeredFollowUps,
+      followUpCount: answeredFollowUps.length,
+      candidateQuestions: candidates,
+    });
+    item.assessment = {
+      score: assessment.score,
+      confidence: assessment.confidence,
+      strengths: assessment.strengths,
+      gaps: assessment.gaps,
+      evaluatedAt: new Date().toISOString(),
+    };
+    if (!item.followUpQuestion && assessment.followUpQuestion) {
+      item.followUpQuestion = assessment.followUpQuestion;
+    } else if (
+      item.followUpQuestion &&
+      item.followUpAnswer.trim() &&
+      !item.secondFollowUpQuestion &&
+      assessment.followUpQuestion
     ) {
-      interview.currentStage = "coding";
+      item.secondFollowUpQuestion = assessment.followUpQuestion;
+    } else {
+      item.completed = true;
+    }
+
+    if (item.completed) {
+      const completedCount = interview.platformItems.filter(
+        isPlatformItemComplete,
+      ).length;
+      const target = interview.platformQuestionTarget ?? interview.platformItems.length;
+      if (completedCount >= target) {
+        interview.currentStage = "coding";
+      } else {
+        const nextQuestion = selectAdaptiveInterviewQuestion(
+          candidates,
+          assessment.nextQuestionId,
+        );
+        if (nextQuestion) {
+          interview.platformItems.push({
+            question: nextQuestion,
+            answer: "",
+            followUpQuestion: null,
+            followUpAnswer: "",
+            secondFollowUpQuestion: null,
+            secondFollowUpAnswer: "",
+            completed: false,
+            assessment: null,
+          });
+        } else {
+          interview.currentStage = "coding";
+        }
+      }
     }
     interview.markModified("platformItems");
     await interview.save();
@@ -361,17 +449,21 @@ export class InterviewSessionService {
     };
   }
 
-  private async followUpOrFallback(company: string, question: string, answer: string) {
-    if (!this.aiContent.enabled) return FOLLOW_UP_FALLBACK;
+  private async assessAnswerOrFallback(input: Parameters<AiAgentService["assessInterviewAnswer"]>[0]) {
+    const fallback: InterviewAnswerAssessment = {
+      score: 55,
+      confidence: "low",
+      strengths: ["Ответ зафиксирован"],
+      gaps: ["Содержательная AI-оценка временно недоступна"],
+      followUpQuestion: input.followUpCount === 0 ? FOLLOW_UP_FALLBACK : null,
+      nextQuestionId: input.candidateQuestions[0]?.id ?? null,
+    };
+    if (!this.agents.enabled) return fallback;
     try {
-      return await this.aiContent.generateInterviewFollowUp({
-        company,
-        question,
-        answer,
-      });
+      return await this.agents.assessInterviewAnswer(input);
     } catch (error) {
-      this.logFallback("follow_up", error);
-      return FOLLOW_UP_FALLBACK;
+      this.logFallback("answer_assessment", error);
+      return fallback;
     }
   }
 

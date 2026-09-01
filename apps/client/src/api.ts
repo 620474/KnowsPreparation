@@ -1,6 +1,10 @@
 import {
   adaptivePlanSchema,
   aiLessonSchema,
+  careerActivitySchema,
+  careerApplicationSchema,
+  careerSettingsSchema,
+  careerWorkspaceSchema,
   interviewSessionSchema,
   learningAnalyticsSchema,
   practiceAttemptHistorySchema,
@@ -21,6 +25,7 @@ import {
 import type {
   AlgorithmEntry,
   AdaptivePlan,
+  AdaptivePlanCheckIn,
   AiCourse,
   AiCourseProfile,
   AiChatHistory,
@@ -58,6 +63,16 @@ import type {
   UpdateResearchClaim,
   ResearchClaim,
   ResearchWorkspace,
+  CareerApplication,
+  CareerSettings,
+  CareerWorkspace,
+  CreateCareerApplication,
+  UpdateCareerApplication,
+  CreateCareerInterview,
+  UpdateCareerInterview,
+  UpdateCareerSettings,
+  CareerActivity,
+  CreateCareerActivity,
 } from "./types";
 import { SseParser } from "./lib/sse";
 
@@ -217,6 +232,11 @@ export const learningApi = {
     request<AdaptivePlan>("/learning/adaptive/today").then((result) =>
       adaptivePlanSchema.parse(result),
     ),
+  generateAdaptiveToday: (checkIn: AdaptivePlanCheckIn) =>
+    request<AdaptivePlan>("/learning/adaptive/today/generate", {
+      method: "POST",
+      body: JSON.stringify(checkIn),
+    }).then((result) => adaptivePlanSchema.parse(result)),
   skipAdaptiveRecommendation: (recommendationId: string, operationId: string) =>
     request<{ skipped: boolean }>("/learning/adaptive/today/skip", {
       method: "POST",
@@ -285,6 +305,70 @@ export const learningApi = {
   deleteResearchClaim: (projectId: string, claimId: string) =>
     request<{ deleted: boolean }>(
       `/learning/research/projects/${encodeURIComponent(projectId)}/claims/${encodeURIComponent(claimId)}`,
+      { method: "DELETE" },
+    ),
+  getCareerWorkspace: () =>
+    request<CareerWorkspace>("/career").then((workspace) =>
+      careerWorkspaceSchema.parse(workspace),
+    ),
+  createCareerApplication: (data: CreateCareerApplication) =>
+    request<CareerApplication>("/career/applications", {
+      method: "POST",
+      body: JSON.stringify({ data }),
+    }).then((application) => careerApplicationSchema.parse(application)),
+  updateCareerApplication: (
+    applicationId: string,
+    data: UpdateCareerApplication,
+  ) =>
+    request<CareerApplication>(
+      `/career/applications/${encodeURIComponent(applicationId)}`,
+      { method: "PATCH", body: JSON.stringify({ data }) },
+    ).then((application) => careerApplicationSchema.parse(application)),
+  deleteCareerApplication: (applicationId: string) =>
+    request<{ deleted: boolean }>(
+      `/career/applications/${encodeURIComponent(applicationId)}`,
+      { method: "DELETE" },
+    ),
+  analyzeCareerApplication: (applicationId: string) =>
+    request<CareerApplication>(
+      `/career/applications/${encodeURIComponent(applicationId)}/analyze`,
+      { method: "POST" },
+    ).then((application) => careerApplicationSchema.parse(application)),
+  createCareerInterview: (
+    applicationId: string,
+    data: CreateCareerInterview,
+  ) =>
+    request<CareerApplication>(
+      `/career/applications/${encodeURIComponent(applicationId)}/interviews`,
+      { method: "POST", body: JSON.stringify({ data }) },
+    ).then((application) => careerApplicationSchema.parse(application)),
+  updateCareerInterview: (
+    applicationId: string,
+    interviewId: string,
+    data: UpdateCareerInterview,
+  ) =>
+    request<CareerApplication>(
+      `/career/applications/${encodeURIComponent(applicationId)}/interviews/${encodeURIComponent(interviewId)}`,
+      { method: "PATCH", body: JSON.stringify({ data }) },
+    ).then((application) => careerApplicationSchema.parse(application)),
+  deleteCareerInterview: (applicationId: string, interviewId: string) =>
+    request<CareerApplication>(
+      `/career/applications/${encodeURIComponent(applicationId)}/interviews/${encodeURIComponent(interviewId)}`,
+      { method: "DELETE" },
+    ).then((application) => careerApplicationSchema.parse(application)),
+  updateCareerSettings: (data: UpdateCareerSettings) =>
+    request<CareerSettings>("/career/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ data }),
+    }).then((settings) => careerSettingsSchema.parse(settings)),
+  createCareerActivity: (data: CreateCareerActivity) =>
+    request<CareerActivity>("/career/activities", {
+      method: "POST",
+      body: JSON.stringify({ data }),
+    }).then((activity) => careerActivitySchema.parse(activity)),
+  deleteCareerActivity: (activityId: string) =>
+    request<{ deleted: boolean }>(
+      `/career/activities/${encodeURIComponent(activityId)}`,
       { method: "DELETE" },
     ),
   exportBackup: () => request<LearningBackup>("/learning/backup"),
@@ -476,22 +560,24 @@ export const learningApi = {
   startInterviewSession: (
     mode: InterviewSessionMode,
     company: InterviewSessionCompany,
+    applicationId?: string,
   ) =>
     request<InterviewSession>("/learning/interview-sessions", {
       method: "POST",
-      body: JSON.stringify({ mode, company }),
+      body: JSON.stringify({ mode, company, applicationId }),
     }).then((result) => interviewSessionSchema.parse(result)),
   updateInterviewPlatformAnswer: (
     interviewId: string,
     questionId: string,
     answer: string,
     followUpAnswer?: string,
+    secondFollowUpAnswer?: string,
   ) =>
     request<InterviewSession>(
       `${interviewSessionPath(interviewId)}/platform/${encodeURIComponent(questionId)}`,
       {
         method: "PUT",
-        body: JSON.stringify({ answer, followUpAnswer }),
+        body: JSON.stringify({ answer, followUpAnswer, secondFollowUpAnswer }),
       },
     ).then((result) => interviewSessionSchema.parse(result)),
   submitInterviewCodingAttempt: (interviewId: string, solution: string) =>

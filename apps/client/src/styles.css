@@ -2628,6 +2628,53 @@ p {
   line-height: 1.65;
 }
 
+.ai-lesson-review-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.ai-lesson-source-verification {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-lesson-source-verification p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ai-lesson-verified-sources {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.ai-lesson-verified-sources a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.ai-lesson-review-meta .mantine-Badge-root {
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  text-transform: none;
+}
+
+.ai-lesson-review-meta > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .ai-lesson-reader .ai-lesson {
   border: 0;
   padding: 0;
@@ -3300,6 +3347,38 @@ p {
     radial-gradient(circle at top right, rgba(107, 245, 176, 0.1), transparent 34%),
     var(--card-bg);
   box-shadow: var(--shadow);
+}
+
+.adaptive-check-in {
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--surface-subtle);
+}
+
+.adaptive-check-in summary {
+  color: var(--accent);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.adaptive-check-in > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.adaptive-rationale {
+  color: var(--muted);
+  font-style: italic;
+}
+
+@media (max-width: 720px) {
+  .adaptive-check-in > div {
+    grid-template-columns: 1fr;
+  }
 }
 
 .adaptive-today-list {
@@ -5333,6 +5412,32 @@ p {
   border-radius: 16px;
   padding: 20px;
   background: color-mix(in srgb, var(--violet) 8%, var(--surface-subtle));
+}
+
+.interview-platform-progress {
+  color: var(--accent);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.interview-answer-assessments {
+  display: grid;
+  gap: 8px;
+}
+
+.interview-answer-assessments article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--surface-subtle);
+}
+
+.interview-answer-assessments span {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .interview-code-editor .mantine-Textarea-input {

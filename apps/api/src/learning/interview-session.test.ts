@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   getReadinessConfidence,
+  getInterviewQuestionCandidates,
   interviewDurationMinutes,
   selectInterviewExercises,
   selectInterviewQuestions,
+  selectAdaptiveInterviewQuestion,
 } from "./interview-session";
 
 describe("interview session selection", () => {
@@ -32,5 +34,15 @@ describe("interview session selection", () => {
     expect(getReadinessConfidence(0)).toBe("low");
     expect(getReadinessConfidence(2)).toBe("medium");
     expect(getReadinessConfidence(5)).toBe("high");
+  });
+
+  it("selects only an allowlisted adaptive next question", () => {
+    const first = selectInterviewQuestions("express", 0)[0]!;
+    const candidates = getInterviewQuestionCandidates([first.id], 0, 5);
+
+    expect(selectAdaptiveInterviewQuestion(candidates, candidates[2]!.id)?.id)
+      .toBe(candidates[2]!.id);
+    expect(selectAdaptiveInterviewQuestion(candidates, "invented-question")?.id)
+      .toBe(candidates[0]!.id);
   });
 });

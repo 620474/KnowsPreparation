@@ -1,6 +1,13 @@
 import { useEffect, useRef } from "react";
-import { Alert, Button } from "@mantine/core";
-import { AlertTriangle, ArrowLeft, MessageCircle, RefreshCw } from "lucide-react";
+import { Alert, Badge, Button } from "@mantine/core";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  MessageCircle,
+  RefreshCw,
+  ShieldCheck,
+  ExternalLink,
+} from "lucide-react";
 
 import { AiLessonContent } from "./AiLessonContent";
 import { LessonQuiz } from "./LessonQuiz";
@@ -132,6 +139,47 @@ export function AiLessonReader({
             <span>{eyebrow}</span>
             <h1>{title}</h1>
             <p>{description}</p>
+            {lesson.reviewStatus && lesson.reviewModel ? (
+              <div className="ai-lesson-review-meta">
+                <Badge
+                  color="green"
+                  leftSection={<ShieldCheck aria-hidden="true" size={14} />}
+                  radius="xl"
+                  size="lg"
+                  variant="light"
+                >
+                  Проверено {lesson.reviewModel}
+                  {lesson.reviewScore === undefined ? "" : ` · ${lesson.reviewScore}/100`}
+                </Badge>
+                {lesson.reviewStatus === "revised" ? (
+                  <span>
+                    Terra исправила замечания: {lesson.reviewIssues?.length ?? 0}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {lesson.sourceVerificationStatus ? (
+              <div className="ai-lesson-source-verification">
+                <Badge
+                  color={lesson.sourceVerificationStatus === "verified" ? "green" : "yellow"}
+                  radius="xl"
+                  size="lg"
+                  variant="light"
+                >
+                  {lesson.sourceVerificationStatus === "verified"
+                    ? "Факты сверены"
+                    : "Источники сверены частично"}
+                  {lesson.sourceVerificationScore === undefined
+                    ? ""
+                    : ` · ${lesson.sourceVerificationScore}/100`}
+                </Badge>
+                {lesson.sourceVerificationIssues?.map((issue, index) => (
+                  <p key={`${issue.claim}-${index}`}>
+                    <strong>{issue.claim}:</strong> {issue.message}
+                  </p>
+                ))}
+              </div>
+            ) : null}
           </header>
 
           <AiLessonContent
@@ -150,6 +198,17 @@ export function AiLessonReader({
             <strong>Дополнительные источники</strong>
             <ResourceLinks resourceIds={resourceIds} resources={resources} />
             {resourceIds.length === 0 ? <p>Для темы пока нет точных ссылок в каталоге.</p> : null}
+            {lesson.verifiedSources?.length ? (
+              <div className="ai-lesson-verified-sources">
+                <strong>Источники проверки</strong>
+                {lesson.verifiedSources.map((source) => (
+                  <a href={source.url} key={source.url} rel="noreferrer" target="_blank">
+                    <ExternalLink size={15} />
+                    {source.title}
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </section>
         </div>
       </main>

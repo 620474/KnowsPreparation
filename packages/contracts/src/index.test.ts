@@ -13,6 +13,8 @@ import {
   trackKeySchema,
   TRACK_KEYS,
   createResearchProjectSchema,
+  createCareerApplicationSchema,
+  careerWorkspaceSchema,
   researchWorkspaceSchema,
   yandexPlatformMockAttemptSchema,
 } from "./index";
@@ -227,5 +229,57 @@ describe("shared API contracts", () => {
         updatedAt: "2026-09-01T10:00:00.000Z",
       }],
     }).claims[0]?.evidenceIds).toEqual(["evidence-1"]);
+  });
+
+  it("validates the career pipeline and weekly activity", () => {
+    const application = createCareerApplicationSchema.parse({
+      company: "Maps Company",
+      role: "Frontend Engineer",
+      url: "https://example.com/job",
+      source: "Career page",
+      description: "React, TypeScript и работа с realtime-интерфейсами.",
+      priority: "high",
+      stage: "technical",
+      fitScore: 92,
+      salary: "",
+      workFormat: "remote",
+      level: "Middle+",
+      stack: ["React", "TypeScript"],
+      recruiterName: "",
+      recruiterContact: "",
+      hiringManagerName: "",
+      hiringManagerContact: "",
+      publishedAt: "2026-09-01",
+      appliedAt: "2026-09-02",
+      followUpAt: "2026-09-08",
+      nextAction: "Подготовить кейс про карты",
+      rejectionReason: "",
+      notes: "",
+    });
+
+    expect(careerWorkspaceSchema.parse({
+      applications: [{
+        ...application,
+        applicationId: "application-1",
+        interviews: [],
+        createdAt: "2026-09-01T10:00:00.000Z",
+        updatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+      activities: [{
+        activityId: "activity-1",
+        applicationId: "application-1",
+        type: "application",
+        occurredAt: "2026-09-01T10:00:00.000Z",
+        note: "Качественный отклик",
+        createdAt: "2026-09-01T10:00:00.000Z",
+      }],
+      settings: {
+        searchMode: "working",
+        weeklyGoals: { applications: 8, outreach: 5, referrals: 2, interviews: 2 },
+        strategyNotes: "",
+        candidateProfile: "Frontend-разработчик с опытом React и TypeScript.",
+        updatedAt: "2026-09-01T10:00:00.000Z",
+      },
+    }).applications[0]?.fitScore).toBe(92);
   });
 });

@@ -14,6 +14,7 @@ import "@mantine/core/styles.css";
 import "./styles.css";
 import "./features/preparation/preparation.css";
 import "./features/knowledge/knowledge.css";
+import "./features/career/career.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -217,6 +217,51 @@ export class AiQuizQuestion {
 
 export const AiQuizQuestionSchema = SchemaFactory.createForClass(AiQuizQuestion);
 
+@Schema({ _id: false, versionKey: false })
+export class AiLessonReviewIssue {
+  @Prop({ required: true, enum: ["warning", "critical"] })
+  severity!: "warning" | "critical";
+
+  @Prop({ required: true })
+  category!: string;
+
+  @Prop({ required: true })
+  message!: string;
+}
+
+export const AiLessonReviewIssueSchema =
+  SchemaFactory.createForClass(AiLessonReviewIssue);
+
+@Schema({ _id: false, versionKey: false })
+export class AiLessonSourceIssue {
+  @Prop({ required: true, enum: ["warning", "critical"] })
+  severity!: "warning" | "critical";
+
+  @Prop({ required: true })
+  claim!: string;
+
+  @Prop({ required: true })
+  message!: string;
+
+  @Prop({ type: [String], required: true, default: [] })
+  sourceUrls!: string[];
+}
+
+export const AiLessonSourceIssueSchema =
+  SchemaFactory.createForClass(AiLessonSourceIssue);
+
+@Schema({ _id: false, versionKey: false })
+export class AiLessonVerifiedSource {
+  @Prop({ required: true })
+  title!: string;
+
+  @Prop({ required: true })
+  url!: string;
+}
+
+export const AiLessonVerifiedSourceSchema =
+  SchemaFactory.createForClass(AiLessonVerifiedSource);
+
 export type AiLessonDocument = HydratedDocument<AiLesson>;
 
 @Schema({ timestamps: true, versionKey: false })
@@ -268,6 +313,42 @@ export class AiLesson {
 
   @Prop({ required: true })
   generatedAt!: string;
+
+  @Prop({ required: false })
+  generationModel?: string;
+
+  @Prop({ required: false })
+  reviewModel?: string;
+
+  @Prop({ required: false, enum: ["approved", "revised"] })
+  reviewStatus?: "approved" | "revised";
+
+  @Prop({ required: false, min: 0, max: 100 })
+  reviewScore?: number;
+
+  @Prop({ type: [AiLessonReviewIssueSchema], required: false })
+  reviewIssues?: AiLessonReviewIssue[];
+
+  @Prop({ required: false })
+  reviewedAt?: string;
+
+  @Prop({ required: false, enum: ["verified", "partial", "rejected"] })
+  sourceVerificationStatus?: "verified" | "partial" | "rejected";
+
+  @Prop({ required: false, min: 0, max: 100 })
+  sourceVerificationScore?: number;
+
+  @Prop({ required: false })
+  sourceVerificationModel?: string;
+
+  @Prop({ type: [AiLessonSourceIssueSchema], required: false })
+  sourceVerificationIssues?: AiLessonSourceIssue[];
+
+  @Prop({ type: [AiLessonVerifiedSourceSchema], required: false })
+  verifiedSources?: AiLessonVerifiedSource[];
+
+  @Prop({ required: false })
+  sourceVerifiedAt?: string;
 }
 
 export const AiLessonSchema = SchemaFactory.createForClass(AiLesson);

@@ -39,6 +39,12 @@ export class InterviewSession {
   @Prop({ type: String, required: true, enum: INTERVIEW_SESSION_COMPANIES })
   company!: InterviewSessionCompany;
 
+  @Prop({ type: String, default: null })
+  applicationId!: string | null;
+
+  @Prop({ default: "" })
+  vacancyContext!: string;
+
   @Prop({ type: String, enum: INTERVIEW_SESSION_STAGES, default: "platform" })
   currentStage!: InterviewSessionStage;
 
@@ -53,6 +59,9 @@ export class InterviewSession {
 
   @Prop({ type: [MongooseSchema.Types.Mixed], required: true, default: [] })
   platformItems!: InterviewSessionQuestion[];
+
+  @Prop({ required: true, default: 2 })
+  platformQuestionTarget!: number;
 
   @Prop({ type: MongooseSchema.Types.Mixed, required: true })
   codingExercise!: InterviewExercise;

@@ -4,6 +4,7 @@ import {
   extractResponseText,
   normalizeGeneratedCourse,
   normalizeGeneratedLesson,
+  normalizeGeneratedLessonReview,
   selectResourcesForCourseItem,
 } from "./ai-course";
 import { RESOURCES } from "./resources";
@@ -146,6 +147,33 @@ describe("AI course helpers", () => {
       })),
       summary: "Итог",
     })).toThrow("testCases must contain between 3 and 6 items");
+  });
+
+  it("normalizes an approved independent lesson review", () => {
+    expect(normalizeGeneratedLessonReview({
+      verdict: "approved",
+      score: 96,
+      issues: [],
+      correctedLesson: null,
+    })).toEqual({
+      verdict: "approved",
+      score: 96,
+      issues: [],
+      correctedLesson: null,
+    });
+  });
+
+  it("requires a corrected lesson for a revised review", () => {
+    expect(() => normalizeGeneratedLessonReview({
+      verdict: "revised",
+      score: 78,
+      issues: [{
+        severity: "critical",
+        category: "quiz",
+        message: "Неверно отмечен правильный ответ",
+      }],
+      correctedLesson: null,
+    })).toThrow("correctedLesson is required");
   });
 
   it("links generated topics to the existing resource catalog", () => {
