@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { buildAiChatDraft } from "../lib/ai-chat-draft";
 import {
-  formatAppRoute,
-  parseAppRoute,
+  formatAppPath,
+  parseAppPath,
   viewForTrack,
   type AppRoute,
   type AppView,
@@ -14,86 +15,82 @@ import type { TrackKey, AiLessonQuestionContext } from "../types";
 
 type NavigationMode = "push" | "replace";
 
+interface AppNavigationState {
+  lessonReader?: string;
+  quizFocusItemId?: string;
+}
+
+interface ChatRouteState {
+  routeKey: string;
+  opened: boolean;
+  itemId: string | null;
+  draftRequest: { id: number; content: string } | null;
+}
+
 export function useAppNavigation() {
-  const [activeView, setActiveView] = useState<AppView>(
-    () => parseAppRoute(window.location.hash).view,
-  );
-  const [lessonReader, setLessonReader] = useState<LessonRouteTarget | null>(
-    () => parseAppRoute(window.location.hash).lessonReader,
-  );
-  const [dayReader, setDayReader] = useState<DayRouteTarget | null>(
-    () => parseAppRoute(window.location.hash).dayReader ?? null,
-  );
-  const [yandexMockDayId, setYandexMockDayId] = useState<string | null>(
-    () => parseAppRoute(window.location.hash).yandexMockDayId ?? null,
-  );
-  const [researchProjectId, setResearchProjectId] = useState<string | null>(
-    () => parseAppRoute(window.location.hash).researchProjectId ?? null,
-  );
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatItemId, setChatItemId] = useState<string | null>(null);
-  const [chatDraftRequest, setChatDraftRequest] = useState<{
-    id: number;
-    content: string;
-  } | null>(null);
-  const [quizFocusItemId, setQuizFocusItemId] = useState<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const route = useMemo(() => parseAppPath(location.pathname), [location.pathname]);
+  const navigationState = (location.state ?? {}) as AppNavigationState;
+  const [chatState, setChatState] = useState<ChatRouteState>(() => ({
+    routeKey: location.key,
+    opened: false,
+    itemId: route.lessonReader?.itemId ?? null,
+    draftRequest: null,
+  }));
   const chatRequestIdRef = useRef(0);
   const readingScrollRef = useRef(0);
+  const chatOnCurrentRoute = chatState.routeKey === location.key;
+  const chatOpen = chatOnCurrentRoute && chatState.opened;
+  const chatItemId = chatOnCurrentRoute
+    ? chatState.itemId
+    : route.lessonReader?.itemId ?? null;
+  const chatDraftRequest = chatOnCurrentRoute ? chatState.draftRequest : null;
 
   useEffect(() => {
-    const syncRoute = () => {
-      const route = parseAppRoute(window.location.hash);
-      setActiveView(route.view);
-      setLessonReader(route.lessonReader);
-      setDayReader(route.dayReader ?? null);
-      setYandexMockDayId(route.yandexMockDayId ?? null);
-      setResearchProjectId(route.researchProjectId ?? null);
-      setChatOpen(false);
-      setChatItemId(route.lessonReader?.itemId ?? null);
-      setChatDraftRequest(null);
-      setQuizFocusItemId(null);
-    };
+    const timeoutId = window.setTimeout(() => {
+      setChatState({
+        routeKey: location.key,
+        opened: false,
+        itemId: route.lessonReader?.itemId ?? null,
+        draftRequest: null,
+      });
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [location.key, route.lessonReader?.itemId]);
 
-    const initialRoute = parseAppRoute(window.location.hash);
-    const canonicalHash = formatAppRoute(initialRoute);
-    if (window.location.hash !== canonicalHash) {
-      window.history.replaceState(window.history.state, "", canonicalHash);
-    }
-
-    window.addEventListener("popstate", syncRoute);
-    window.addEventListener("hashchange", syncRoute);
-    return () => {
-      window.removeEventListener("popstate", syncRoute);
-      window.removeEventListener("hashchange", syncRoute);
-    };
-  }, []);
+  const setChatItemId = useCallback(
+    (itemId: string | null) =>
+      setChatState((current) => ({
+        routeKey: location.key,
+        opened: current.routeKey === location.key && current.opened,
+        itemId,
+        draftRequest: current.routeKey === location.key ? current.draftRequest : null,
+      })),
+    [location.key],
+  );
 
   const navigateToRoute = useCallback(
-    (route: AppRoute, mode: NavigationMode = "push") => {
-      const lessonMarker = route.lessonReader
-        ? `${route.lessonReader.track}:${route.lessonReader.itemId}`
+    (
+      nextRoute: AppRoute,
+      mode: NavigationMode = "push",
+      state: AppNavigationState = {},
+    ) => {
+      const lessonMarker = nextRoute.lessonReader
+        ? `${nextRoute.lessonReader.track}:${nextRoute.lessonReader.itemId}`
         : undefined;
-      const historyState = { ...(window.history.state ?? {}), lessonReader: lessonMarker };
-      const hash = formatAppRoute(route);
-      const navigationMode = window.location.hash === hash ? "replace" : mode;
+      const path = formatAppPath(nextRoute);
+      const replace = location.pathname === path || mode === "replace";
 
-      if (navigationMode === "replace") {
-        window.history.replaceState(historyState, "", hash);
-      } else {
-        window.history.pushState(historyState, "", hash);
-      }
-
-      setActiveView(route.view);
-      setLessonReader(route.lessonReader);
-      setDayReader(route.dayReader ?? null);
-      setYandexMockDayId(route.yandexMockDayId ?? null);
-      setResearchProjectId(route.researchProjectId ?? null);
-      setChatOpen(false);
-      setChatItemId(route.lessonReader?.itemId ?? null);
-      setChatDraftRequest(null);
-      setQuizFocusItemId(null);
+      navigate(path, {
+        replace,
+        state: {
+          ...state,
+          ...(lessonMarker ? { lessonReader: lessonMarker } : {}),
+        },
+      });
     },
-    [],
+    [location.pathname, navigate],
   );
 
   const navigateToView = useCallback(
@@ -104,14 +101,18 @@ export function useAppNavigation() {
 
   const navigateToLesson = useCallback(
     (track: TrackKey, itemId: string, focusQuiz = false) => {
-      setQuizFocusItemId(focusQuiz ? `${track}:${itemId}` : null);
-      navigateToRoute({
-        view: viewForTrack(track),
-        lessonReader: { track, itemId },
-        ...(dayReader?.track === track ? { dayReader } : {}),
-      });
+      const lessonMarker = `${track}:${itemId}`;
+      navigateToRoute(
+        {
+          view: viewForTrack(track),
+          lessonReader: { track, itemId },
+          ...(route.dayReader?.track === track ? { dayReader: route.dayReader } : {}),
+        },
+        "push",
+        focusQuiz ? { quizFocusItemId: lessonMarker } : {},
+      );
     },
-    [dayReader, navigateToRoute],
+    [navigateToRoute, route.dayReader],
   );
 
   const navigateToTrackDay = useCallback(
@@ -146,65 +147,80 @@ export function useAppNavigation() {
   );
 
   const closeLessonReader = useCallback(() => {
-    const marker = lessonReader
-      ? `${lessonReader.track}:${lessonReader.itemId}`
+    const marker = route.lessonReader
+      ? `${route.lessonReader.track}:${route.lessonReader.itemId}`
       : undefined;
-    if (marker && window.history.state?.lessonReader === marker) {
-      window.history.back();
+    if (marker && navigationState.lessonReader === marker) {
+      navigate(-1);
       return;
     }
     navigateToRoute(
       {
-        view: activeView,
+        view: route.view,
         lessonReader: null,
-        ...(dayReader ? { dayReader } : {}),
+        ...(route.dayReader ? { dayReader: route.dayReader } : {}),
       },
       "replace",
     );
-  }, [activeView, dayReader, lessonReader, navigateToRoute]);
+  }, [navigate, navigateToRoute, navigationState.lessonReader, route]);
 
   const openChat = useCallback(
     (itemId: string | null, context?: AiLessonQuestionContext) => {
       readingScrollRef.current = window.scrollY;
-      if (itemId) setChatItemId(itemId);
+      let draftRequest: ChatRouteState["draftRequest"] = null;
       if (context) {
         chatRequestIdRef.current += 1;
-        setChatDraftRequest({
+        draftRequest = {
           id: chatRequestIdRef.current,
           content: buildAiChatDraft(context),
-        });
+        };
       }
-      setChatOpen(true);
+      setChatState((current) => ({
+        routeKey: location.key,
+        opened: true,
+        itemId: itemId ?? (current.routeKey === location.key ? current.itemId : null),
+        draftRequest,
+      }));
     },
-    [],
+    [location.key],
   );
 
-  const openChatWithDraft = useCallback((itemId: string, content: string) => {
-    readingScrollRef.current = window.scrollY;
-    chatRequestIdRef.current += 1;
-    setChatItemId(itemId);
-    setChatDraftRequest({ id: chatRequestIdRef.current, content });
-    setChatOpen(true);
-  }, []);
+  const openChatWithDraft = useCallback(
+    (itemId: string, content: string) => {
+      readingScrollRef.current = window.scrollY;
+      chatRequestIdRef.current += 1;
+      setChatState({
+        routeKey: location.key,
+        opened: true,
+        itemId,
+        draftRequest: { id: chatRequestIdRef.current, content },
+      });
+    },
+    [location.key],
+  );
 
   const closeChat = useCallback(() => {
     const scrollTop = readingScrollRef.current;
-    setChatOpen(false);
+    setChatState((current) => ({ ...current, opened: false }));
     window.setTimeout(() => window.scrollTo(0, scrollTop), 250);
   }, []);
 
   const resetChat = useCallback(() => {
-    setChatItemId(null);
-    setChatOpen(false);
-  }, []);
+    setChatState({
+      routeKey: location.key,
+      opened: false,
+      itemId: null,
+      draftRequest: null,
+    });
+  }, [location.key]);
 
   return {
-    activeView,
-    lessonReader,
-    quizFocusItemId,
-    dayReader,
-    yandexMockDayId,
-    researchProjectId,
+    activeView: route.view,
+    lessonReader: route.lessonReader as LessonRouteTarget | null,
+    quizFocusItemId: navigationState.quizFocusItemId ?? null,
+    dayReader: route.dayReader ?? null,
+    yandexMockDayId: route.yandexMockDayId ?? null,
+    researchProjectId: route.researchProjectId ?? null,
     chatOpen,
     chatItemId,
     chatDraftRequest,

@@ -2,6 +2,8 @@ import type { TrackKey } from "../types";
 
 export type AppView =
   | "today"
+  | "preparation"
+  | "knowledge"
   | "yandex"
   | "ozon"
   | "ai-course"
@@ -36,10 +38,12 @@ export interface AppRoute {
   researchProjectId?: string | null;
 }
 
-const DEFAULT_ROUTE: AppRoute = { view: "yandex", lessonReader: null };
+const DEFAULT_ROUTE: AppRoute = { view: "today", lessonReader: null };
 
 const viewPaths: Record<AppView, string> = {
   today: "today",
+  preparation: "preparation",
+  knowledge: "knowledge",
   yandex: "yandex",
   ozon: "ozon",
   "ai-course": "ai",
@@ -84,8 +88,8 @@ const decodeItemId = (value: string) => {
   }
 };
 
-export function parseAppRoute(hash: string): AppRoute {
-  const path = hash.replace(/^#/, "");
+export function parseAppPath(pathname: string): AppRoute {
+  const path = pathname.replace(/^#/, "");
   const segments = path.split("/").filter(Boolean);
   const view = pathViews[segments[0] ?? ""];
   if (!view) return DEFAULT_ROUTE;
@@ -130,28 +134,36 @@ export function parseAppRoute(hash: string): AppRoute {
   };
 }
 
-export function formatAppRoute(route: AppRoute): string {
+export function parseAppRoute(hash: string): AppRoute {
+  return parseAppPath(hash);
+}
+
+export function formatAppPath(route: AppRoute): string {
   const path = viewPaths[route.view];
 
   if (route.view === "research") {
     return route.researchProjectId
-      ? `#/${path}/${encodeURIComponent(route.researchProjectId)}`
-      : `#/${path}`;
+      ? `/${path}/${encodeURIComponent(route.researchProjectId)}`
+      : `/${path}`;
   }
 
   if (route.yandexMockDayId) {
-    return `#/${path}/mock/${encodeURIComponent(route.yandexMockDayId)}`;
+    return `/${path}/mock/${encodeURIComponent(route.yandexMockDayId)}`;
   }
 
   if (route.dayReader) {
-    const dayPath = `#/${path}/day/${encodeURIComponent(route.dayReader.dayId)}`;
+    const dayPath = `/${path}/day/${encodeURIComponent(route.dayReader.dayId)}`;
     if (!route.lessonReader) return dayPath;
     return `${dayPath}/lesson/${encodeURIComponent(route.lessonReader.itemId)}`;
   }
 
-  if (!route.lessonReader) return `#/${path}`;
+  if (!route.lessonReader) return `/${path}`;
 
-  return `#/${path}/lesson/${encodeURIComponent(route.lessonReader.itemId)}`;
+  return `/${path}/lesson/${encodeURIComponent(route.lessonReader.itemId)}`;
+}
+
+export function formatAppRoute(route: AppRoute): string {
+  return `#${formatAppPath(route)}`;
 }
 
 export function viewForTrack(track: TrackKey): AppView {

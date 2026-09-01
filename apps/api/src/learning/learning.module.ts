@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
 import { AuthModule } from "../auth/auth.module";
+import { ResearchModule } from "../research/research.module";
 import { AiContentService } from "./ai-content.service";
 import { AdaptivePlanService } from "./adaptive-plan.service";
 import { LearningAnalyticsService } from "./learning-analytics.service";
@@ -11,7 +12,6 @@ import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
-import { ResearchService } from "./research.service";
 import { InterviewSessionService } from "./interview-session.service";
 import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
@@ -56,18 +56,6 @@ import {
 import { Settings, SettingsSchema } from "./schemas/settings.schema";
 import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema";
 import {
-  ResearchProject,
-  ResearchProjectSchema,
-} from "./schemas/research-project.schema";
-import {
-  ResearchEvidenceEntry,
-  ResearchEvidenceEntrySchema,
-} from "./schemas/research-evidence.schema";
-import {
-  ResearchClaimEntry,
-  ResearchClaimEntrySchema,
-} from "./schemas/research-claim.schema";
-import {
   YandexPlatformMockAttempt,
   YandexPlatformMockAttemptSchema,
 } from "./schemas/yandex-platform-mock.schema";
@@ -75,6 +63,7 @@ import {
 @Module({
   imports: [
     AuthModule,
+    ResearchModule,
     MongooseModule.forFeature([
       { name: Settings.name, schema: SettingsSchema },
       { name: TaskProgress.name, schema: TaskProgressSchema },
@@ -89,9 +78,6 @@ import {
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
-      { name: ResearchProject.name, schema: ResearchProjectSchema },
-      { name: ResearchEvidenceEntry.name, schema: ResearchEvidenceEntrySchema },
-      { name: ResearchClaimEntry.name, schema: ResearchClaimEntrySchema },
       {
         name: YandexPlatformMockAttempt.name,
         schema: YandexPlatformMockAttemptSchema,
@@ -108,7 +94,6 @@ import {
     LearningCleanupService,
     LearningService,
     LearningSignalService,
-    ResearchService,
     InterviewSessionService,
     YandexPlatformMockService,
   ],

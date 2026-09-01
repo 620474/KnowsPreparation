@@ -2,19 +2,12 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button, Switch, TextInput } from "@mantine/core";
 import {
   Bell,
-  BookOpenCheck,
   BrainCircuit,
-  Building2,
-  CalendarDays,
   CalendarClock,
-  Code2,
   Download,
-  LibraryBig,
   LogOut,
   Server,
   ShieldCheck,
-  FlaskConical,
-  Sparkles,
   Upload,
 } from "lucide-react";
 
@@ -25,13 +18,6 @@ import type { BootstrapData, LearningBackup, SettingsPatch } from "../types";
 
 interface SettingsViewProps {
   data: BootstrapData;
-  onOpenOzon: () => void;
-  onOpenPlan: () => void;
-  onOpenAiCourse: () => void;
-  onOpenAlgorithms: () => void;
-  onOpenQuestions: () => void;
-  onOpenResources: () => void;
-  onOpenResearch: () => void;
   onUpdateSettings: (settings: SettingsPatch) => Promise<boolean>;
   onExportBackup: () => Promise<boolean>;
   onImportBackup: (backup: LearningBackup) => Promise<number | null>;
@@ -40,13 +26,6 @@ interface SettingsViewProps {
 
 export function SettingsView({
   data,
-  onOpenOzon,
-  onOpenPlan,
-  onOpenAiCourse,
-  onOpenAlgorithms,
-  onOpenQuestions,
-  onOpenResources,
-  onOpenResearch,
   onUpdateSettings,
   onExportBackup,
   onImportBackup,
@@ -128,67 +107,12 @@ export function SettingsView({
       <header className="page-header">
         <div>
           <p className="eyebrow">Управление</p>
-          <h1>Ещё</h1>
-          <p>Дополнительные программы и настройки приложения.</p>
+          <h1>Настройки</h1>
+          <p>Расписание, уведомления, резервная копия и подключение приложения.</p>
         </div>
       </header>
 
       {status ? <p className="settings-status" role="status">{status}</p> : null}
-
-      <section className="settings-card">
-        <div className="settings-icon"><FlaskConical /></div>
-        <div>
-          <h2>Исследования</h2>
-          <p>Протокол, этапы, источники, выводы, риски и проверки качества в одном месте.</p>
-          <Button className="primary-button" type="button" onClick={onOpenResearch}>
-            Открыть исследования
-          </Button>
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <div className="settings-icon"><LibraryBig /></div>
-        <div>
-          <h2>Материалы и практика</h2>
-          <p>Библиотека источников, банк вопросов и отдельный трек алгоритмов.</p>
-          <div className="settings-controls">
-            <Button className="secondary-button" leftSection={<CalendarDays size={17} />} type="button" variant="default" onClick={onOpenPlan}>
-              Учебный план
-            </Button>
-            <Button className="secondary-button" leftSection={<LibraryBig size={17} />} type="button" variant="default" onClick={onOpenResources}>
-              Библиотека
-            </Button>
-            <Button className="secondary-button" leftSection={<BookOpenCheck size={17} />} type="button" variant="default" onClick={onOpenQuestions}>
-              Вопросы
-            </Button>
-            <Button className="secondary-button" leftSection={<Code2 size={17} />} type="button" variant="default" onClick={onOpenAlgorithms}>
-              Алгоритмы
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <div className="settings-icon"><Building2 /></div>
-        <div>
-          <h2>Подготовка к Ozon</h2>
-          <p>14 дней: JavaScript, асинхронность, браузер, сеть, React и мок-интервью.</p>
-          <Button className="primary-button" type="button" onClick={onOpenOzon}>
-            Открыть Ozon-спринт
-          </Button>
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <div className="settings-icon"><Sparkles /></div>
-        <div>
-          <h2>Персональный AI-курс</h2>
-          <p>Сгенерированный план, статьи, квизы, практика и чат по выбранной цели.</p>
-          <Button className="primary-button" type="button" onClick={onOpenAiCourse}>
-            Открыть AI-курс
-          </Button>
-        </div>
-      </section>
 
       <section className="settings-card">
         <div className="settings-icon"><BrainCircuit /></div>

@@ -81,11 +81,6 @@ export class ImportBackupDto {
   backup!: Record<string, unknown>;
 }
 
-export class ResearchPayloadDto {
-  @IsObject()
-  data!: Record<string, unknown>;
-}
-
 export class GenerateAiCourseDto {
   @IsString()
   @MinLength(10)

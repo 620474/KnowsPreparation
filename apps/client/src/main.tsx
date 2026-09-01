@@ -2,15 +2,18 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "react-router-dom";
 
-import App from "./App";
 import { getToken } from "./api";
+import { appRouter } from "./app-router";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { registerOfflineMutationDefaults } from "./lib/offline-mutations";
 import { restoreQueryCache, subscribeToQueryCache } from "./lib/query-cache";
 import { appTheme } from "./theme";
 import "@mantine/core/styles.css";
 import "./styles.css";
+import "./features/preparation/preparation.css";
+import "./features/knowledge/knowledge.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,7 +31,7 @@ async function startApplication() {
       <MantineProvider theme={appTheme} defaultColorScheme="dark">
         <AppErrorBoundary>
           <QueryClientProvider client={queryClient}>
-            <App />
+            <RouterProvider router={appRouter} />
           </QueryClientProvider>
         </AppErrorBoundary>
       </MantineProvider>

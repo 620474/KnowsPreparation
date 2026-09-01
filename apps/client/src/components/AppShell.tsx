@@ -1,16 +1,12 @@
 import type { ReactNode } from "react";
 import { UnstyledButton, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
-  BookOpenCheck,
-  BriefcaseBusiness,
-  Building2,
-  CalendarDays,
   CircleUserRound,
-  Code2,
   Gauge,
+  GraduationCap,
   LibraryBig,
-  ListChecks,
   Moon,
+  FlaskConical,
   Settings,
   Sun,
 } from "lucide-react";
@@ -31,31 +27,35 @@ const navigation: Array<{
   icon: typeof Gauge;
 }> = [
   { id: "today", label: "Сегодня", shortLabel: "Сегодня", icon: Gauge },
-  { id: "yandex", label: "Яндекс-спринт", shortLabel: "Яндекс", icon: ListChecks },
-  { id: "ozon", label: "Ozon-спринт", shortLabel: "Ozon", icon: Building2 },
-  { id: "interview", label: "Интервью", shortLabel: "Собес", icon: BriefcaseBusiness },
-  { id: "plan", label: "Учебный план", shortLabel: "План", icon: CalendarDays },
-  { id: "resources", label: "Библиотека", shortLabel: "База", icon: LibraryBig },
-  { id: "questions", label: "Банк вопросов", shortLabel: "Вопр.", icon: BookOpenCheck },
-  { id: "algorithms", label: "Алгоритмы", shortLabel: "Алго", icon: Code2 },
+  { id: "preparation", label: "Подготовка", shortLabel: "Подготовка", icon: GraduationCap },
+  { id: "knowledge", label: "Знания", shortLabel: "Знания", icon: LibraryBig },
+  { id: "research", label: "Исследования", shortLabel: "Исслед.", icon: FlaskConical },
   { id: "settings", label: "Ещё", shortLabel: "Ещё", icon: Settings },
 ];
 
-const mobileNavigation = (["yandex", "ozon", "interview", "today", "settings"] as const)
-  .map((id) => navigation.find((item) => item.id === id))
-  .filter((item): item is (typeof navigation)[number] => Boolean(item));
+const preparationViews: AppView[] = [
+  "preparation",
+  "yandex",
+  "ozon",
+  "plan",
+  "interview",
+  "mock-interview",
+];
+
+const knowledgeViews: AppView[] = [
+  "knowledge",
+  "ai-course",
+  "resources",
+  "questions",
+  "review",
+  "analytics",
+  "algorithms",
+];
 
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
   navigationId === activeView ||
-  (navigationId === "settings" && activeView === "ai-course") ||
-  (navigationId === "settings" && activeView === "research") ||
-  (navigationId === "questions" &&
-    ["review", "mock-interview", "analytics"].includes(activeView));
-
-const isMobileNavigationActive = (navigationId: AppView, activeView: AppView) =>
-  isNavigationActive(navigationId, activeView) ||
-  (navigationId === "settings" &&
-    ["ai-course", "research", "plan", "resources", "questions", "review", "mock-interview", "analytics", "algorithms"].includes(activeView));
+  (navigationId === "preparation" && preparationViews.includes(activeView)) ||
+  (navigationId === "knowledge" && knowledgeViews.includes(activeView));
 
 function ThemeToggle() {
   const { setColorScheme } = useMantineColorScheme();
@@ -133,13 +133,13 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
       </div>
 
       <nav className="bottom-nav" aria-label="Мобильная навигация">
-        {mobileNavigation.map(({ id, shortLabel, icon: Icon }) => (
+        {navigation.map(({ id, shortLabel, icon: Icon }) => (
           <UnstyledButton
             key={id}
-            className={isMobileNavigationActive(id, activeView) ? "active" : ""}
+            className={isNavigationActive(id, activeView) ? "active" : ""}
             type="button"
             onClick={() => onViewChange(id)}
-            aria-current={isMobileNavigationActive(id, activeView) ? "page" : undefined}
+            aria-current={isNavigationActive(id, activeView) ? "page" : undefined}
           >
             <Icon size={20} />
             <span>{shortLabel}</span>

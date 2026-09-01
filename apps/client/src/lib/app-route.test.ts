@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import type { AppView } from "./app-route";
-import { formatAppRoute, parseAppRoute, viewForTrack } from "./app-route";
+import { formatAppPath, formatAppRoute, parseAppRoute, viewForTrack } from "./app-route";
 
 describe("app routes", () => {
-  it("falls back to Yandex for an empty or unknown route", () => {
-    expect(parseAppRoute("")).toEqual({ view: "yandex", lessonReader: null });
-    expect(parseAppRoute("#/unknown")).toEqual({ view: "yandex", lessonReader: null });
+  it("falls back to Today for an empty or unknown route", () => {
+    expect(parseAppRoute("")).toEqual({ view: "today", lessonReader: null });
+    expect(parseAppRoute("#/unknown")).toEqual({ view: "today", lessonReader: null });
   });
 
   it.each<[AppView, string]>([
     ["today", "#/today"],
+    ["preparation", "#/preparation"],
+    ["knowledge", "#/knowledge"],
     ["yandex", "#/yandex"],
     ["ozon", "#/ozon"],
     ["ai-course", "#/ai"],
@@ -27,6 +29,12 @@ describe("app routes", () => {
     const route = { view, lessonReader: null };
     expect(formatAppRoute(route)).toBe(hash);
     expect(parseAppRoute(hash)).toEqual(route);
+  });
+
+  it("formats router paths without a hash prefix", () => {
+    expect(formatAppPath({ view: "preparation", lessonReader: null })).toBe(
+      "/preparation",
+    );
   });
 
   it("round-trips an encoded lesson route", () => {

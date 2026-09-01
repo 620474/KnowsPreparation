@@ -20,13 +20,13 @@ import {
   FileSearch,
   Flag,
   FlaskConical,
-  Plus,
   Save,
   ShieldAlert,
   Trash2,
 } from "lucide-react";
 
 import { learningApi } from "../api";
+import { ResearchProjectList } from "../features/research/ResearchProjectList";
 import {
   criticalResearchGates,
   RESEARCH_PROJECTS_QUERY_KEY,
@@ -40,12 +40,11 @@ import {
 import type {
   CreateResearchClaim,
   CreateResearchEvidence,
-  CreateResearchProject,
   ResearchClaimConfidence,
+  ResearchDesign,
   ResearchEvidenceQuality,
   ResearchEvidenceStance,
   ResearchProjectStatus,
-  ResearchDesign,
   ResearchWorkspace,
   UpdateResearchProject,
 } from "../types";
@@ -56,18 +55,6 @@ interface ResearchViewProps {
   projectId: string | null;
   onOpenProject: (projectId: string | null) => void;
 }
-
-const emptyProject: CreateResearchProject = {
-  title: "",
-  decisionStatement: "",
-  primaryQuestion: "",
-  scope: "",
-  design: "other",
-  status: "draft",
-  startDate: null,
-  targetDate: null,
-  nextAction: "",
-};
 
 const emptyEvidence: CreateResearchEvidence = {
   title: "",
@@ -104,7 +91,6 @@ export function ResearchView({ projectId, onOpenProject }: ResearchViewProps) {
     queryFn: () => learningApi.getResearchWorkspace(projectId!),
     enabled: Boolean(projectId),
   });
-  const [createDraft, setCreateDraft] = useState(emptyProject);
   const [message, setMessage] = useState("");
 
   const refresh = async (targetProjectId?: string) => {
@@ -117,7 +103,6 @@ export function ResearchView({ projectId, onOpenProject }: ResearchViewProps) {
   const createProject = useMutation({
     mutationFn: learningApi.createResearchProject,
     onSuccess: async (project) => {
-      setCreateDraft(emptyProject);
       await refresh(project.projectId);
       onOpenProject(project.projectId);
     },
@@ -132,12 +117,6 @@ export function ResearchView({ projectId, onOpenProject }: ResearchViewProps) {
     },
     onError: (error: Error) => setMessage(error.message),
   });
-
-  function submitProject(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage("");
-    createProject.mutate(createDraft);
-  }
 
   if (projectId) {
     if (workspaceQuery.isPending || !workspaceQuery.data) {
@@ -162,60 +141,16 @@ export function ResearchView({ projectId, onOpenProject }: ResearchViewProps) {
 
   const projects = projectsQuery.data ?? [];
   return (
-    <div className="page-stack research-page">
-      <header className="page-header research-header">
-        <div>
-          <p className="eyebrow">Research control center</p>
-          <h1>Исследования под контролем</h1>
-          <p>От вопроса и протокола до проверяемого вывода и воспроизводимого отчёта.</p>
-        </div>
-        <div className="header-stat"><FlaskConical size={20} /><strong>{projects.length}</strong><span>проектов</span></div>
-      </header>
-
-      {message ? <Alert color="red" icon={<AlertTriangle size={17} />}>{message}</Alert> : null}
-
-      <section className="research-project-grid">
-        {projects.map((project) => {
-          const complete = project.stages.filter((stage) =>
-            stage.status === "complete" || stage.status === "not_applicable"
-          ).length;
-          const progress = Math.round((complete / project.stages.length) * 100);
-          const blocked = project.qualityGates.filter((gate) => gate.status === "blocked").length;
-          return (
-            <button key={project.projectId} type="button" onClick={() => onOpenProject(project.projectId)}>
-              <span className="research-project-card-top">
-                <Badge color={project.status === "active" ? "green" : "gray"} variant="light">
-                  {researchProjectStatusOptions.find((item) => item.value === project.status)?.label}
-                </Badge>
-                <small>{formatDate(project.targetDate)}</small>
-              </span>
-              <strong>{project.title}</strong>
-              <p>{project.primaryQuestion || project.decisionStatement || "Добавь главный исследовательский вопрос."}</p>
-              <Progress color={blocked ? "red" : "mint"} value={progress} size="sm" />
-              <span className="research-project-card-bottom">
-                <small>{complete} из {project.stages.length} этапов</small>
-                <small>{blocked ? `${blocked} блокера` : project.nextAction || "Нет следующего действия"}</small>
-              </span>
-            </button>
-          );
-        })}
-      </section>
-
-      <section className="research-form-card">
-        <div className="section-heading">
-          <div><p className="eyebrow">Новый проект</p><h2>Зафиксировать исследование</h2></div>
-        </div>
-        <form className="research-form-grid" onSubmit={submitProject}>
-          <TextInput required label="Название" value={createDraft.title} onChange={(event) => setCreateDraft({ ...createDraft, title: event.currentTarget.value })} />
-          <Select label="Дизайн" data={researchDesignOptions} value={createDraft.design} onChange={(value) => setCreateDraft({ ...createDraft, design: (value ?? "other") as ResearchDesign })} />
-          <Textarea className="research-form-wide" required minRows={2} label="Главный вопрос" value={createDraft.primaryQuestion} onChange={(event) => setCreateDraft({ ...createDraft, primaryQuestion: event.currentTarget.value })} />
-          <Textarea className="research-form-wide" minRows={2} label="Для какого решения нужен результат?" value={createDraft.decisionStatement} onChange={(event) => setCreateDraft({ ...createDraft, decisionStatement: event.currentTarget.value })} />
-          <TextInput type="date" label="Начало" value={createDraft.startDate ?? ""} onChange={(event) => setCreateDraft({ ...createDraft, startDate: event.currentTarget.value || null })} />
-          <TextInput type="date" label="Целевой срок" value={createDraft.targetDate ?? ""} onChange={(event) => setCreateDraft({ ...createDraft, targetDate: event.currentTarget.value || null })} />
-          <Button className="primary-button research-form-wide" leftSection={<Plus size={17} />} loading={createProject.isPending} type="submit">Создать проект</Button>
-        </form>
-      </section>
-    </div>
+    <ResearchProjectList
+      creating={createProject.isPending}
+      message={message}
+      projects={projects}
+      onCreate={(draft) => {
+        setMessage("");
+        createProject.mutate(draft);
+      }}
+      onOpenProject={onOpenProject}
+    />
   );
 }
 
