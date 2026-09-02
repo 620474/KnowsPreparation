@@ -17,7 +17,7 @@ import type { GeneratedLesson } from "./ai-course";
 import { getStaticRunnerValidationCases } from "./exercise-runners";
 import { LearningModule } from "./learning.module";
 import { ResearchAgentService } from "../research/research-agent.service";
-import { AiLesson } from "./schemas/ai-course.schema";
+import { AiLesson, type AiQuizQuestion } from "./schemas/ai-course.schema";
 import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
 import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
@@ -1055,7 +1055,7 @@ describe("Learning API", () => {
   it("grades Core and Deep quiz blocks independently without exposing answers", async () => {
     const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;
     if (!blockId) throw new Error("Yandex sprint must contain a quiz-capable block");
-    const quiz = Array.from({ length: 20 }, (_, index) => ({
+    const quiz: AiQuizQuestion[] = Array.from({ length: 20 }, (_, index) => ({
       id: `safe-quiz-${index + 1}`,
       prompt: `Безопасный вопрос ${index + 1}`,
       options: ["A", "B", "C", "D"],
