@@ -25,6 +25,9 @@ import { AssessmentResultV2Entry } from "./schemas/assessment-result-v2.schema";
 import { EvidenceEventV2Entry } from "./schemas/evidence-event-v2.schema";
 import { MasterySnapshotV2Entry } from "./schemas/mastery-snapshot-v2.schema";
 import { InterviewSession } from "./schemas/interview-session.schema";
+import { InterviewTurnEntry } from "./schemas/interview-turn.schema";
+import { ReadinessOutcomeEntry } from "./schemas/readiness-outcome.schema";
+import { ReadinessPredictionEntry } from "./schemas/readiness-prediction.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
 import { QuestionAttempt } from "./schemas/question-attempt.schema";
@@ -78,6 +81,12 @@ export class LearningBackupService {
     private readonly mockInterviewModel: Model<MockInterview>,
     @InjectModel(InterviewSession.name)
     private readonly interviewSessionModel: Model<InterviewSession>,
+    @InjectModel(InterviewTurnEntry.name)
+    private readonly interviewTurnModel: Model<InterviewTurnEntry>,
+    @InjectModel(ReadinessPredictionEntry.name)
+    private readonly readinessPredictionModel: Model<ReadinessPredictionEntry>,
+    @InjectModel(ReadinessOutcomeEntry.name)
+    private readonly readinessOutcomeModel: Model<ReadinessOutcomeEntry>,
     @InjectModel(YandexPlatformMockAttempt.name)
     private readonly yandexPlatformMockAttemptModel: Model<YandexPlatformMockAttempt>,
     @InjectModel(ResearchProject.name)
@@ -127,6 +136,9 @@ export class LearningBackupService {
       aiQuizProgresses,
       mockInterviews,
       interviewSessions,
+      interviewTurns,
+      readinessPredictions,
+      readinessOutcomes,
       yandexPlatformMockAttempts,
       researchProjects,
       researchEvidence,
@@ -160,6 +172,9 @@ export class LearningBackupService {
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
       this.interviewSessionModel.find().lean().exec(),
+      this.interviewTurnModel.find().lean().exec(),
+      this.readinessPredictionModel.find().lean().exec(),
+      this.readinessOutcomeModel.find().lean().exec(),
       this.yandexPlatformMockAttemptModel.find().lean().exec(),
       this.researchProjectModel.find().lean().exec(),
       this.researchEvidenceModel.find().lean().exec(),
@@ -199,6 +214,9 @@ export class LearningBackupService {
         aiQuizProgresses,
         mockInterviews,
         interviewSessions,
+        interviewTurns,
+        readinessPredictions,
+        readinessOutcomes,
         yandexPlatformMockAttempts,
         researchProjects,
         researchEvidence,
@@ -285,6 +303,18 @@ export class LearningBackupService {
       interviewSessions: await this.validateRecords(
         this.interviewSessionModel,
         backup.data.interviewSessions,
+      ),
+      interviewTurns: await this.validateRecords(
+        this.interviewTurnModel,
+        backup.data.interviewTurns,
+      ),
+      readinessPredictions: await this.validateRecords(
+        this.readinessPredictionModel,
+        backup.data.readinessPredictions,
+      ),
+      readinessOutcomes: await this.validateRecords(
+        this.readinessOutcomeModel,
+        backup.data.readinessOutcomes,
       ),
       yandexPlatformMockAttempts: await this.validateRecords(
         this.yandexPlatformMockAttemptModel,
@@ -437,6 +467,21 @@ export class LearningBackupService {
         this.interviewSessionModel,
         prepared.interviewSessions,
         (record) => ({ _id: record._id }),
+      ),
+      this.mergeRecords(
+        this.interviewTurnModel,
+        prepared.interviewTurns,
+        (record) => ({ turnId: record.turnId }),
+      ),
+      this.mergeRecords(
+        this.readinessPredictionModel,
+        prepared.readinessPredictions,
+        (record) => ({ snapshotId: record.snapshotId }),
+      ),
+      this.mergeRecords(
+        this.readinessOutcomeModel,
+        prepared.readinessOutcomes,
+        (record) => ({ outcomeId: record.outcomeId }),
       ),
       this.mergeRecords(
         this.yandexPlatformMockAttemptModel,

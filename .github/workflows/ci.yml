@@ -49,6 +49,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: AI evaluator replay gate
+        run: npm run test:ai-evals
+
       - name: Build
         run: npm run build
 

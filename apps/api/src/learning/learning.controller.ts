@@ -25,6 +25,8 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ExamAiLockService } from "../agents/exam-ai-lock.service";
 import {
   CreateAlgorithmDto,
+  CreateReadinessOutcomeDto,
+  CreateReadinessPredictionDto,
   GenerateAiCourseDto,
   GenerateAdaptivePlanDto,
   GradeYandexMockResponseDto,
@@ -39,6 +41,7 @@ import {
   SendAiChatMessageDto,
   SkipAdaptiveRecommendationDto,
   StartInterviewSessionDto,
+  SubmitInterviewTurnDto,
   SubmitInterviewExerciseDto,
   SubmitLessonQuizDto,
   SubmitPracticeAttemptDto,
@@ -64,6 +67,7 @@ import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { MasteryService } from "./mastery/mastery.service";
 import { MasteryV2Service } from "./mastery/mastery-v2.service";
 import { LearningMissionService } from "./learning-mission.service";
+import { ReadinessCalibrationService } from "./readiness-calibration.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning")
@@ -82,6 +86,7 @@ export class LearningController {
     private readonly masteryService: MasteryService,
     private readonly masteryV2Service: MasteryV2Service,
     private readonly missionService: LearningMissionService,
+    private readonly readinessCalibration: ReadinessCalibrationService,
   ) {}
 
   @Get("knowledge/skills")
@@ -118,6 +123,33 @@ export class LearningController {
   @Header("Cache-Control", "private, no-store")
   skillDetailV2(@Param("skillId") skillId: string) {
     return this.masteryV2Service.getSkillDetail(skillId);
+  }
+
+  @Get("readiness/calibration")
+  @Header("Cache-Control", "private, no-store")
+  readinessCalibrationSummary() {
+    return this.readinessCalibration.summary();
+  }
+
+  @Post("readiness/predictions")
+  captureReadinessPrediction(@Body() dto: CreateReadinessPredictionDto) {
+    return this.readinessCalibration.capture({
+      targetId: dto.targetId,
+      applicationId: dto.applicationId ?? null,
+    });
+  }
+
+  @Post("readiness/outcomes")
+  recordReadinessOutcome(@Body() dto: CreateReadinessOutcomeDto) {
+    return this.readinessCalibration.recordOutcome({
+      predictionSnapshotId: dto.predictionSnapshotId,
+      company: dto.company,
+      technicalPassed: dto.technicalPassed,
+      codingPassed: dto.codingPassed ?? null,
+      topics: dto.topics ?? [],
+      notes: dto.notes ?? "",
+      occurredAt: dto.occurredAt,
+    });
   }
 
   @Get("adaptive/today")
@@ -449,6 +481,15 @@ export class LearningController {
       questionId,
       dto,
     );
+  }
+
+  @Post("interview-sessions/:interviewId/turns")
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  submitInterviewTurn(
+    @Param("interviewId") interviewId: string,
+    @Body() dto: SubmitInterviewTurnDto,
+  ) {
+    return this.interviewSessionService.submitDirectorTurn(interviewId, dto);
   }
 
   @Post("interview-sessions/:interviewId/coding/attempt")

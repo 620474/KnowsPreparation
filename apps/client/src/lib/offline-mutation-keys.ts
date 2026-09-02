@@ -24,6 +24,7 @@ export const offlineMutationKeys = {
   skipRecommendation: [...OFFLINE_MUTATION_ROOT, "skip-recommendation"] as const,
   missionAction: [...OFFLINE_MUTATION_ROOT, "mission-action"] as const,
   transferAssessment: [...OFFLINE_MUTATION_ROOT, "transfer-assessment"] as const,
+  interviewTurn: [...OFFLINE_MUTATION_ROOT, "interview-turn"] as const,
 };
 
 export type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
@@ -82,6 +83,11 @@ export type TransferAssessmentMutationVariables = {
   answer: string;
   confidence: number;
   responseTimeMs: number;
+  operationId: string;
+};
+export type InterviewTurnMutationVariables = {
+  interviewId: string;
+  answer: string;
   operationId: string;
 };
 

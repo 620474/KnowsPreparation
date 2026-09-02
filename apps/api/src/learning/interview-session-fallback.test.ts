@@ -5,9 +5,11 @@ import { InterviewSessionService } from "./interview-session.service";
 const createService = () => new InterviewSessionService(
   {} as never,
   {} as never,
+  {} as never,
   { enabled: false } as never,
   { enabled: false } as never,
   {} as never,
+  { get: () => "true" } as never,
 );
 
 describe("InterviewSessionService AI fallbacks", () => {

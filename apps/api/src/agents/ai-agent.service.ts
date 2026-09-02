@@ -25,7 +25,9 @@ import {
 import { z } from "zod";
 
 import { extractResponseText, type GeneratedLesson } from "../learning/ai-course";
+import type { InterviewActionProposal } from "../learning/interview-director";
 import { createOpenAiAbortContext, isAbortError } from "../learning/openai-request";
+import { getEvaluatorDescriptor } from "./evaluator-registry";
 
 const OFFICIAL_SOURCE_DOMAINS = [
   "developer.mozilla.org",
@@ -87,6 +89,24 @@ const interviewAnswerAssessmentSchema = z.object({
   gaps: z.array(z.string().trim().min(1).max(500)).max(6),
   followUpQuestion: z.string().trim().min(1).max(800).nullable(),
   nextQuestionId: z.string().trim().min(1).max(160).nullable(),
+});
+
+const interviewDirectorProposalSchema = z.object({
+  action: z.enum([
+    "probe",
+    "challenge",
+    "counterexample",
+    "change_constraint",
+    "request_code",
+    "request_tradeoff",
+    "move_on",
+  ]),
+  prompt: z.string().trim().min(1).max(800),
+  nextQuestionId: z.string().trim().min(1).max(160).nullable(),
+  score: z.number().int().min(0).max(100),
+  confidence: z.enum(["low", "medium", "high"]),
+  strengths: z.array(z.string().trim().min(1).max(500)).max(6),
+  gaps: z.array(z.string().trim().min(1).max(500)).max(6),
 });
 
 const planOrderingSchema = z.object({
@@ -331,6 +351,39 @@ const jsonSchema = {
       "gaps",
       "followUpQuestion",
       "nextQuestionId",
+    ],
+  },
+  interviewDirectorProposal: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      action: {
+        type: "string",
+        enum: [
+          "probe",
+          "challenge",
+          "counterexample",
+          "change_constraint",
+          "request_code",
+          "request_tradeoff",
+          "move_on",
+        ],
+      },
+      prompt: { type: "string" },
+      nextQuestionId: { anyOf: [{ type: "string" }, { type: "null" }] },
+      score: { type: "integer", minimum: 0, maximum: 100 },
+      confidence: { type: "string", enum: ["low", "medium", "high"] },
+      strengths: { type: "array", items: { type: "string" } },
+      gaps: { type: "array", items: { type: "string" } },
+    },
+    required: [
+      "action",
+      "prompt",
+      "nextQuestionId",
+      "score",
+      "confidence",
+      "strengths",
+      "gaps",
     ],
   },
   planOrdering: {
@@ -765,6 +818,43 @@ export class AiAgentService {
       followUpQuestion: input.followUpCount >= 2 ? null : parsed.followUpQuestion,
       nextQuestionId:
         parsed.nextQuestionId && candidateIds.has(parsed.nextQuestionId)
+          ? parsed.nextQuestionId
+          : null,
+    };
+  }
+
+  async proposeInterviewAction(input: {
+    company: string;
+    vacancyContext?: string;
+    question: InterviewQuestion;
+    transcript: Array<{ role: "interviewer" | "candidate"; content: string }>;
+    depth: number;
+    secondsRemaining: number;
+    candidateQuestions: InterviewQuestion[];
+  }): Promise<InterviewActionProposal> {
+    const evaluator = getEvaluatorDescriptor("interviewDirector");
+    const response = await this.request(
+      evaluator.promptVersion,
+      jsonSchema.interviewDirectorProposal,
+      [
+        "Ты адаптивный технический интервьюер frontend Middle+/Senior.",
+        UNTRUSTED_EXTERNAL_INPUT_POLICY,
+        "Сначала оцени последний ответ кандидата, затем выбери ровно одно следующее действие.",
+        "probe уточняет пробел; challenge проверяет обоснование; counterexample просит разобрать контрпример; change_constraint меняет ограничение; request_code просит короткий код; request_tradeoff проверяет компромиссы; move_on завершает ветку.",
+        "Не раскрывай правильный ответ, решение или конкретную подсказку. Вопрос должен проверять понимание, а не угадывание.",
+        "nextQuestionId разрешено указывать только при move_on и только из candidateQuestions.",
+        `Версия evaluator: ${evaluator.evaluatorVersion}; schema: ${evaluator.schemaVersion}.`,
+        "Пиши по-русски.",
+      ].join(" "),
+      input,
+      evaluator.maxOutputTokens,
+    );
+    const parsed = interviewDirectorProposalSchema.parse(response.data);
+    const candidateIds = new Set(input.candidateQuestions.map((item) => item.id));
+    return {
+      ...parsed,
+      nextQuestionId:
+        parsed.action === "move_on" && parsed.nextQuestionId && candidateIds.has(parsed.nextQuestionId)
           ? parsed.nextQuestionId
           : null,
     };

@@ -534,6 +534,46 @@ export const interviewSessionStageSchema = z.enum([
   "completed",
 ]);
 export const interviewReadinessConfidenceSchema = z.enum(["low", "medium", "high"]);
+export const interviewEngineVersionSchema = z.union([z.literal(1), z.literal(2)]);
+export const interviewerActionSchema = z.enum([
+  "probe",
+  "challenge",
+  "counterexample",
+  "change_constraint",
+  "request_code",
+  "request_tradeoff",
+  "move_on",
+]);
+export const interviewTurnRoleSchema = z.enum(["interviewer", "candidate"]);
+export const interviewTurnAssessmentSchema = z.object({
+  score: z.number().int().min(0).max(100).nullable(),
+  confidence: z.enum(["low", "medium", "high"]),
+  strengths: z.array(z.string()),
+  gaps: z.array(z.string()),
+  assessed: z.boolean(),
+  evaluatorVersion: z.string(),
+});
+export const interviewTurnSchema = z.object({
+  id: z.string(),
+  interviewId: z.string(),
+  operationId: z.string().nullable(),
+  sequence: z.number().int().min(0),
+  role: interviewTurnRoleSchema,
+  action: interviewerActionSchema.nullable(),
+  questionId: z.string(),
+  content: z.string(),
+  answerText: z.string().nullable(),
+  assessment: interviewTurnAssessmentSchema.nullable(),
+  createdAt: z.string(),
+});
+export const interviewConversationStateSchema = z.object({
+  questionId: z.string(),
+  depth: z.number().int().min(0),
+  completedQuestions: z.number().int().min(0),
+  turnCount: z.number().int().min(0),
+  lastAction: interviewerActionSchema.nullable(),
+  policyVersion: z.string(),
+});
 
 export const interviewSessionQuestionSchema = z.object({
   question: interviewQuestionSchema,
@@ -606,6 +646,7 @@ export const interviewSessionEvaluationSchema = z.object({
 
 export const interviewSessionSchema = z.object({
   id: z.string(),
+  engineVersion: interviewEngineVersionSchema.default(1),
   status: interviewSessionStatusSchema,
   mode: interviewSessionModeSchema,
   kind: interviewSessionKindSchema.default("training"),
@@ -626,6 +667,60 @@ export const interviewSessionSchema = z.object({
   defenseQuestions: z.array(z.string()),
   defenseAnswers: z.array(z.string()),
   evaluation: interviewSessionEvaluationSchema.nullable(),
+  turns: z.array(interviewTurnSchema).default([]),
+  conversationState: interviewConversationStateSchema.nullable().default(null),
+  predictionSnapshotId: z.string().nullable().default(null),
+});
+
+export const readinessPredictionSnapshotSchema = z.object({
+  snapshotId: z.string(),
+  targetId: z.enum(["general", "yandex", "ozon"]),
+  applicationId: z.string().nullable(),
+  interviewSessionId: z.string().nullable(),
+  readinessIndex: z.number().int().min(0).max(100),
+  lower: z.number().int().min(0).max(100),
+  upper: z.number().int().min(0).max(100),
+  coverage: z.number().int().min(0).max(100),
+  transferCoverage: z.number().int().min(0).max(100),
+  forecastProbability: z.number().min(0).max(1).nullable(),
+  calibrationStatus: z.enum(["uncalibrated", "provisional", "calibrated"]),
+  createdAt: z.string(),
+});
+
+export const readinessOutcomeSchema = z.object({
+  outcomeId: z.string(),
+  predictionSnapshotId: z.string(),
+  applicationId: z.string().nullable(),
+  company: interviewSessionCompanySchema,
+  technicalPassed: z.boolean(),
+  codingPassed: z.boolean().nullable(),
+  topics: z.array(z.string()),
+  notes: z.string(),
+  occurredAt: z.string(),
+  createdAt: z.string(),
+});
+
+export const readinessCalibrationSummarySchema = z.object({
+  status: z.enum(["uncalibrated", "provisional", "calibrated"]),
+  outcomeCount: z.number().int().min(0),
+  brierScore: z.number().min(0).max(1).nullable(),
+  snapshots: z.array(readinessPredictionSnapshotSchema),
+  outcomes: z.array(readinessOutcomeSchema),
+});
+
+export const createReadinessPredictionSchema = z.object({
+  targetId: z.enum(["general", "yandex", "ozon"]),
+  applicationId: z.string().trim().min(1).max(120).nullable().default(null),
+});
+
+export const createReadinessOutcomeSchema = z.object({
+  predictionSnapshotId: z.string().trim().min(1).max(120),
+  company: interviewSessionCompanySchema,
+  technicalPassed: z.boolean(),
+  codingPassed: z.boolean().nullable().default(null),
+  topics: z.array(z.string().trim().min(1).max(200)).max(30).default([]),
+  notes: z.string().trim().max(4_000).default(""),
+  occurredAt: z.string().datetime(),
 });
 
 export const appSettingsSchema = z.object({
@@ -1592,6 +1687,12 @@ export type InterviewSessionStage = z.infer<typeof interviewSessionStageSchema>;
 export type InterviewReadinessConfidence = z.infer<
   typeof interviewReadinessConfidenceSchema
 >;
+export type InterviewEngineVersion = z.infer<typeof interviewEngineVersionSchema>;
+export type InterviewerAction = z.infer<typeof interviewerActionSchema>;
+export type InterviewTurnRole = z.infer<typeof interviewTurnRoleSchema>;
+export type InterviewTurnAssessment = z.infer<typeof interviewTurnAssessmentSchema>;
+export type InterviewTurn = z.infer<typeof interviewTurnSchema>;
+export type InterviewConversationState = z.infer<typeof interviewConversationStateSchema>;
 export type InterviewSessionQuestion = z.infer<typeof interviewSessionQuestionSchema>;
 export type InterviewExerciseResult = z.infer<typeof interviewExerciseResultSchema>;
 export type InterviewExercise = z.infer<typeof interviewExerciseSchema>;
@@ -1603,6 +1704,11 @@ export type InterviewSessionEvaluation = z.infer<
   typeof interviewSessionEvaluationSchema
 >;
 export type InterviewSession = z.infer<typeof interviewSessionSchema>;
+export type ReadinessPredictionSnapshot = z.infer<typeof readinessPredictionSnapshotSchema>;
+export type ReadinessOutcome = z.infer<typeof readinessOutcomeSchema>;
+export type ReadinessCalibrationSummary = z.infer<typeof readinessCalibrationSummarySchema>;
+export type CreateReadinessPrediction = z.infer<typeof createReadinessPredictionSchema>;
+export type CreateReadinessOutcome = z.infer<typeof createReadinessOutcomeSchema>;
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 export type SettingsPatch = Partial<
   Pick<

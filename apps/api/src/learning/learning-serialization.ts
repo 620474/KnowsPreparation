@@ -15,6 +15,7 @@ import type { AiPracticeProgress } from "./schemas/ai-practice-progress.schema";
 import type { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import type { MockInterview } from "./schemas/mock-interview.schema";
 import type { InterviewSession } from "./schemas/interview-session.schema";
+import type { InterviewTurnEntry } from "./schemas/interview-turn.schema";
 import type { QuestionProgress } from "./schemas/question-progress.schema";
 import type { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { findStaticTrackByCourse } from "./track-registry";
@@ -274,9 +275,11 @@ export function serializeMockInterview(interview: MockInterview & { _id: unknown
 
 export function serializeInterviewSession(
   interview: InterviewSession & { _id: unknown },
+  turns: Array<InterviewTurnEntry & { _id?: unknown }> = [],
 ) {
   return interviewSessionSchema.parse({
     id: String(interview._id),
+    engineVersion: interview.engineVersion ?? 1,
     status: interview.status,
     mode: interview.mode,
     kind: interview.kind ?? "training",
@@ -307,5 +310,20 @@ export function serializeInterviewSession(
     defenseQuestions: interview.defenseQuestions,
     defenseAnswers: interview.defenseAnswers,
     evaluation: interview.evaluation,
+    turns: turns.map((turn) => ({
+      id: turn.turnId,
+      interviewId: turn.interviewId,
+      operationId: turn.operationId ?? null,
+      sequence: turn.sequence,
+      role: turn.role,
+      action: turn.action ?? null,
+      questionId: turn.questionId,
+      content: turn.content,
+      answerText: turn.answerText ?? null,
+      assessment: turn.assessment ?? null,
+      createdAt: turn.createdAt.toISOString(),
+    })),
+    conversationState: interview.conversationState ?? null,
+    predictionSnapshotId: interview.predictionSnapshotId ?? null,
   });
 }

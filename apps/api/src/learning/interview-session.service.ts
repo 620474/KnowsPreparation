@@ -7,7 +7,9 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
+import { ConfigService } from "@nestjs/config";
 import type {
+  InterviewConversationState,
   InterviewExercise,
   InterviewSessionEvaluation,
   InterviewSessionStage,
@@ -23,8 +25,15 @@ import type {
   SubmitInterviewExerciseDto,
   UpdateInterviewDefenseAnswerDto,
   UpdateInterviewPlatformAnswerDto,
+  SubmitInterviewTurnDto,
 } from "./dto/learning.dto";
 import { runPracticeSolution } from "./generated-runner";
+import {
+  INTERVIEW_POLICY_VERSION,
+  nextConversationState,
+  reduceInterviewAction,
+  type InterviewActionProposal,
+} from "./interview-director";
 import {
   getReadinessConfidence,
   getInterviewQuestionCandidates,
@@ -44,6 +53,7 @@ import {
   InterviewSession,
   type InterviewSessionDocument,
 } from "./schemas/interview-session.schema";
+import { InterviewTurnEntry } from "./schemas/interview-turn.schema";
 import { inferSkillKeys } from "./skills";
 import { resolveSkillIds } from "./skills/skill-resolver";
 
@@ -103,11 +113,14 @@ export class InterviewSessionService {
   constructor(
     @InjectModel(InterviewSession.name)
     private readonly interviewModel: Model<InterviewSession>,
+    @InjectModel(InterviewTurnEntry.name)
+    private readonly interviewTurnModel: Model<InterviewTurnEntry>,
     @InjectModel(CareerApplicationEntry.name)
     private readonly careerApplicationModel: Model<CareerApplicationEntry>,
     private readonly aiContent: AiContentService,
     private readonly agents: AiAgentService,
     private readonly signals: LearningSignalService,
+    private readonly config: ConfigService,
   ) {}
 
   async getCurrent() {
@@ -116,7 +129,7 @@ export class InterviewSessionService {
       .sort({ updatedAt: -1 })
       .exec();
     if (interview) await this.markExpiredIfNeeded(interview);
-    return interview ? serializeInterviewSession(interview) : null;
+    return interview ? this.serialize(interview) : null;
   }
 
   async list(limit = 10) {
@@ -126,7 +139,7 @@ export class InterviewSessionService {
       .limit(limit)
       .lean()
       .exec();
-    return interviews.map(serializeInterviewSession);
+    return Promise.all(interviews.map((interview) => this.serialize(interview)));
   }
 
   async start(dto: StartInterviewSessionDto) {
@@ -156,7 +169,9 @@ export class InterviewSessionService {
     );
     const startedAt = new Date();
     const durationMinutes = interviewDurationMinutes(dto.mode, dto.kind);
+    const engineVersion = this.config.get<string>("INTERVIEW_V2_ENABLED") === "false" ? 1 : 2;
     const interview = await this.interviewModel.create({
+      engineVersion,
       status: "in_progress",
       mode: dto.mode,
       kind: dto.kind ?? "training",
@@ -186,8 +201,192 @@ export class InterviewSessionService {
       defenseQuestions: [],
       defenseAnswers: [],
       evaluation: null,
+      conversationState: engineVersion === 2
+        ? {
+            questionId: questions[0]!.id,
+            depth: 0,
+            completedQuestions: 0,
+            turnCount: 1,
+            lastAction: null,
+            policyVersion: INTERVIEW_POLICY_VERSION,
+          } satisfies InterviewConversationState
+        : null,
+      predictionSnapshotId: null,
     });
-    return serializeInterviewSession(interview);
+    if (engineVersion === 2) {
+      await this.interviewTurnModel.create({
+        turnId: randomUUID(),
+        interviewId: String(interview._id),
+        operationId: null,
+        sequence: 0,
+        role: "interviewer",
+        action: null,
+        questionId: questions[0]!.id,
+        content: questions[0]!.prompt,
+        answerText: null,
+        assessment: null,
+      });
+    }
+    return this.serialize(interview);
+  }
+
+  async submitDirectorTurn(interviewId: string, dto: SubmitInterviewTurnDto) {
+    const interview = await this.getDocument(interviewId);
+    if ((interview.engineVersion ?? 1) !== 2 || !interview.conversationState) {
+      throw new BadRequestException("Эта сессия использует прежний сценарий интервью");
+    }
+    const duplicate = await this.interviewTurnModel.findOne({ operationId: dto.operationId }).lean().exec();
+    if (duplicate) return this.serialize(interview);
+    await this.assertStage(interview, "platform");
+
+    const state = interview.conversationState;
+    const item = interview.platformItems.find(
+      (candidate) => candidate.question.id === state.questionId,
+    );
+    if (!item) throw new NotFoundException("Активный вопрос интервью не найден");
+    const turns = await this.interviewTurnModel
+      .find({ interviewId })
+      .sort({ sequence: 1 })
+      .lean()
+      .exec();
+    const answer = dto.answer.trim();
+    const candidates = getInterviewQuestionCandidates(
+      interview.platformItems.map((candidate) => candidate.question.id),
+      interview.platformItems.length,
+    );
+    const fallback: InterviewActionProposal = state.depth >= 2
+      ? {
+          action: "move_on",
+          prompt: "Перейдём к следующему вопросу.",
+          nextQuestionId: candidates[0]?.id ?? null,
+          score: null,
+          confidence: "low",
+          strengths: ["Ответ зафиксирован"],
+          gaps: ["AI-оценка временно недоступна"],
+        }
+      : {
+          action: state.depth === 0 ? "request_tradeoff" : "counterexample",
+          prompt: state.depth === 0
+            ? "Назови главный компромисс этого решения и практический пример."
+            : "Приведи контрпример, где описанное правило перестанет работать.",
+          nextQuestionId: null,
+          score: null,
+          confidence: "low",
+          strengths: ["Ответ зафиксирован"],
+          gaps: ["AI-оценка временно недоступна"],
+        };
+    let proposal = fallback;
+    if (this.agents.enabled) {
+      try {
+        proposal = await this.agents.proposeInterviewAction({
+          company: interviewCompanyLabel(interview.company),
+          vacancyContext: interview.vacancyContext,
+          question: item.question,
+          transcript: [
+            ...turns.slice(-11).map(({ role, content }) => ({ role, content })),
+            { role: "candidate" as const, content: answer },
+          ],
+          depth: state.depth,
+          secondsRemaining: Math.max(
+            0,
+            Math.ceil(((interview.deadlineAt?.getTime() ?? Date.now()) - Date.now()) / 1_000),
+          ),
+          candidateQuestions: candidates,
+        });
+      } catch (error) {
+        this.logFallback("director_action", error);
+      }
+    }
+    const nextQuestion = selectAdaptiveInterviewQuestion(candidates, proposal.nextQuestionId);
+    const decision = reduceInterviewAction({
+      state,
+      proposal,
+      kind: interview.kind,
+      secondsRemaining: Math.max(
+        0,
+        Math.ceil(((interview.deadlineAt?.getTime() ?? Date.now()) - Date.now()) / 1_000),
+      ),
+      hasNextQuestion: Boolean(nextQuestion),
+    });
+    const assessment = {
+      score: decision.score,
+      confidence: decision.confidence,
+      strengths: decision.strengths,
+      gaps: decision.gaps,
+      assessed: decision.score !== null,
+      evaluatorVersion: "interview-director-evaluator-v1",
+    } as const;
+    const interviewerContent = decision.action === "move_on" && nextQuestion
+      ? nextQuestion.prompt
+      : decision.prompt;
+    const interviewerQuestionId = decision.action === "move_on" && nextQuestion
+      ? nextQuestion.id
+      : item.question.id;
+    await this.interviewTurnModel.insertMany([
+      {
+        turnId: randomUUID(),
+        interviewId,
+        operationId: dto.operationId,
+        sequence: state.turnCount,
+        role: "candidate",
+        action: null,
+        questionId: item.question.id,
+        content: answer,
+        answerText: answer,
+        assessment,
+      },
+      {
+        turnId: randomUUID(),
+        interviewId,
+        operationId: null,
+        sequence: state.turnCount + 1,
+        role: "interviewer",
+        action: decision.action,
+        questionId: interviewerQuestionId,
+        content: interviewerContent,
+        answerText: null,
+        assessment: null,
+      },
+    ]);
+
+    if (state.depth === 0) item.answer = answer;
+    else {
+      item.followUpAnswer = [item.followUpAnswer, answer].filter(Boolean).join("\n\n");
+    }
+    item.assessment = {
+      ...assessment,
+      assessmentSource: assessment.assessed ? "ai" : "unassessed",
+      unavailableReason: assessment.assessed ? null : "ai_unavailable",
+      evaluatedAt: new Date().toISOString(),
+    };
+    if (decision.action === "move_on") {
+      item.completed = true;
+      if (nextQuestion && state.completedQuestions + 1 < interview.platformQuestionTarget) {
+        interview.platformItems.push({
+          question: nextQuestion,
+          answer: "",
+          followUpQuestion: null,
+          followUpAnswer: "",
+          secondFollowUpQuestion: null,
+          secondFollowUpAnswer: "",
+          completed: false,
+          assessment: null,
+        });
+      } else {
+        interview.currentStage = "coding";
+      }
+    }
+    interview.conversationState = nextConversationState(
+      state,
+      decision.action,
+      decision.action === "move_on" && nextQuestion && interview.currentStage === "platform"
+        ? nextQuestion.id
+        : null,
+    );
+    interview.markModified("platformItems");
+    interview.markModified("conversationState");
+    await interview.save();
+    return this.serialize(interview);
   }
 
   async updatePlatformAnswer(
@@ -280,7 +479,7 @@ export class InterviewSessionService {
     }
     interview.markModified("platformItems");
     await interview.save();
-    return serializeInterviewSession(interview);
+    return this.serialize(interview);
   }
 
   async submitCodingAttempt(
@@ -295,7 +494,7 @@ export class InterviewSessionService {
     );
     interview.markModified("codingExercise");
     await interview.save();
-    return serializeInterviewSession(interview);
+    return this.serialize(interview);
   }
 
   async completeCoding(interviewId: string) {
@@ -314,7 +513,7 @@ export class InterviewSessionService {
       interview.currentStage = "ai";
     }
     await interview.save();
-    return serializeInterviewSession(interview);
+    return this.serialize(interview);
   }
 
   async sendAiMessage(
@@ -363,7 +562,7 @@ export class InterviewSessionService {
     });
     interview.markModified("aiMessages");
     await interview.save();
-    return serializeInterviewSession(interview);
+    return this.serialize(interview);
   }
 
   async submitAiAttempt(
@@ -375,7 +574,7 @@ export class InterviewSessionService {
     interview.aiExercise = await this.runExercise(interview.aiExercise, dto.solution);
     interview.markModified("aiExercise");
     await interview.save();
-    return serializeInterviewSession(interview);
+    return this.serialize(interview);
   }
 
   async completeAi(interviewId: string) {
@@ -393,7 +592,7 @@ export class InterviewSessionService {
     interview.markModified("defenseQuestions");
     interview.markModified("defenseAnswers");
     await interview.save();
-    return serializeInterviewSession(interview);
+    return this.serialize(interview);
   }
 
   async updateDefenseAnswer(
@@ -409,14 +608,14 @@ export class InterviewSessionService {
     interview.defenseAnswers[index] = dto.answer.trim();
     interview.markModified("defenseAnswers");
     await interview.save();
-    return serializeInterviewSession(interview);
+    return this.serialize(interview);
   }
 
   async complete(interviewId: string) {
     const interview = await this.getDocument(interviewId);
     if (interview.status === "completed") {
       await this.recordSignal(interview);
-      return serializeInterviewSession(interview);
+      return this.serialize(interview);
     }
     const expired = await this.markExpiredIfNeeded(interview);
     if (!expired) await this.assertStage(interview, "defense");
@@ -504,7 +703,7 @@ export class InterviewSessionService {
       interview.markModified("evaluation");
       await interview.save();
       await this.recordSignal(interview);
-      return serializeInterviewSession(interview);
+      return this.serialize(interview);
     } catch (error) {
       interview.status = "in_progress";
       await interview.save();
@@ -767,6 +966,17 @@ export class InterviewSessionService {
     const interview = await this.interviewModel.findById(interviewId).exec();
     if (!interview) throw new NotFoundException("Интервью не найдено");
     return interview;
+  }
+
+  private async serialize(interview: InterviewSession & { _id: unknown }) {
+    const turns = (interview.engineVersion ?? 1) === 2
+      ? await this.interviewTurnModel
+          .find({ interviewId: String(interview._id) })
+          .sort({ sequence: 1 })
+          .lean()
+          .exec()
+      : [];
+    return serializeInterviewSession(interview, turns);
   }
 
   private logFallback(operation: string, error: unknown) {

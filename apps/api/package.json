@@ -7,7 +7,8 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:ai-evals": "vitest run src/learning/eval"
   },
   "dependencies": {
     "@prep/contracts": "*",

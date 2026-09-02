@@ -23,12 +23,20 @@ import type {
   TaskMutationVariables,
 } from "./offline-mutation-keys";
 import { registerOfflineMutationDefaults } from "./offline-mutations";
+import { mutationOutboxId } from "./mutation-outbox";
 
 afterEach(() => {
   vi.clearAllMocks();
 });
 
 describe("offline mutations", () => {
+  it("keeps an interview turn idempotent across offline replay", () => {
+    expect(mutationOutboxId("interviewTurn", {
+      interviewId: "interview-1",
+      operationId: "operation-1",
+    })).toBe("interviewTurn:operation-1");
+  });
+
   it("executes a task update through the durable mutation transport", async () => {
     const queryClient = new QueryClient();
     registerOfflineMutationDefaults(queryClient);

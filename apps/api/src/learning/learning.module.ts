@@ -15,6 +15,7 @@ import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { LearningMissionService } from "./learning-mission.service";
+import { ReadinessCalibrationService } from "./readiness-calibration.service";
 import { EvidenceService } from "./evidence/evidence.service";
 import { EvidenceV2Service } from "./evidence/evidence-v2.service";
 import { MasteryService } from "./mastery/mastery.service";
@@ -48,6 +49,10 @@ import {
   InterviewSession,
   InterviewSessionSchema,
 } from "./schemas/interview-session.schema";
+import {
+  InterviewTurnEntry,
+  InterviewTurnEntrySchema,
+} from "./schemas/interview-turn.schema";
 import {
   QuestionProgress,
   QuestionProgressSchema,
@@ -103,6 +108,14 @@ import {
   TransferAssessmentAttempt,
   TransferAssessmentAttemptSchema,
 } from "./schemas/transfer-assessment-attempt.schema";
+import {
+  ReadinessPredictionEntry,
+  ReadinessPredictionEntrySchema,
+} from "./schemas/readiness-prediction.schema";
+import {
+  ReadinessOutcomeEntry,
+  ReadinessOutcomeEntrySchema,
+} from "./schemas/readiness-outcome.schema";
 
 @Module({
   imports: [
@@ -116,6 +129,8 @@ import {
       { name: LearningMission.name, schema: LearningMissionSchema },
       { name: LearningMissionEventEntry.name, schema: LearningMissionEventEntrySchema },
       { name: TransferAssessmentAttempt.name, schema: TransferAssessmentAttemptSchema },
+      { name: ReadinessPredictionEntry.name, schema: ReadinessPredictionEntrySchema },
+      { name: ReadinessOutcomeEntry.name, schema: ReadinessOutcomeEntrySchema },
       { name: TaskProgress.name, schema: TaskProgressSchema },
       { name: QuestionProgress.name, schema: QuestionProgressSchema },
       { name: QuestionAttempt.name, schema: QuestionAttemptSchema },
@@ -134,6 +149,7 @@ import {
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
+      { name: InterviewTurnEntry.name, schema: InterviewTurnEntrySchema },
       {
         name: YandexPlatformMockAttempt.name,
         schema: YandexPlatformMockAttemptSchema,
@@ -155,6 +171,7 @@ import {
     MasteryV2Service,
     LearningSignalService,
     LearningMissionService,
+    ReadinessCalibrationService,
     InterviewSessionService,
     YandexPlatformMockService,
   ],

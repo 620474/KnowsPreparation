@@ -20,6 +20,7 @@ import type {
   SkipRecommendationMutationVariables,
   TaskMutationVariables,
   TransferAssessmentMutationVariables,
+  InterviewTurnMutationVariables,
 } from "./offline-mutation-keys";
 
 const OFFLINE_WRITE_SCOPE = { id: "offline-write-queue" } as const;
@@ -88,6 +89,10 @@ const executeOutboxEntry = (entry: MutationOutboxEntry) => {
     case "transferAssessment": {
       const { missionId, ...input } = entry.variables as TransferAssessmentMutationVariables;
       return learningApi.submitTransferAssessment(missionId, input);
+    }
+    case "interviewTurn": {
+      const { interviewId, answer, operationId } = entry.variables as InterviewTurnMutationVariables;
+      return learningApi.submitInterviewTurn(interviewId, answer, operationId);
     }
   }
 };
@@ -227,5 +232,16 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
     mutationFn: createDurableMutationFn("transferAssessment", ({ missionId, ...input }: TransferAssessmentMutationVariables) =>
       learningApi.submitTransferAssessment(missionId, input)),
     onSettled: refreshLearning,
+  });
+  queryClient.setMutationDefaults(offlineMutationKeys.interviewTurn, {
+    ...offlineOptions,
+    mutationFn: createDurableMutationFn("interviewTurn", ({
+      interviewId,
+      answer,
+      operationId,
+    }: InterviewTurnMutationVariables) =>
+      learningApi.submitInterviewTurn(interviewId, answer, operationId)),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["interview-sessions", "current"] }),
   });
 }

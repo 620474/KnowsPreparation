@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type {
+  InterviewConversationState,
   InterviewExercise,
   InterviewSessionCompany,
   InterviewSessionEvaluation,
@@ -31,6 +32,9 @@ export type InterviewSessionDocument = HydratedDocument<InterviewSession>;
 
 @Schema({ timestamps: true, versionKey: false })
 export class InterviewSession {
+  @Prop({ type: Number, enum: [1, 2], default: 1, index: true })
+  engineVersion!: 1 | 2;
+
   @Prop({ type: String, enum: INTERVIEW_SESSION_STATUSES, default: "in_progress" })
   status!: InterviewSessionStatus;
 
@@ -90,6 +94,12 @@ export class InterviewSession {
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: null })
   evaluation!: InterviewSessionEvaluation | null;
+
+  @Prop({ type: MongooseSchema.Types.Mixed, default: null })
+  conversationState!: InterviewConversationState | null;
+
+  @Prop({ type: String, default: null })
+  predictionSnapshotId!: string | null;
 
   createdAt!: Date;
   updatedAt!: Date;

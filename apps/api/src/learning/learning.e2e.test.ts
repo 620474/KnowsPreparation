@@ -2021,6 +2021,116 @@ describe("Learning API", () => {
     }
   });
 
+  it("runs an idempotent adaptive interview director conversation", async () => {
+    const agents = app.get(AiAgentService);
+    const proposalSpy = vi.spyOn(agents, "proposeInterviewAction").mockImplementation(async (input) => ({
+      action: input.depth === 0 ? "request_tradeoff" : "move_on",
+      prompt: input.depth === 0
+        ? "Какой главный компромисс?"
+        : "Перейдём к следующему вопросу.",
+      nextQuestionId: input.depth === 0 ? null : input.candidateQuestions[0]?.id ?? null,
+      score: 78,
+      confidence: "high",
+      strengths: ["Ответ по существу"],
+      gaps: input.depth === 0 ? ["Не назван компромисс"] : [],
+    }));
+
+    try {
+      const started = await request(app.getHttpServer())
+        .post("/api/v1/learning/interview-sessions")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ mode: "express", company: "yandex", kind: "training" })
+        .expect(201);
+      expect(started.body).toMatchObject({
+        engineVersion: 2,
+        currentStage: "platform",
+        conversationState: { depth: 0, turnCount: 1 },
+      });
+      expect(started.body.turns).toHaveLength(1);
+
+      const first = await request(app.getHttpServer())
+        .post(`/api/v1/learning/interview-sessions/${started.body.id}/turns`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ answer: "Основной ответ", operationId: "director-turn-1" })
+        .expect(201);
+      expect(first.body.turns).toHaveLength(3);
+      expect(first.body.conversationState).toMatchObject({ depth: 1, turnCount: 3 });
+      expect(proposalSpy.mock.calls[0]?.[0].transcript.at(-1)).toEqual({
+        role: "candidate",
+        content: "Основной ответ",
+      });
+
+      const duplicate = await request(app.getHttpServer())
+        .post(`/api/v1/learning/interview-sessions/${started.body.id}/turns`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ answer: "Повтор", operationId: "director-turn-1" })
+        .expect(201);
+      expect(duplicate.body.turns).toHaveLength(3);
+
+      let session = duplicate.body;
+      let operation = 2;
+      while (session.currentStage === "platform" && operation < 10) {
+        session = (await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${started.body.id}/turns`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ answer: `Ответ ${operation}`, operationId: `director-turn-${operation}` })
+          .expect(201)).body;
+        operation += 1;
+      }
+      expect(session.currentStage).toBe("coding");
+      expect(session.conversationState.completedQuestions).toBe(2);
+      expect(session.turns.filter((turn: { role: string }) => turn.role === "candidate"))
+        .toHaveLength(4);
+      const finalRetry = await request(app.getHttpServer())
+        .post(`/api/v1/learning/interview-sessions/${started.body.id}/turns`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ answer: "Повтор последнего ответа", operationId: "director-turn-4" })
+        .expect(201);
+      expect(finalRetry.body.currentStage).toBe("coding");
+      expect(finalRetry.body.turns).toHaveLength(session.turns.length);
+    } finally {
+      proposalSpy.mockRestore();
+    }
+  });
+
+  it("captures readiness before a real interview and calibrates its outcome", async () => {
+    const snapshot = await request(app.getHttpServer())
+      .post("/api/v1/learning/readiness/predictions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ targetId: "yandex", applicationId: null })
+      .expect(201);
+    expect(snapshot.body).toMatchObject({
+      targetId: "yandex",
+      forecastProbability: null,
+      calibrationStatus: "uncalibrated",
+    });
+
+    await request(app.getHttpServer())
+      .post("/api/v1/learning/readiness/outcomes")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        predictionSnapshotId: snapshot.body.snapshotId,
+        company: "yandex",
+        technicalPassed: true,
+        codingPassed: true,
+        topics: ["JavaScript"],
+        notes: "Технический этап пройден",
+        occurredAt: new Date().toISOString(),
+      })
+      .expect(201);
+
+    const summary = await request(app.getHttpServer())
+      .get("/api/v1/learning/readiness/calibration")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(summary.body).toMatchObject({
+      status: "uncalibrated",
+      outcomeCount: 1,
+      brierScore: expect.any(Number),
+    });
+    expect(summary.body.outcomes[0].predictionSnapshotId).toBe(snapshot.body.snapshotId);
+  });
+
   it("saves an empty practice solution instead of failing validation", async () => {
     const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;
     if (!blockId) throw new Error("Yandex sprint must contain a practice-capable block");

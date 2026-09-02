@@ -432,6 +432,59 @@ export class UpdateInterviewPlatformAnswerDto {
   secondFollowUpAnswer?: string;
 }
 
+export class SubmitInterviewTurnDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12_000)
+  answer!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  operationId!: string;
+}
+
+export class CreateReadinessPredictionDto {
+  @IsIn(INTERVIEW_SESSION_COMPANIES)
+  targetId!: InterviewSessionCompany;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  applicationId?: string | null;
+}
+
+export class CreateReadinessOutcomeDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  predictionSnapshotId!: string;
+
+  @IsIn(INTERVIEW_SESSION_COMPANIES)
+  company!: InterviewSessionCompany;
+
+  @IsBoolean()
+  technicalPassed!: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  codingPassed?: boolean | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  topics?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4_000)
+  notes?: string;
+
+  @IsString()
+  occurredAt!: string;
+}
+
 export class SubmitInterviewExerciseDto {
   @IsString()
   @MinLength(1)

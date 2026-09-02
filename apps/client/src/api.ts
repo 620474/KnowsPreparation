@@ -6,6 +6,9 @@ import {
   careerSettingsSchema,
   careerWorkspaceSchema,
   interviewSessionSchema,
+  readinessCalibrationSummarySchema,
+  readinessOutcomeSchema,
+  readinessPredictionSnapshotSchema,
   knowledgeOverviewSchema,
   learningAnalyticsSchema,
   learningMissionSchema,
@@ -54,6 +57,9 @@ import type {
   InterviewSessionCompany,
   InterviewSessionKind,
   InterviewSessionMode,
+  ReadinessCalibrationSummary,
+  ReadinessOutcome,
+  ReadinessPredictionSnapshot,
   MockInterview,
   PracticeSolutionSaveResult,
   PracticeAttempt,
@@ -684,6 +690,35 @@ export const learningApi = {
       method: "POST",
       body: JSON.stringify({ mode, company, kind, applicationId }),
     }).then((result) => interviewSessionSchema.parse(result)),
+  getReadinessCalibration: () =>
+    request<unknown>("/learning/readiness/calibration").then((result) =>
+      readinessCalibrationSummarySchema.parse(result),
+    ) as Promise<ReadinessCalibrationSummary>,
+  captureReadinessPrediction: (
+    targetId: InterviewSessionCompany,
+    applicationId: string | null = null,
+  ) =>
+    request<unknown>("/learning/readiness/predictions", {
+      method: "POST",
+      body: JSON.stringify({ targetId, applicationId }),
+    }).then((result) => readinessPredictionSnapshotSchema.parse(result)) as Promise<ReadinessPredictionSnapshot>,
+  recordReadinessOutcome: (
+    predictionSnapshotId: string,
+    company: InterviewSessionCompany,
+    technicalPassed: boolean,
+  ) =>
+    request<unknown>("/learning/readiness/outcomes", {
+      method: "POST",
+      body: JSON.stringify({
+        predictionSnapshotId,
+        company,
+        technicalPassed,
+        codingPassed: null,
+        topics: [],
+        notes: "",
+        occurredAt: new Date().toISOString(),
+      }),
+    }).then((result) => readinessOutcomeSchema.parse(result)) as Promise<ReadinessOutcome>,
   updateInterviewPlatformAnswer: (
     interviewId: string,
     questionId: string,
@@ -698,6 +733,15 @@ export const learningApi = {
         body: JSON.stringify({ answer, followUpAnswer, secondFollowUpAnswer }),
       },
     ).then((result) => interviewSessionSchema.parse(result)),
+  submitInterviewTurn: (
+    interviewId: string,
+    answer: string,
+    operationId: string,
+  ) =>
+    request<InterviewSession>(`${interviewSessionPath(interviewId)}/turns`, {
+      method: "POST",
+      body: JSON.stringify({ answer, operationId }),
+    }).then((result) => interviewSessionSchema.parse(result)),
   submitInterviewCodingAttempt: (interviewId: string, solution: string) =>
     request<InterviewSession>(`${interviewSessionPath(interviewId)}/coding/attempt`, {
       method: "POST",

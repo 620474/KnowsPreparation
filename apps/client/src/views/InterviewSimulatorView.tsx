@@ -25,6 +25,8 @@ import type {
   InterviewSessionKind,
   InterviewSessionMode,
 } from "../types";
+import { createOperationId } from "../lib/offline-mutation-keys";
+import { runDurableMutation } from "../lib/mutation-outbox";
 
 const CURRENT_QUERY_KEY = ["interview-sessions", "current"] as const;
 const HISTORY_QUERY_KEY = ["interview-sessions", "history"] as const;
@@ -64,6 +66,16 @@ const confidenceLabels = {
   low: "Предварительная оценка",
   medium: "Средняя уверенность",
   high: "Высокая уверенность",
+} as const;
+
+const actionLabels = {
+  probe: "Уточнение",
+  challenge: "Проверка аргумента",
+  counterexample: "Контрпример",
+  change_constraint: "Новое ограничение",
+  request_code: "Код",
+  request_tradeoff: "Компромиссы",
+  move_on: "Следующий вопрос",
 } as const;
 
 const formatRemaining = (seconds: number) =>
@@ -106,6 +118,10 @@ export function InterviewSimulatorView() {
     queryKey: HISTORY_QUERY_KEY,
     queryFn: () => learningApi.listInterviewSessions(10),
   });
+  const calibrationQuery = useQuery({
+    queryKey: ["readiness-calibration"],
+    queryFn: learningApi.getReadinessCalibration,
+  });
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null);
   const [mode, setMode] = useState<InterviewSessionMode>("express");
   const [kind, setKind] = useState<InterviewSessionKind>("training");
@@ -121,6 +137,7 @@ export function InterviewSimulatorView() {
   const [aiDraft, setAiDraft] = useState("");
   const [streamedReply, setStreamedReply] = useState("");
   const [defenseDrafts, setDefenseDrafts] = useState<Record<number, string>>({});
+  const [directorDraft, setDirectorDraft] = useState("");
 
   const session = selectedSession ?? currentQuery.data ?? null;
   const codingSolution = session && codingDraft?.sessionId === session.id
@@ -130,6 +147,42 @@ export function InterviewSimulatorView() {
     ? aiCodeDraft.value
     : session?.aiExercise.solution ?? "";
   const refetchCurrent = currentQuery.refetch;
+  const unresolvedPrediction = calibrationQuery.data?.snapshots.find(
+    (snapshot) => !calibrationQuery.data?.outcomes.some(
+      (outcome) => outcome.predictionSnapshotId === snapshot.snapshotId,
+    ),
+  );
+
+  const capturePrediction = async () => {
+    setBusy("prediction");
+    setError("");
+    try {
+      await learningApi.captureReadinessPrediction(company);
+      await calibrationQuery.refetch();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Не удалось сохранить снимок");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const recordOutcome = async (technicalPassed: boolean) => {
+    if (!unresolvedPrediction) return;
+    setBusy("outcome");
+    setError("");
+    try {
+      await learningApi.recordReadinessOutcome(
+        unresolvedPrediction.snapshotId,
+        unresolvedPrediction.targetId,
+        technicalPassed,
+      );
+      await calibrationQuery.refetch();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Не удалось сохранить результат");
+    } finally {
+      setBusy("");
+    }
+  };
 
   useEffect(() => {
     if (!session || session.status === "completed") return;
@@ -251,6 +304,62 @@ export function InterviewSimulatorView() {
           </Button>
         </section>
 
+        <section className="interview-calibration-card">
+          <div>
+            <p className="eyebrow">Калибровка по реальным интервью</p>
+            <h2>
+              {calibrationQuery.data?.status === "calibrated"
+                ? "Прогноз откалиброван"
+                : "Прогноз ещё не откалиброван"}
+            </h2>
+            <p>
+              Сохрани индекс непосредственно перед настоящим техэтапом, затем отметь результат.
+              Нужны минимум 8 исходов для отображения вероятности.
+            </p>
+          </div>
+          {unresolvedPrediction ? (
+            <div className="interview-calibration-result">
+              <strong>{unresolvedPrediction.readinessIndex}/100</strong>
+              <span>
+                {companyOptions.find((option) => option.value === unresolvedPrediction.targetId)?.label}
+                {` · покрытие ${unresolvedPrediction.coverage}%`}
+              </span>
+              <div>
+                <Button
+                  color="mint"
+                  loading={busy === "outcome"}
+                  onClick={() => void recordOutcome(true)}
+                >
+                  Техэтап пройден
+                </Button>
+                <Button
+                  color="red"
+                  variant="light"
+                  loading={busy === "outcome"}
+                  onClick={() => void recordOutcome(false)}
+                >
+                  Не пройден
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              className="secondary-button"
+              variant="default"
+              loading={busy === "prediction"}
+              onClick={() => void capturePrediction()}
+            >
+              Сохранить снимок перед собеседованием
+            </Button>
+          )}
+          <small>
+            Реальных исходов: {calibrationQuery.data?.outcomeCount ?? 0}
+            {calibrationQuery.data?.brierScore !== null && calibrationQuery.data?.brierScore !== undefined
+              ? ` · Brier score ${calibrationQuery.data.brierScore}`
+              : ""}
+          </small>
+        </section>
+
         {error ? <Alert color="red" icon={<AlertTriangle size={16} />}>{error}</Alert> : null}
 
         {historyQuery.data?.length ? (
@@ -360,6 +469,66 @@ export function InterviewSimulatorView() {
       {error ? <Alert color="red" icon={<AlertTriangle size={16} />}>{error}</Alert> : null}
 
       {session.currentStage === "platform" && activePlatformItem ? (
+        session.engineVersion === 2 ? (
+        <section className="interview-stage-card interview-director-card">
+          <div className="interview-platform-progress">
+            Interview Director · вопрос {(session.conversationState?.completedQuestions ?? 0) + 1}
+            {session.platformQuestionTarget ? ` из ${session.platformQuestionTarget}` : ""}
+          </div>
+          <div className="interview-transcript" aria-live="polite">
+            {session.turns.map((turn) => (
+              <article className={turn.role} key={turn.id}>
+                <span>
+                  {turn.role === "interviewer"
+                    ? turn.action
+                      ? actionLabels[turn.action]
+                      : "Интервьюер"
+                    : "Твой ответ"}
+                </span>
+                <p>{turn.content}</p>
+                {turn.assessment ? (
+                  <small>
+                    {turn.assessment.assessed && turn.assessment.score !== null
+                      ? `${turn.assessment.score}/100`
+                      : "Ответ сохранён"}
+                    {turn.assessment.gaps[0] ? ` · ${turn.assessment.gaps[0]}` : ""}
+                  </small>
+                ) : null}
+              </article>
+            ))}
+          </div>
+          <Textarea
+            label="Ответ кандидата"
+            minRows={7}
+            maxLength={12_000}
+            placeholder="Сформулируй ответ, обоснуй решение и назови ограничения…"
+            value={directorDraft}
+            onChange={(event) => setDirectorDraft(event.currentTarget.value)}
+          />
+          <AudioAnswerRecorder
+            onTranscribe={(audio) => learningApi.transcribeInterviewAnswer(session.id, audio).then(({ text }) => text)}
+            onTranscript={(text) => setDirectorDraft((current) => [current.trim(), text].filter(Boolean).join("\n\n"))}
+          />
+          <Button
+            className="primary-button"
+            loading={busy === "director-turn"}
+            onClick={() => {
+              const answer = directorDraft.trim();
+              if (!answer) return setError("Сначала дай ответ.");
+              const operationId = createOperationId();
+              void run("director-turn", () =>
+                runDurableMutation("interviewTurn", { interviewId: session.id, answer, operationId }, () =>
+                  learningApi.submitInterviewTurn(session.id, answer, operationId),
+                ),
+              ).then((updated) => {
+                if (updated) setDirectorDraft("");
+              });
+            }}
+          >
+            Ответить интервьюеру
+          </Button>
+        </section>
+        ) : (
         <section className="interview-stage-card">
           <div className="interview-platform-progress">
             Вопрос {session.platformItems.filter((item) => item.completed).length + 1}
@@ -510,6 +679,7 @@ export function InterviewSimulatorView() {
             </div>
           ) : null}
         </section>
+        )
       ) : null}
 
       {session.currentStage === "coding" ? (

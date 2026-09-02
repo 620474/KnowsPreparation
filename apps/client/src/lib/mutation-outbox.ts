@@ -15,7 +15,8 @@ export type DurableMutationKind =
   | "deleteAlgorithm"
   | "skipRecommendation"
   | "missionAction"
-  | "transferAssessment";
+  | "transferAssessment"
+  | "interviewTurn";
 
 export interface MutationOutboxEntry {
   id: string;
@@ -43,6 +44,7 @@ export const mutationOutboxId = (kind: DurableMutationKind, variables: unknown) 
   if (kind === "mockAnswer") {
     return `${kind}:${String(record.interviewId)}:${String(record.questionId)}`;
   }
+  if (kind === "interviewTurn") return `${kind}:${String(record.operationId)}`;
   if (kind === "settings") return kind;
   if (kind === "deleteAlgorithm") return `${kind}:${String(variables)}`;
   return `${kind}:${createOperationId()}`;
