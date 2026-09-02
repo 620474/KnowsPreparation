@@ -263,10 +263,11 @@ export default function App() {
               aiActions.generateLesson(lessonReader.track, lessonReader.itemId);
             }}
             onSavePractice={progressActions.savePracticeDraft}
-            onSubmitQuiz={(answers) =>
+            onSubmitQuiz={(tier, answers) =>
               progressActions.submitLessonQuiz(
                 lessonReader.track,
                 lessonReader.itemId,
+                tier,
                 answers,
               )
             }

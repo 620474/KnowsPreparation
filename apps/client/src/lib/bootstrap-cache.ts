@@ -6,8 +6,6 @@ import type {
   MockInterview,
   PracticeSolutionProgress,
 } from "../types";
-import type { QuizMutationVariables } from "./offline-mutation-keys";
-
 export const BOOTSTRAP_QUERY_KEY = ["bootstrap"] as const;
 export type BootstrapMutationContext = { previous?: BootstrapData };
 
@@ -74,41 +72,3 @@ export const updateAiLesson = (
     },
   },
 });
-
-export const buildOptimisticQuizProgress = (
-  current: BootstrapData,
-  variables: QuizMutationVariables,
-): LessonQuizProgress | null => {
-  const lesson = current.ai.lessons[variables.track]?.[variables.itemId];
-  if (!lesson || lesson.quiz.length !== 10) return null;
-  const submitted = new Map(
-    variables.answers.map((answer) => [answer.questionId, answer.selectedOptionIndex]),
-  );
-  if (submitted.size !== lesson.quiz.length) return null;
-  const answers = lesson.quiz.map((question) => {
-    const selectedOptionIndex = submitted.get(question.id);
-    if (selectedOptionIndex === undefined) return null;
-    return {
-      questionId: question.id,
-      selectedOptionIndex,
-      correct: selectedOptionIndex === question.correctOptionIndex,
-      topic: question.topic,
-    };
-  });
-  if (answers.some((answer) => answer === null)) return null;
-  const previous = current.ai.quizProgress[variables.track]?.[variables.itemId];
-  const previousAttempts =
-    previous?.lessonVersion === lesson.version ? previous.attempts : [];
-  return {
-    itemId: variables.itemId,
-    lessonVersion: lesson.version,
-    attempts: [
-      ...previousAttempts,
-      {
-        score: answers.filter((answer) => answer?.correct).length,
-        answers: answers.filter((answer) => answer !== null),
-        completedAt: new Date().toISOString(),
-      },
-    ],
-  };
-};

@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { learningApi } from "../api";
 import {
   BOOTSTRAP_QUERY_KEY,
-  buildOptimisticQuizProgress,
   type BootstrapMutationContext,
   updateQuizProgress,
   updatePracticeProgress,
@@ -223,18 +222,11 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.quiz,
-    mutationFn: createDurableMutationFn("quiz", ({ track, itemId, answers, operationId }: QuizMutationVariables) =>
-      learningApi.submitLessonQuiz(track, itemId, answers, operationId)),
-    onMutate: async (variables) => {
+    mutationFn: createDurableMutationFn("quiz", ({ track, itemId, tier, answers, operationId }: QuizMutationVariables) =>
+      learningApi.submitLessonQuiz(track, itemId, tier, answers, operationId)),
+    onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
-      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) => {
-        if (!current) return current;
-        const progress = buildOptimisticQuizProgress(current, variables);
-        return progress
-          ? updateQuizProgress(current, variables.track, variables.itemId, progress)
-          : current;
-      });
       return { previous };
     },
     onSuccess: (progress, { track, itemId }) => {
@@ -394,17 +386,14 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
   const submitLessonQuiz = async (
     track: TrackKey,
     itemId: string,
+    tier: QuizMutationVariables["tier"],
     answers: QuizMutationVariables["answers"],
   ) => {
     setError("");
-    const variables = { track, itemId, answers, operationId: createOperationId() };
+    const variables = { track, itemId, tier, answers, operationId: createOperationId() };
     if (!online) {
-      const current = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
-      const optimisticProgress = current
-        ? buildOptimisticQuizProgress(current, variables)
-        : null;
       quizMutation.mutate(variables);
-      return optimisticProgress;
+      return null;
     }
     try {
       return await quizMutation.mutateAsync(variables);

@@ -237,6 +237,10 @@ export class SubmitLessonQuizDto {
   answers!: LessonQuizAnswerDto[];
 
   @IsOptional()
+  @IsIn(["core", "deep"])
+  tier?: "core" | "deep";
+
+  @IsOptional()
   @IsString()
   @MaxLength(80)
   operationId?: string;

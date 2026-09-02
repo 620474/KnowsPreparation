@@ -106,6 +106,21 @@ describe("generated runner", () => {
     expect(result.valid).toBe(false);
   });
 
+  it("uses server-only hidden tests when grading a solution", async () => {
+    const lesson = createLesson("function sum(left, right) { return left + right; }");
+    lesson.practice.runner.hiddenTestCases = [
+      { title: "Неизвестная пара", expression: "sum(20, 22)", expected: 42 },
+    ];
+
+    const result = await runPracticeSolution(
+      lesson.practice.runner,
+      "function sum(left, right) { return left === 2 && right === 3 ? 5 : 0; }",
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.tests.some((test) => test.title === "Скрытая проверка 1")).toBe(true);
+  });
+
   it("regenerates until the runner is valid and removes the reference solution", async () => {
     let attempts = 0;
     const lesson = await generateValidatedLesson(async () => {

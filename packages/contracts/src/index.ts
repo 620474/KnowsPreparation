@@ -257,13 +257,25 @@ export const aiDiagramSchema = z.object({
   edges: z.array(aiDiagramEdgeSchema),
 });
 
+export const aiQuizTierSchema = z.enum(["legacy", "core", "deep"]);
+export const aiQuizCapabilitySchema = z.enum([
+  "recall",
+  "comprehension",
+  "prediction",
+  "debugging",
+  "application",
+  "transfer",
+  "tradeoff",
+]);
+
 export const aiQuizQuestionSchema = z.object({
   id: z.string(),
   prompt: z.string(),
   options: z.array(z.string()),
-  correctOptionIndex: z.number(),
-  explanation: z.string(),
+  code: z.string().optional(),
   topic: z.string(),
+  tier: aiQuizTierSchema.default("legacy"),
+  capability: aiQuizCapabilitySchema.default("comprehension"),
 });
 
 export const aiLessonReviewIssueSchema = z.object({
@@ -325,6 +337,7 @@ export const aiLessonSchema = z.object({
     runner: studyExerciseRunnerSchema.optional(),
   }),
   quiz: z.array(aiQuizQuestionSchema),
+  quizVersion: z.number().int().min(1).default(1),
   summary: z.string(),
   resourceIds: z.array(z.string()),
   version: z.number(),
@@ -347,11 +360,14 @@ export const lessonQuizAnswerSchema = z.object({
   questionId: z.string(),
   selectedOptionIndex: z.number(),
   correct: z.boolean(),
+  correctOptionIndex: z.number().int().min(0).max(3).optional(),
+  explanation: z.string().optional(),
   topic: z.string(),
 });
 
 export const lessonQuizAttemptSchema = z.object({
   score: z.number(),
+  tier: aiQuizTierSchema.default("legacy"),
   answers: z.array(lessonQuizAnswerSchema),
   completedAt: z.string(),
 });
@@ -679,6 +695,8 @@ export const readinessDimensionSchema = z.object({
   score: z.number().nullable(),
   signalCount: z.number().int().min(0),
   independentItemCount: z.number().int().min(0).default(0),
+  evidenceDayCount: z.number().int().min(0).default(0),
+  sufficientEvidence: z.boolean().default(false),
   latestEvidenceAt: z.string().nullable().default(null),
   confidence: z.enum(["low", "medium", "high"]).default("low"),
 });
@@ -704,10 +722,10 @@ export const learningAnalyticsSchema = z.object({
     explain: readinessDimensionSchema,
     defend: readinessDimensionSchema,
   }).default({
-    recall: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
-    code: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
-    explain: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
-    defend: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
+    recall: { score: null, signalCount: 0, independentItemCount: 0, evidenceDayCount: 0, sufficientEvidence: false, latestEvidenceAt: null, confidence: "low" },
+    code: { score: null, signalCount: 0, independentItemCount: 0, evidenceDayCount: 0, sufficientEvidence: false, latestEvidenceAt: null, confidence: "low" },
+    explain: { score: null, signalCount: 0, independentItemCount: 0, evidenceDayCount: 0, sufficientEvidence: false, latestEvidenceAt: null, confidence: "low" },
+    defend: { score: null, signalCount: 0, independentItemCount: 0, evidenceDayCount: 0, sufficientEvidence: false, latestEvidenceAt: null, confidence: "low" },
   }),
 });
 

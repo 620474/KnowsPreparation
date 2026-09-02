@@ -44,6 +44,7 @@ export type QuestionAttemptMutationResult = QuestionAttemptResult;
 export type QuizMutationVariables = {
   track: TrackKey;
   itemId: string;
+  tier: "legacy" | "core" | "deep";
   answers: Array<{ questionId: string; selectedOptionIndex: number }>;
   operationId: string;
 };

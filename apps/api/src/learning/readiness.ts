@@ -19,6 +19,8 @@ export interface ReadinessMetric {
   score: number | null;
   signalCount: number;
   independentItemCount: number;
+  evidenceDayCount: number;
+  sufficientEvidence: boolean;
   latestEvidenceAt: string | null;
   confidence: "low" | "medium" | "high";
 }
@@ -59,6 +61,8 @@ const aggregateEvidence = (
       score: null,
       signalCount: 0,
       independentItemCount: 0,
+      evidenceDayCount: 0,
+      sufficientEvidence: false,
       latestEvidenceAt: null,
       confidence: "low",
     };
@@ -77,10 +81,22 @@ const aggregateEvidence = (
     (latest, item) => item.occurredAt > latest ? item.occurredAt : latest,
     independent[0]!.occurredAt,
   );
+  const evidenceDayCount = new Set(
+    independent.map((item) => item.occurredAt.toISOString().slice(0, 10)),
+  ).size;
+  const sufficientEvidence =
+    independent.length >= 3 && evidenceDayCount >= 2 && evidenceWeight >= 3;
+  const rawScore = totalWeight ? clampScore(weightedScore / totalWeight) : null;
   return {
-    score: totalWeight ? clampScore(weightedScore / totalWeight) : null,
+    score: rawScore === null
+      ? null
+      : sufficientEvidence
+        ? rawScore
+        : Math.min(rawScore, 69),
     signalCount: evidence.length,
     independentItemCount: independent.length,
+    evidenceDayCount,
+    sufficientEvidence,
     latestEvidenceAt: latestEvidenceAt.toISOString(),
     confidence: confidenceForWeight(evidenceWeight),
   };

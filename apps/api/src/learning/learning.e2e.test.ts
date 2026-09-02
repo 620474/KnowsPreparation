@@ -23,6 +23,28 @@ import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
 
 const TEST_PASSWORD = "integration-test-password";
+const QUIZ_CAPABILITIES = [
+  "recall",
+  "recall",
+  "comprehension",
+  "comprehension",
+  "comprehension",
+  "comprehension",
+  "prediction",
+  "prediction",
+  "prediction",
+  "prediction",
+  "debugging",
+  "debugging",
+  "debugging",
+  "application",
+  "application",
+  "application",
+  "transfer",
+  "transfer",
+  "tradeoff",
+  "tradeoff",
+] as const;
 
 const createGeneratedLesson = (explanation = "Исходное объяснение"): GeneratedLesson => ({
   goals: ["Понять сложение"],
@@ -43,16 +65,24 @@ const createGeneratedLesson = (explanation = "Исходное объяснен�
         { title: "Нули", expression: "sum(0, 0)", expected: 0 },
         { title: "Отрицательные", expression: "sum(-2, -3)", expected: -5 },
       ],
+      hiddenTestCases: [
+        { title: "Большие числа", expression: "sum(1000, 2000)", expected: 3000 },
+        { title: "Смешанные знаки", expression: "sum(-5, 8)", expected: 3 },
+        { title: "Дроби", expression: "sum(1.5, 2.5)", expected: 4 },
+      ],
     },
     referenceSolution: "function sum(left, right) { return left + right; }",
   },
-  quiz: Array.from({ length: 10 }, (_, index) => ({
+  quiz: Array.from({ length: 20 }, (_, index) => ({
     id: `quiz-${String(index + 1).padStart(2, "0")}`,
     prompt: `Вопрос ${index + 1}`,
     options: ["A", "B", "C", `D${index}`],
     correctOptionIndex: index % 4,
     explanation: "Объяснение",
     topic: "JavaScript",
+    tier: index < 10 ? "core" : "deep",
+    capability: QUIZ_CAPABILITIES[index]!,
+    ...(index < 8 ? { code: `const value = ${index};` } : {}),
   })),
   summary: "Итог",
 });
@@ -190,6 +220,10 @@ describe("Learning API", () => {
         reviewIssues: [{ category: "clarity" }],
       });
       expect(response.body.practice).not.toHaveProperty("referenceSolution");
+      expect(response.body.practice.runner).not.toHaveProperty("hiddenTestCases");
+      expect(response.body.quiz).toHaveLength(20);
+      expect(response.body.quiz[0]).not.toHaveProperty("correctOptionIndex");
+      expect(response.body.quiz[0]).not.toHaveProperty("explanation");
       expect(reviewSpy).toHaveBeenCalledWith(
         expect.objectContaining({ track: "yandex" }),
         draft,
@@ -932,6 +966,12 @@ describe("Learning API", () => {
     });
     expect(duplicateResponse.body).toEqual(firstResponse.body);
 
+    await request(app.getHttpServer())
+      .post("/api/v1/learning/questions/q-02/attempts")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...payload, answer: "другой ответ" })
+      .expect(409);
+
     const failedResponse = await request(app.getHttpServer())
       .post("/api/v1/learning/questions/q-01/attempts")
       .set("Authorization", `Bearer ${token}`)
@@ -999,6 +1039,87 @@ describe("Learning API", () => {
 
     expect(firstResponse.body.attempts).toHaveLength(1);
     expect(duplicateResponse.body).toEqual(firstResponse.body);
+    await request(app.getHttpServer())
+      .post(path)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        ...payload,
+        answers: answers.map((answer, index) => ({
+          ...answer,
+          selectedOptionIndex: index === 0 ? 1 : answer.selectedOptionIndex,
+        })),
+      })
+      .expect(409);
+  });
+
+  it("grades Core and Deep quiz blocks independently without exposing answers", async () => {
+    const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;
+    if (!blockId) throw new Error("Yandex sprint must contain a quiz-capable block");
+    const quiz = Array.from({ length: 20 }, (_, index) => ({
+      id: `safe-quiz-${index + 1}`,
+      prompt: `Безопасный вопрос ${index + 1}`,
+      options: ["A", "B", "C", "D"],
+      correctOptionIndex: index % 4,
+      explanation: `Объяснение ${index + 1}`,
+      topic: "JavaScript",
+      tier: index < 10 ? "core" : "deep",
+      capability: QUIZ_CAPABILITIES[index]!,
+      ...(index < 8 ? { code: `const value = ${index};` } : {}),
+    }));
+    await lessonModel.create({
+      courseKey: YANDEX_SPRINT_AI_KEY,
+      courseVersion: YANDEX_SPRINT_AI_VERSION,
+      itemId: blockId,
+      title: "Безопасный квиз",
+      goals: [],
+      explanation: "Тест",
+      codeExamples: [],
+      diagrams: [],
+      commonMistakes: [],
+      interviewQuestions: [],
+      practice: {
+        title: "Практика",
+        statement: "Решить задачу",
+        constraints: [],
+        examples: [],
+      },
+      quiz,
+      summary: "Итог",
+      resourceIds: [],
+      version: 2,
+      generatedAt: new Date().toISOString(),
+    });
+
+    const content = await request(app.getHttpServer())
+      .get("/api/v1/learning/bootstrap/progress")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    const publicQuiz = content.body.ai.lessons.yandex[blockId].quiz;
+    expect(publicQuiz).toHaveLength(20);
+    expect(publicQuiz[0]).not.toHaveProperty("correctOptionIndex");
+    expect(publicQuiz[0]).not.toHaveProperty("explanation");
+
+    const coreQuestions = quiz.slice(0, 10);
+    const response = await request(app.getHttpServer())
+      .post(`/api/v1/learning/tracks/yandex/items/${blockId}/quiz`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        tier: "core",
+        operationId: "safe-core-quiz-1",
+        answers: coreQuestions.map((question) => ({
+          questionId: question.id,
+          selectedOptionIndex: question.correctOptionIndex,
+        })),
+      })
+      .expect(201);
+
+    expect(response.body.attempts).toHaveLength(1);
+    expect(response.body.attempts[0]).toMatchObject({ score: 10, tier: "core" });
+    expect(response.body.attempts[0].answers[0]).toMatchObject({
+      correct: true,
+      correctOptionIndex: 0,
+      explanation: "Объяснение 1",
+    });
   });
 
   it("versions generated practice solutions and reports conflicts", async () => {

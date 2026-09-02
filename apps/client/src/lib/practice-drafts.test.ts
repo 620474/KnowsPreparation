@@ -26,6 +26,7 @@ const lesson: AiLesson = {
     runner: { starterCode: "function solve() {}", testCases: [] },
   },
   quiz: [],
+  quizVersion: 1,
   summary: "Итог",
   resourceIds: [],
   version: 3,

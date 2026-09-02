@@ -54,6 +54,9 @@ export class QuestionAttempt {
   @Prop({ required: true, unique: true, index: true })
   operationId!: string;
 
+  @Prop({ type: String, index: true })
+  requestHash?: string;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

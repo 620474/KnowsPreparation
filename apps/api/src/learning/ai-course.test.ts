@@ -9,6 +9,16 @@ import {
 } from "./ai-course";
 import { RESOURCES } from "./resources";
 
+const quizCapabilities = [
+  "recall", "recall",
+  "comprehension", "comprehension", "comprehension", "comprehension",
+  "prediction", "prediction", "prediction", "prediction",
+  "debugging", "debugging", "debugging",
+  "application", "application", "application",
+  "transfer", "transfer",
+  "tradeoff", "tradeoff",
+] as const;
+
 describe("AI course helpers", () => {
   it("extracts structured text from a Responses API payload", () => {
     const payload = {
@@ -94,15 +104,23 @@ describe("AI course helpers", () => {
             { title: "Микрозадача", expression: "executionOrder('microtask')", expected: '"microtask"' },
             { title: "Задача", expression: "executionOrder('task')", expected: '"task"' },
           ],
+          hiddenTestCases: [
+            { title: "Дополнительный 1", expression: "executionOrder('a')", expected: '"a"' },
+            { title: "Дополнительный 2", expression: "executionOrder('b')", expected: '"b"' },
+            { title: "Дополнительный 3", expression: "executionOrder('c')", expected: '"c"' },
+          ],
         },
         referenceSolution: "function executionOrder(value) { return value; }",
       },
-      quiz: Array.from({ length: 10 }, (_, index) => ({
+      quiz: Array.from({ length: 20 }, (_, index) => ({
         prompt: `Вопрос ${index + 1}`,
         options: ["Вариант A", "Вариант B", "Вариант C", `Вариант D ${index}`],
         correctOptionIndex: index % 4,
         explanation: "Проверяет понимание порядка выполнения.",
         topic: "Event loop",
+        tier: index < 10 ? "core" : "deep",
+        capability: quizCapabilities[index],
+        ...(index < 8 ? { code: `const value = ${index};` } : {}),
       })),
       summary: "Сначала синхронный код, затем микрозадачи.",
     });
@@ -113,7 +131,7 @@ describe("AI course helpers", () => {
     expect(lesson.codeExamples[0]?.title).toBe("Очереди");
     expect(lesson.diagrams).toHaveLength(1);
     expect(lesson.diagrams[0]?.nodes[1]?.row).toBe(4);
-    expect(lesson.quiz).toHaveLength(10);
+    expect(lesson.quiz).toHaveLength(20);
     expect(lesson.quiz[0]?.id).toBe("quiz-01");
   });
 
@@ -135,6 +153,7 @@ describe("AI course helpers", () => {
           testCases: [
             { title: "Один тест", expression: "solve()", expected: "null" },
           ],
+          hiddenTestCases: [],
         },
         referenceSolution: "function solve() { return null; }",
       },

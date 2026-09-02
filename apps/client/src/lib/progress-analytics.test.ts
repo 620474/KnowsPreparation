@@ -74,6 +74,7 @@ const data: BootstrapData = {
           attempts: [
             {
               score: 9,
+              tier: "legacy",
               completedAt: "2026-08-18T00:00:00.000Z",
               answers: [
                 {

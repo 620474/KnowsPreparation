@@ -4,6 +4,7 @@ import { questionAttemptResultSchema, type ReviewRating } from "@prep/contracts"
 import {
   BadGatewayException,
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -864,11 +865,35 @@ export class LearningService {
       throw new NotFoundException("Проверяемое задание пока не подготовлено");
     }
 
+    const requestHash = createHash("sha256")
+      .update(JSON.stringify({
+        questionId,
+        answer: dto.answer,
+        explanation: dto.explanation ?? "",
+        selectedOptionIndex: dto.selectedOptionIndex ?? null,
+        confidence: dto.confidence,
+        responseTimeMs: dto.responseTimeMs,
+      }))
+      .digest("base64url");
     const previousAttempt = await this.questionAttemptModel
       .findOne({ operationId: dto.operationId })
       .lean()
       .exec();
     if (previousAttempt) {
+      const sameLegacyPayload =
+        previousAttempt.questionId === questionId &&
+        previousAttempt.answer === dto.answer &&
+        previousAttempt.explanation === (dto.explanation ?? "") &&
+        previousAttempt.confidence === dto.confidence &&
+        previousAttempt.responseTimeMs === dto.responseTimeMs;
+      if (
+        previousAttempt.questionId !== questionId ||
+        (previousAttempt.requestHash
+          ? previousAttempt.requestHash !== requestHash
+          : !sameLegacyPayload)
+      ) {
+        throw new ConflictException("operationId уже использован с другими данными");
+      }
       const progress = await this.questionModel.findOne({ questionId }).lean().exec();
       if (!progress) throw new InternalServerErrorException("Не найден прогресс попытки");
       return questionAttemptResultSchema.parse({
@@ -970,12 +995,16 @@ export class LearningService {
             responseTimeMs: dto.responseTimeMs,
             automaticRating: rating,
             operationId: dto.operationId,
+            requestHash,
           },
         },
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       )
       .exec();
     if (!attempt) throw new InternalServerErrorException("Не удалось сохранить попытку");
+    if (attempt.questionId !== questionId || attempt.requestHash !== requestHash) {
+      throw new ConflictException("operationId уже использован с другими данными");
+    }
 
     await this.questionModel
       .updateOne(
@@ -1050,7 +1079,7 @@ export class LearningService {
       await this.signals.record({
         type: "quiz_submitted",
         track: trackKey,
-        itemId,
+        itemId: `${itemId}:${latest.tier}`,
         skillKeys: inferSkillKeys(...latest.answers.map((answer) => answer.topic)),
         payload: { score: latest.score, maxScore: latest.answers.length },
         operationId: `quiz:${dto.operationId ?? randomUUID()}`,
@@ -1396,16 +1425,30 @@ export class LearningService {
       .lean()
       .exec();
     if (!lesson) throw new NotFoundException("AI-урок не найден");
-    if ((lesson.quiz ?? []).length !== 10) {
+    const quiz = lesson.quiz ?? [];
+    const quizVersion = quiz.length === 20 ? 2 : quiz.length === 10 ? 1 : 0;
+    if (quizVersion === 0) {
       throw new BadRequestException("Обнови статью, чтобы получить проверочный тест");
+    }
+    if (quizVersion === 2 && !dto.tier) {
+      throw new BadRequestException("Выбери уровень теста: core или deep");
+    }
+    const tier = quizVersion === 1 ? "legacy" : dto.tier!;
+    const selectedQuestions = quizVersion === 1
+      ? quiz
+      : quiz.filter((question, index) =>
+          (question.tier ?? (index < 10 ? "core" : "deep")) === tier,
+        );
+    if (selectedQuestions.length !== 10) {
+      throw new BadRequestException("Тест имеет некорректное распределение Core и Deep");
     }
     const submitted = new Map(
       dto.answers.map((answer) => [answer.questionId, answer.selectedOptionIndex]),
     );
-    if (submitted.size !== lesson.quiz.length) {
+    if (submitted.size !== selectedQuestions.length) {
       throw new BadRequestException("Нужно ответить на все вопросы теста");
     }
-    const answers = lesson.quiz.map((question) => {
+    const answers = selectedQuestions.map((question) => {
       const selectedOptionIndex = submitted.get(question.id);
       if (selectedOptionIndex === undefined) {
         throw new BadRequestException("Ответы не соответствуют текущей версии теста");
@@ -1414,12 +1457,47 @@ export class LearningService {
         questionId: question.id,
         selectedOptionIndex,
         correct: selectedOptionIndex === question.correctOptionIndex,
+        correctOptionIndex: question.correctOptionIndex,
+        explanation: question.explanation,
         topic: question.topic,
       };
     });
+    const requestHash = createHash("sha256")
+      .update(JSON.stringify({
+        tier,
+        answers: [...answers]
+          .map(({ questionId, selectedOptionIndex }) => ({ questionId, selectedOptionIndex }))
+          .sort((left, right) => left.questionId.localeCompare(right.questionId)),
+      }))
+      .digest("base64url");
+    const assertMatchingAttempt = (
+      existingAttempt: AiQuizProgress["attempts"][number],
+    ) => {
+      if (existingAttempt.requestHash) {
+        if (existingAttempt.requestHash !== requestHash) {
+          throw new ConflictException("operationId уже использован с другими ответами");
+        }
+        return;
+      }
+      const previousAnswers = [...existingAttempt.answers]
+        .map(({ questionId, selectedOptionIndex }) => ({ questionId, selectedOptionIndex }))
+        .sort((left, right) => left.questionId.localeCompare(right.questionId));
+      if (
+        (existingAttempt.tier ?? "legacy") !== tier ||
+        JSON.stringify(previousAnswers) !== JSON.stringify(
+          [...answers]
+            .map(({ questionId, selectedOptionIndex }) => ({ questionId, selectedOptionIndex }))
+            .sort((left, right) => left.questionId.localeCompare(right.questionId)),
+        )
+      ) {
+        throw new ConflictException("operationId уже использован с другими ответами");
+      }
+    };
     const attempt = {
       operationId: dto.operationId ?? null,
+      requestHash,
       score: answers.filter((answer) => answer.correct).length,
+      tier,
       answers,
       completedAt: new Date(),
     };
@@ -1433,7 +1511,11 @@ export class LearningService {
         )
         .lean()
         .exec();
-      if (existing?.attempts.some((item) => item.operationId === dto.operationId)) {
+      const existingAttempt = existing?.attempts.find(
+        (item) => item.operationId === dto.operationId,
+      );
+      if (existing && existingAttempt) {
+        assertMatchingAttempt(existingAttempt);
         this.logger.debug({
           event: "quiz_deduplicated",
           operationId: dto.operationId,
@@ -1452,6 +1534,10 @@ export class LearningService {
       if (progress) return serializeQuizProgress(progress);
       const duplicate = await this.aiQuizProgressModel.findOne(progressFilter).lean().exec();
       if (duplicate) {
+        const duplicateAttempt = duplicate.attempts.find(
+          (item) => item.operationId === dto.operationId,
+        );
+        if (duplicateAttempt) assertMatchingAttempt(duplicateAttempt);
         this.logger.debug({
           event: "quiz_deduplicated",
           operationId: dto.operationId,

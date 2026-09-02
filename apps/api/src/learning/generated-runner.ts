@@ -38,6 +38,21 @@ export interface PracticeRunnerExecution {
   tests: RunnerResult[];
 }
 
+type ServerStudyExerciseRunner = StudyExerciseRunner & {
+  hiddenTestCases?: StudyExerciseRunner["testCases"];
+};
+
+const executableRunner = (runner: ServerStudyExerciseRunner): StudyExerciseRunner => ({
+  starterCode: runner.starterCode,
+  testCases: [
+    ...runner.testCases,
+    ...(runner.hiddenTestCases ?? []).map((testCase, index) => ({
+      ...testCase,
+      title: `Скрытая проверка ${index + 1}`,
+    })),
+  ],
+});
+
 function buildRunnerSource(runner: StudyExerciseRunner, solution: string) {
   const testCases = JSON.stringify(runner.testCases);
   return [
@@ -131,7 +146,7 @@ export async function validateGeneratedRunner(
   lesson: GeneratedLesson,
   timeoutMs = RUNNER_TIMEOUT_MS,
 ): Promise<GeneratedRunnerValidation> {
-  const runner = lesson.practice.runner;
+  const runner = executableRunner(lesson.practice.runner);
   const starterResult = await runPracticeSolution(
     runner,
     runner.starterCode,
@@ -153,10 +168,11 @@ export async function validateGeneratedRunner(
 }
 
 export async function runPracticeSolution(
-  runner: StudyExerciseRunner,
+  sourceRunner: ServerStudyExerciseRunner,
   solution: string,
   timeoutMs = RUNNER_TIMEOUT_MS,
 ): Promise<PracticeRunnerExecution> {
+  const runner = executableRunner(sourceRunner);
   const startedAt = Date.now();
   try {
     const result = await evaluateRunnerSource(

@@ -52,8 +52,8 @@ const executeOutboxEntry = (entry: MutationOutboxEntry) => {
       return learningApi.submitQuestionAttempt(questionId, input);
     }
     case "quiz": {
-      const { track, itemId, answers, operationId } = entry.variables as QuizMutationVariables;
-      return learningApi.submitLessonQuiz(track, itemId, answers, operationId);
+      const { track, itemId, tier, answers, operationId } = entry.variables as QuizMutationVariables;
+      return learningApi.submitLessonQuiz(track, itemId, tier, answers, operationId);
     }
     case "practiceAttempt": {
       const variables = entry.variables as PracticeAttemptMutationVariables;
@@ -137,8 +137,8 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
   });
   queryClient.setMutationDefaults(offlineMutationKeys.quiz, {
     ...offlineOptions,
-    mutationFn: createDurableMutationFn("quiz", ({ track, itemId, answers, operationId }: QuizMutationVariables) =>
-      learningApi.submitLessonQuiz(track, itemId, answers, operationId)),
+    mutationFn: createDurableMutationFn("quiz", ({ track, itemId, tier, answers, operationId }: QuizMutationVariables) =>
+      learningApi.submitLessonQuiz(track, itemId, tier, answers, operationId)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults<unknown, Error, PracticeAttemptMutationVariables>(

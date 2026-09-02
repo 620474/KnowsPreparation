@@ -161,14 +161,22 @@ export async function replayMutationOutbox(
   execute: (entry: MutationOutboxEntry) => Promise<unknown>,
 ) {
   const entries = await listMutationOutbox();
+  return replayMutationEntries(entries, execute, settleMutationOutbox);
+}
+
+export async function replayMutationEntries(
+  entries: MutationOutboxEntry[],
+  execute: (entry: MutationOutboxEntry) => Promise<unknown>,
+  settle: (entry: MutationOutboxEntry, error?: unknown) => Promise<void>,
+) {
   let completed = 0;
   for (const entry of entries) {
     try {
       await execute(entry);
-      await settleMutationOutbox(entry);
+      await settle(entry);
       completed += 1;
     } catch (error) {
-      await settleMutationOutbox(entry, error);
+      await settle(entry, error);
     }
   }
   return completed;

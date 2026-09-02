@@ -4011,6 +4011,47 @@ p {
   gap: 10px;
 }
 
+.lesson-quiz-code {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--code-bg);
+  white-space: pre;
+}
+
+.lesson-quiz-review-list {
+  display: grid;
+  gap: 12px;
+}
+
+.lesson-quiz-review-list article {
+  display: grid;
+  gap: 8px;
+  border-left: 3px solid var(--line-strong);
+  padding: 14px 16px;
+  background: var(--surface-subtle);
+}
+
+.lesson-quiz-review-list article.correct {
+  border-color: var(--accent);
+}
+
+.lesson-quiz-review-list article.incorrect {
+  border-color: var(--danger);
+}
+
+.lesson-quiz-review-list strong {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.lesson-quiz-review-list p {
+  margin: 0;
+}
+
 .lesson-quiz-options .mantine-Radio-card {
   display: grid;
   min-height: 58px;

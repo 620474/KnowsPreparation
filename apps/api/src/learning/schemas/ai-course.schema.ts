@@ -170,6 +170,9 @@ export class AiPracticeRunner {
 
   @Prop({ type: [AiRunnerTestCaseSchema], required: true, default: [] })
   testCases!: AiRunnerTestCase[];
+
+  @Prop({ type: [AiRunnerTestCaseSchema], required: true, default: [] })
+  hiddenTestCases!: AiRunnerTestCase[];
 }
 
 export const AiPracticeRunnerSchema = SchemaFactory.createForClass(AiPracticeRunner);
@@ -205,6 +208,9 @@ export class AiQuizQuestion {
   @Prop({ type: [String], required: true })
   options!: string[];
 
+  @Prop({ type: String })
+  code?: string;
+
   @Prop({ required: true, min: 0, max: 3 })
   correctOptionIndex!: number;
 
@@ -213,6 +219,31 @@ export class AiQuizQuestion {
 
   @Prop({ required: true })
   topic!: string;
+
+  @Prop({ type: String, enum: ["core", "deep"], default: "core" })
+  tier!: "core" | "deep";
+
+  @Prop({
+    type: String,
+    enum: [
+      "recall",
+      "comprehension",
+      "prediction",
+      "debugging",
+      "application",
+      "transfer",
+      "tradeoff",
+    ],
+    default: "comprehension",
+  })
+  capability!:
+    | "recall"
+    | "comprehension"
+    | "prediction"
+    | "debugging"
+    | "application"
+    | "transfer"
+    | "tradeoff";
 }
 
 export const AiQuizQuestionSchema = SchemaFactory.createForClass(AiQuizQuestion);

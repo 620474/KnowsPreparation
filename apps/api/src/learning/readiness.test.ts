@@ -35,7 +35,8 @@ describe("readiness evidence", () => {
         { itemId: `legacy-${index}` },
       )),
     );
-    expect(readiness.dimensions.recall.score).toBe(100);
+    expect(readiness.dimensions.recall.score).toBe(69);
+    expect(readiness.dimensions.recall.sufficientEvidence).toBe(false);
     expect(readiness.dimensions.recall.confidence).toBe("low");
   });
 
@@ -58,7 +59,7 @@ describe("readiness evidence", () => {
       }),
     ], new Date("2026-09-01T12:00:00.000Z"));
 
-    expect(readiness.dimensions.recall.score).toBe(80);
+    expect(readiness.dimensions.recall.score).toBe(69);
     expect(readiness.dimensions.code.score).toBe(68);
     expect(readiness.dimensions.explain.score).toBe(65);
     expect(readiness.dimensions.defend.score).toBe(50);
@@ -77,9 +78,10 @@ describe("readiness evidence", () => {
       }),
     ], new Date("2026-09-01T12:00:00.000Z"));
 
-    expect(readiness.dimensions.recall.score).toBe(90);
+    expect(readiness.dimensions.recall.score).toBe(69);
     expect(readiness.dimensions.recall.signalCount).toBe(2);
     expect(readiness.dimensions.recall.independentItemCount).toBe(1);
+    expect(readiness.dimensions.recall.sufficientEvidence).toBe(false);
   });
 
   it("decays old independent evidence", () => {
@@ -108,5 +110,26 @@ describe("readiness evidence", () => {
       firstAttemptPassed: false,
       confidence: 5,
     }))).toEqual({ code: 15 });
+  });
+
+  it("removes the readiness cap only after independent evidence across days", () => {
+    const readiness = buildReadiness([
+      signal("quiz_submitted", { score: 9, maxScore: 10 }, ["javascript"], {
+        itemId: "lesson-1:core",
+        occurredAt: new Date("2026-08-30T12:00:00.000Z"),
+      }),
+      signal("quiz_submitted", { score: 8, maxScore: 10 }, ["javascript"], {
+        itemId: "lesson-2:core",
+        occurredAt: new Date("2026-09-01T10:00:00.000Z"),
+      }),
+      signal("quiz_submitted", { score: 10, maxScore: 10 }, ["javascript"], {
+        itemId: "lesson-3:deep",
+        occurredAt: new Date("2026-09-01T12:00:00.000Z"),
+      }),
+    ], new Date("2026-09-01T12:00:00.000Z"));
+
+    expect(readiness.dimensions.recall.score).toBeGreaterThan(69);
+    expect(readiness.dimensions.recall.evidenceDayCount).toBe(2);
+    expect(readiness.dimensions.recall.sufficientEvidence).toBe(true);
   });
 });

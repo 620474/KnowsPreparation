@@ -178,7 +178,7 @@ export function TrackDayView({
             lesson && quizProgress?.lessonVersion === lesson.version
               ? quizProgress.attempts.at(-1)
               : undefined;
-          const hasQuiz = lesson?.quiz.length === 10;
+          const hasQuiz = lesson ? [10, 20].includes(lesson.quiz.length) : false;
           const isYandexPlatformMock =
             track === "yandex" &&
             ["yandex-d07", "yandex-d14", "yandex-d21"].includes(day.id) &&
@@ -263,7 +263,9 @@ export function TrackDayView({
                           >
                             {latestQuizAttempt
                               ? `Тест: ${latestQuizAttempt.score}/10`
-                              : "Пройти тест · 10 вопросов"}
+                              : lesson?.quizVersion === 2
+                                ? "Пройти тест · Core + Deep"
+                                : "Пройти тест · 10 вопросов"}
                           </Button>
                         ) : (
                           <Button

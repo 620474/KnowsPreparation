@@ -61,6 +61,11 @@ export interface GeneratedLesson {
         expression: string;
         expected: unknown;
       }>;
+      hiddenTestCases?: Array<{
+        title: string;
+        expression: string;
+        expected: unknown;
+      }>;
     };
     referenceSolution: string;
   };
@@ -68,9 +73,19 @@ export interface GeneratedLesson {
     id: string;
     prompt: string;
     options: string[];
+    code?: string;
     correctOptionIndex: number;
     explanation: string;
     topic: string;
+    tier?: "core" | "deep";
+    capability?:
+      | "recall"
+      | "comprehension"
+      | "prediction"
+      | "debugging"
+      | "application"
+      | "transfer"
+      | "tradeoff";
   }>;
   summary: string;
 }
@@ -220,6 +235,7 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
     !Array.isArray(lesson.diagrams) ||
     !Array.isArray(practice.examples) ||
     !Array.isArray(runner.testCases) ||
+    !Array.isArray(runner.hiddenTestCases) ||
     !Array.isArray(lesson.quiz)
   ) {
     throw new Error("lesson examples must be arrays");
@@ -227,8 +243,11 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
   if (runner.testCases.length < 3 || runner.testCases.length > 6) {
     throw new Error("lesson.practice.runner.testCases must contain between 3 and 6 items");
   }
-  if (lesson.quiz.length !== 10) {
-    throw new Error("lesson.quiz must contain exactly 10 questions");
+  if (runner.hiddenTestCases.length < 3 || runner.hiddenTestCases.length > 6) {
+    throw new Error("lesson.practice.runner.hiddenTestCases must contain between 3 and 6 items");
+  }
+  if (lesson.quiz.length !== 20) {
+    throw new Error("lesson.quiz must contain exactly 20 questions");
   }
 
   return {
@@ -318,6 +337,38 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
             expected,
           };
         }),
+        hiddenTestCases: runner.hiddenTestCases.map((value, index) => {
+          const testCase = asRecord(
+            value,
+            `lesson.practice.runner.hiddenTestCases.${index}`,
+          );
+          const expectedSource = asText(
+            testCase.expected,
+            `lesson.practice.runner.hiddenTestCases.${index}.expected`,
+            2_000,
+          );
+          let expected: unknown;
+          try {
+            expected = JSON.parse(expectedSource);
+          } catch {
+            throw new Error(
+              `lesson.practice.runner.hiddenTestCases.${index}.expected must be valid JSON`,
+            );
+          }
+          return {
+            title: asText(
+              testCase.title,
+              `lesson.practice.runner.hiddenTestCases.${index}.title`,
+              200,
+            ),
+            expression: asText(
+              testCase.expression,
+              `lesson.practice.runner.hiddenTestCases.${index}.expression`,
+              2_000,
+            ),
+            expected,
+          };
+        }),
       },
       referenceSolution: asText(
         practice.referenceSolution,
@@ -325,7 +376,8 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
         16_000,
       ),
     },
-    quiz: lesson.quiz.map((value, index) => {
+    quiz: (() => {
+      const quiz = lesson.quiz.map((value, index) => {
       const question = asRecord(value, `lesson.quiz.${index}`);
       if (!Array.isArray(question.options) || question.options.length !== 4) {
         throw new Error(`lesson.quiz.${index}.options must contain exactly 4 items`);
@@ -340,15 +392,58 @@ export function normalizeGeneratedLesson(value: unknown): GeneratedLesson {
       if (!Number.isInteger(correctOptionIndex) || correctOptionIndex < 0 || correctOptionIndex > 3) {
         throw new Error(`lesson.quiz.${index}.correctOptionIndex must be between 0 and 3`);
       }
+      const tier: "core" | "deep" = question.tier === "core" || question.tier === "deep"
+        ? question.tier
+        : (() => { throw new Error(`lesson.quiz.${index}.tier is invalid`); })();
+      const capability = [
+        "recall",
+        "comprehension",
+        "prediction",
+        "debugging",
+        "application",
+        "transfer",
+        "tradeoff",
+      ].includes(String(question.capability))
+        ? question.capability as NonNullable<GeneratedLesson["quiz"][number]["capability"]>
+        : (() => { throw new Error(`lesson.quiz.${index}.capability is invalid`); })();
       return {
         id: `quiz-${String(index + 1).padStart(2, "0")}`,
         prompt: asText(question.prompt, `lesson.quiz.${index}.prompt`, 1_000),
         options,
+        ...(typeof question.code === "string" && question.code.trim()
+          ? { code: question.code.trim().slice(0, 4_000) }
+          : {}),
         correctOptionIndex,
         explanation: asText(question.explanation, `lesson.quiz.${index}.explanation`, 1_500),
         topic: asText(question.topic, `lesson.quiz.${index}.topic`, 120),
+        tier,
+        capability,
+        };
+      });
+      for (const tier of ["core", "deep"] as const) {
+        if (quiz.filter((question) => question.tier === tier).length !== 10) {
+          throw new Error(`lesson.quiz must contain exactly 10 ${tier} questions`);
+        }
+      }
+      const quotas: Record<NonNullable<GeneratedLesson["quiz"][number]["capability"]>, number> = {
+        recall: 2,
+        comprehension: 4,
+        prediction: 4,
+        debugging: 3,
+        application: 3,
+        transfer: 2,
+        tradeoff: 2,
       };
-    }),
+      for (const [capability, expected] of Object.entries(quotas)) {
+        if (quiz.filter((question) => question.capability === capability).length !== expected) {
+          throw new Error(`lesson.quiz capability ${capability} must contain exactly ${expected} questions`);
+        }
+      }
+      if (quiz.filter((question) => question.code).length < 8) {
+        throw new Error("lesson.quiz must contain at least 8 code questions");
+      }
+      return quiz;
+    })(),
     summary: asText(lesson.summary, "lesson.summary", 2_000),
   };
 }

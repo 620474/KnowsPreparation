@@ -504,12 +504,17 @@ export const learningApi = {
   submitLessonQuiz: (
     track: TrackKey,
     itemId: string,
+    tier: "legacy" | "core" | "deep",
     answers: Array<{ questionId: string; selectedOptionIndex: number }>,
     operationId?: string,
   ) =>
     request<LessonQuizProgress>(`${trackItemPath(track, itemId)}/quiz`, {
       method: "POST",
-      body: JSON.stringify({ answers, operationId }),
+      body: JSON.stringify({
+        answers,
+        operationId,
+        ...(tier === "legacy" ? {} : { tier }),
+      }),
     }),
   savePracticeSolution: (
     track: TrackKey,

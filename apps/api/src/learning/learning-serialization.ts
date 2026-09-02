@@ -88,6 +88,7 @@ export function serializeAiCourse(course: AiCourse) {
 }
 
 export function serializeAiLesson(lesson: AiLesson) {
+  const quizVersion = (lesson.quiz ?? []).length === 20 ? 2 : 1;
   return aiLessonSchema.parse({
     itemId: lesson.itemId,
     title: lesson.title,
@@ -97,8 +98,30 @@ export function serializeAiLesson(lesson: AiLesson) {
     diagrams: lesson.diagrams ?? [],
     commonMistakes: lesson.commonMistakes,
     interviewQuestions: lesson.interviewQuestions,
-    practice: lesson.practice,
-    quiz: lesson.quiz ?? [],
+    practice: {
+      title: lesson.practice.title,
+      statement: lesson.practice.statement,
+      constraints: lesson.practice.constraints,
+      examples: lesson.practice.examples,
+      ...(lesson.practice.runner
+        ? {
+            runner: {
+              starterCode: lesson.practice.runner.starterCode,
+              testCases: lesson.practice.runner.testCases,
+            },
+          }
+        : {}),
+    },
+    quiz: (lesson.quiz ?? []).map((question, index) => ({
+      id: question.id,
+      prompt: question.prompt,
+      options: question.options,
+      ...(question.code ? { code: question.code } : {}),
+      topic: question.topic,
+      tier: quizVersion === 1 ? "legacy" : question.tier ?? (index < 10 ? "core" : "deep"),
+      capability: question.capability ?? "comprehension",
+    })),
+    quizVersion,
     summary: lesson.summary,
     resourceIds: lesson.resourceIds,
     courseVersion: lesson.courseVersion,
@@ -190,10 +213,15 @@ export function serializeQuizProgress(progress: AiQuizProgress) {
     lessonVersion: progress.lessonVersion,
     attempts: progress.attempts.map((attempt) => ({
       score: attempt.score,
+      tier: attempt.tier ?? "legacy",
       answers: attempt.answers.map((answer) => ({
         questionId: answer.questionId,
         selectedOptionIndex: answer.selectedOptionIndex,
         correct: answer.correct,
+        ...(answer.correctOptionIndex === undefined
+          ? {}
+          : { correctOptionIndex: answer.correctOptionIndex }),
+        ...(answer.explanation ? { explanation: answer.explanation } : {}),
         topic: answer.topic,
       })),
       completedAt: attempt.completedAt.toISOString(),

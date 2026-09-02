@@ -87,7 +87,10 @@ export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: Analyt
                     <strong>{label}</strong>
                     <span>
                       {description} · {dimension.independentItemCount} независимых заданий ·
-                      {dimension.confidence === "high" ? " высокая" : dimension.confidence === "medium" ? " средняя" : " низкая"} уверенность
+                      {dimension.evidenceDayCount} дней ·
+                      {dimension.sufficientEvidence
+                        ? dimension.confidence === "high" ? " высокая" : " средняя"
+                        : " пока недостаточно данных"}
                     </span>
                   </div>
                   <Progress

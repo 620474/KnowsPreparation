@@ -12,6 +12,12 @@ export class AiQuizAnswer {
   @Prop({ required: true })
   correct!: boolean;
 
+  @Prop({ min: 0, max: 3 })
+  correctOptionIndex?: number;
+
+  @Prop({ type: String })
+  explanation?: string;
+
   @Prop({ required: true })
   topic!: string;
 }
@@ -23,8 +29,14 @@ export class AiQuizAttempt {
   @Prop({ type: String, default: null })
   operationId!: string | null;
 
+  @Prop({ type: String })
+  requestHash?: string;
+
   @Prop({ required: true, min: 0, max: 10 })
   score!: number;
+
+  @Prop({ type: String, enum: ["legacy", "core", "deep"], default: "legacy" })
+  tier!: "legacy" | "core" | "deep";
 
   @Prop({ type: [AiQuizAnswerSchema], required: true })
   answers!: AiQuizAnswer[];

@@ -55,6 +55,7 @@ interface AiLessonReaderProps {
     draft: LocalPracticeDraft,
   ) => Promise<PracticeSolutionSaveResult | null>;
   onSubmitQuiz: (
+    tier: "legacy" | "core" | "deep",
     answers: Array<{ questionId: string; selectedOptionIndex: number }>,
   ) => Promise<LessonQuizProgress | null>;
 }
