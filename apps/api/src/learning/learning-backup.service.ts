@@ -24,6 +24,11 @@ import { MasterySnapshot } from "./schemas/mastery-snapshot.schema";
 import { AssessmentResultV2Entry } from "./schemas/assessment-result-v2.schema";
 import { EvidenceEventV2Entry } from "./schemas/evidence-event-v2.schema";
 import { MasterySnapshotV2Entry } from "./schemas/mastery-snapshot-v2.schema";
+import { AssessmentEventV3Entry } from "./schemas/assessment-event-v3.schema";
+import { MasterySnapshotV3Entry } from "./schemas/mastery-snapshot-v3.schema";
+import { ReadinessOutcomeV2Entry } from "./schemas/readiness-outcome-v2.schema";
+import { ReadinessSnapshotV2Entry } from "./schemas/readiness-snapshot-v2.schema";
+import { TargetProfileV2Entry } from "./schemas/target-profile-v2.schema";
 import { InterviewSession } from "./schemas/interview-session.schema";
 import { InterviewTurnEntry } from "./schemas/interview-turn.schema";
 import { ReadinessOutcomeEntry } from "./schemas/readiness-outcome.schema";
@@ -77,6 +82,16 @@ export class LearningBackupService {
     private readonly evidenceEventV2Model: Model<EvidenceEventV2Entry>,
     @InjectModel(MasterySnapshotV2Entry.name)
     private readonly masterySnapshotV2Model: Model<MasterySnapshotV2Entry>,
+    @InjectModel(AssessmentEventV3Entry.name)
+    private readonly assessmentEventV3Model: Model<AssessmentEventV3Entry>,
+    @InjectModel(MasterySnapshotV3Entry.name)
+    private readonly masterySnapshotV3Model: Model<MasterySnapshotV3Entry>,
+    @InjectModel(TargetProfileV2Entry.name)
+    private readonly targetProfileV2Model: Model<TargetProfileV2Entry>,
+    @InjectModel(ReadinessSnapshotV2Entry.name)
+    private readonly readinessSnapshotV2Model: Model<ReadinessSnapshotV2Entry>,
+    @InjectModel(ReadinessOutcomeV2Entry.name)
+    private readonly readinessOutcomeV2Model: Model<ReadinessOutcomeV2Entry>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
     @InjectModel(InterviewSession.name)
@@ -133,6 +148,11 @@ export class LearningBackupService {
       assessmentResultsV2,
       evidenceEventsV2,
       masterySnapshotsV2,
+      assessmentEventsV3,
+      masterySnapshotsV3,
+      targetProfilesV2,
+      readinessSnapshotsV2,
+      readinessOutcomesV2,
       aiQuizProgresses,
       mockInterviews,
       interviewSessions,
@@ -169,6 +189,11 @@ export class LearningBackupService {
       this.assessmentResultV2Model.find().lean().exec(),
       this.evidenceEventV2Model.find().lean().exec(),
       this.masterySnapshotV2Model.find().lean().exec(),
+      this.assessmentEventV3Model.find().lean().exec(),
+      this.masterySnapshotV3Model.find().lean().exec(),
+      this.targetProfileV2Model.find().lean().exec(),
+      this.readinessSnapshotV2Model.find().lean().exec(),
+      this.readinessOutcomeV2Model.find().lean().exec(),
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
       this.interviewSessionModel.find().lean().exec(),
@@ -211,6 +236,11 @@ export class LearningBackupService {
         assessmentResultsV2,
         evidenceEventsV2,
         masterySnapshotsV2,
+        assessmentEventsV3,
+        masterySnapshotsV3,
+        targetProfilesV2,
+        readinessSnapshotsV2,
+        readinessOutcomesV2,
         aiQuizProgresses,
         mockInterviews,
         interviewSessions,
@@ -295,6 +325,26 @@ export class LearningBackupService {
       masterySnapshotsV2: await this.validateRecords(
         this.masterySnapshotV2Model,
         backup.data.masterySnapshotsV2,
+      ),
+      assessmentEventsV3: await this.validateRecords(
+        this.assessmentEventV3Model,
+        backup.data.assessmentEventsV3,
+      ),
+      masterySnapshotsV3: await this.validateRecords(
+        this.masterySnapshotV3Model,
+        backup.data.masterySnapshotsV3,
+      ),
+      targetProfilesV2: await this.validateRecords(
+        this.targetProfileV2Model,
+        backup.data.targetProfilesV2,
+      ),
+      readinessSnapshotsV2: await this.validateRecords(
+        this.readinessSnapshotV2Model,
+        backup.data.readinessSnapshotsV2,
+      ),
+      readinessOutcomesV2: await this.validateRecords(
+        this.readinessOutcomeV2Model,
+        backup.data.readinessOutcomesV2,
       ),
       mockInterviews: await this.validateRecords(
         this.mockInterviewModel,
@@ -457,6 +507,31 @@ export class LearningBackupService {
         this.masterySnapshotV2Model,
         prepared.masterySnapshotsV2,
         (record) => ({ snapshotId: record.snapshotId }),
+      ),
+      this.mergeRecords(
+        this.assessmentEventV3Model,
+        prepared.assessmentEventsV3,
+        (record) => ({ operationId: record.operationId }),
+      ),
+      this.mergeRecords(
+        this.masterySnapshotV3Model,
+        prepared.masterySnapshotsV3,
+        (record) => ({ snapshotId: record.snapshotId }),
+      ),
+      this.mergeRecords(
+        this.targetProfileV2Model,
+        prepared.targetProfilesV2,
+        (record) => ({ targetId: record.targetId }),
+      ),
+      this.mergeRecords(
+        this.readinessSnapshotV2Model,
+        prepared.readinessSnapshotsV2,
+        (record) => ({ snapshotId: record.snapshotId }),
+      ),
+      this.mergeRecords(
+        this.readinessOutcomeV2Model,
+        prepared.readinessOutcomesV2,
+        (record) => ({ outcomeId: record.outcomeId }),
       ),
       this.mergeRecords(
         this.mockInterviewModel,

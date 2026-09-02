@@ -444,6 +444,92 @@ export class SubmitInterviewTurnDto {
   operationId!: string;
 }
 
+export class CreateTargetProfileV2Dto {
+  @IsString()
+  @MinLength(20)
+  @MaxLength(30_000)
+  vacancyText!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  company?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  role?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  seniority?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  interviewAt?: string;
+}
+
+export class FreezeReadinessV8Dto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160)
+  targetId!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  applicationId?: string;
+}
+
+export class RecordReadinessOutcomeV2Dto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160)
+  snapshotId!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  company?: string;
+
+  @IsBoolean()
+  technicalPassed!: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  codingPassed?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(200, { each: true })
+  topics?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4_000)
+  notes?: string;
+
+  @IsDateString({ strict: true })
+  occurredAt!: string;
+}
+
+export class GetDecisionPlanV8Dto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  targetId = "general";
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(15)
+  @Max(360)
+  availableMinutes = 90;
+}
+
 export class CreateReadinessPredictionDto {
   @IsIn(INTERVIEW_SESSION_COMPANIES)
   targetId!: InterviewSessionCompany;
@@ -490,6 +576,15 @@ export class SubmitInterviewExerciseDto {
   @MinLength(1)
   @MaxLength(50_000)
   solution!: string;
+
+  @IsOptional()
+  @IsObject()
+  telemetry?: {
+    durationMs?: number;
+    runCount?: number;
+    failedTestCount?: number;
+    revisionCount?: number;
+  };
 }
 
 export class SendInterviewAiMessageDto {

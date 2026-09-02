@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   INTERVIEW_POLICY_VERSION,
+  mergeInterviewClaims,
   nextConversationState,
+  nextConversationStateV3,
   reduceInterviewAction,
   type InterviewActionProposal,
 } from "./interview-director";
@@ -66,5 +68,39 @@ describe("interview director policy", () => {
       turnCount: 3,
       lastAction: "move_on",
     });
+  });
+
+  it("tracks contradictions and new capability coverage", () => {
+    const first = {
+      claimId: "claim-1",
+      normalizedClaim: "Promise callback всегда выполняется до setTimeout",
+      sourceTurnId: "turn-1",
+      confidence: 0.8,
+      contradictedBy: [],
+    };
+    const second = {
+      claimId: "claim-2",
+      normalizedClaim: "Promise callback не выполняется до setTimeout",
+      sourceTurnId: "turn-2",
+      confidence: 0.8,
+      contradictedBy: [],
+    };
+
+    expect(mergeInterviewClaims([first], [second]).contradictionCount).toBe(1);
+    const next = nextConversationStateV3({
+      state,
+      action: "probe",
+      nextQuestionId: null,
+      answer: "Promise callback выполняется в очереди микрозадач после синхронного кода.",
+      sourceTurnId: "turn-3",
+      score: 85,
+      capabilities: ["explain", "defend"],
+      gaps: ["Не назван rendering step"],
+    });
+    expect(next.difficultyBand).toBe(3);
+    expect(next.capabilityCoverage).toEqual(expect.arrayContaining([
+      expect.objectContaining({ capability: "explain", observed: 1 }),
+      expect.objectContaining({ capability: "defend", observed: 1 }),
+    ]));
   });
 });

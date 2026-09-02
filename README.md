@@ -29,8 +29,9 @@
 | **Практика** | JS-песочница с QuickJS, тест-кейсами и сохранением решений локально и в MongoDB |
 | **Interview Gym** | Сессии на 5/10 минут, 30 проверяемых задач, QuickJS и автоматическое планирование повторений |
 | **Собеседования** | Adaptive Interview Director, Exam mode без AI, голосовые ответы, live coding и итоговый отчёт |
-| **Skill Graph** | 40+ versioned навыков, evidence ledger, transfer-aware mastery и объяснимая готовность |
-| **Аналитика** | Readiness относительно общего Frontend, Яндекса или Ozon с диапазоном, покрытием и provenance |
+| **Skill Graph** | 40+ versioned навыков, Evidence v3, Bayesian mastery и отдельные design/transfer/resilience |
+| **Decision Loop v8** | До трёх действий с максимальным снижением риска для выбранной компании или вакансии |
+| **Аналитика** | Evidence readiness отделена от вероятности пройти интервью; forecast включается только после калибровки |
 | **Исследования** | Проекты, evidence matrix, автономный поиск, citation audit, противоречия и действия |
 | **Поиск работы** | Воронка вакансий, follow-up, недельные KPI, интервью, конверсия и карьерная стратегия |
 | **AI-агенты** | Проверка уроков, адаптивные интервью, разбор вакансий и durable Research Agent |
@@ -42,7 +43,7 @@
 
 ## Симулятор интервью
 
-Interview Director ведёт платформенную секцию как настоящий интервьюер: уточняет пробелы, спорит с аргументом, просит контрпример, меняет ограничения и проверяет trade-offs. Решение о следующем ходе предлагает AI, но таймер, максимальную глубину, переходы и запрет подсказок в Exam mode контролирует детерминированная политика.
+Interview Director v3 ведёт платформенную секцию как настоящий интервьюер: уточняет пробелы, спорит с аргументом, просит контрпример, меняет ограничения и проверяет trade-offs. Он ведёт ledger утверждений, замечает противоречия и адаптирует сложность. Решение о следующем ходе предлагает AI, но таймер, максимальную глубину, переходы и запрет подсказок в Exam mode контролирует детерминированная политика.
 
 ```mermaid
 flowchart LR
@@ -101,6 +102,10 @@ Mastery считается воспроизводимо: старые резул
 
 Quiz, practice, interview и Transfer Lab создают native `AssessmentResultV2` и `EvidenceEventV2` с criterion-level оценками; старые события проецируются с явным `legacy_projection`. Mastery v2 учитывает обязательные, но ещё не проверенные capabilities через coverage и широкую uncertainty-полосу, а каждое новое состояние сохраняется историческим snapshot.
 
+Evidence v3 дополнительно разделяет задание, его версию, семейство концепта, форму и контекст. Повтор одной формы не создаёт ложную уверенность; process telemetry фиксирует время, запуски, ошибки тестов и число правок. Mastery v3 воспроизводится из immutable-событий и хранит posterior, доверительный диапазон и покрытие отдельно по `recall/explain/apply/debug/code/design/defend/transfer/resilience`.
+
+Цель можно выбрать готовую — общий Frontend, Яндекс или Ozon — либо создать из текста вакансии. Decision Loop v8 ранжирует пробелы по нижней границе mastery и предлагает максимум три действия: диагностику, интервенцию, параллельную перепроверку, перенос в новый контекст или контрольный экзамен.
+
 ### Learning Missions и Transfer Lab
 
 Decision Engine превращает слабые места Mastery v2 в 1–3 активные миссии на экране «Сегодня». Миссия проходит состояния «диагностика → интервенция → немедленная проверка → закрепление → отложенная проверка» и закрывается только после двух успешных заданий из разных семейств.
@@ -111,7 +116,7 @@ Transfer Lab проверяет перенос знания без AI в трё�
 
 ### Interview Director и AI evals
 
-Новые интервью используют `engineVersion: 2`, отдельную коллекцию append-only ходов и versioned reducer `interview-director-v1`. Старые сессии продолжают читаться через прежний контракт. Быстрый rollback новых сессий выполняется через `INTERVIEW_V2_ENABLED=false`.
+Новые интервью используют `engineVersion: 3`, отдельную коллекцию append-only ходов и versioned reducer `interview-director-v3`. Финальную ветку независимо оценивает blind assessor, а в Exam mode промежуточные оценки скрыты. Старые сессии продолжают читаться через прежний контракт. Быстрый rollback выполняется через `INTERVIEW_V3_ENABLED=false`.
 
 Core evaluator зарегистрирован централизованно с версиями prompt/schema. Frozen corpus в `apps/api/src/learning/eval` replay-ится отдельным CI-gate `npm run test:ai-evals`: релиз блокируется при изменении ожидаемых переходов или утечке подсказки в Exam mode.
 
@@ -143,7 +148,8 @@ npm run dev
 После создания `.env` замените `APP_PASSWORD` и `JWT_SECRET`, затем откройте:
 
 - клиент — `http://localhost:5173`;
-- API — `http://localhost:3001/api/v1`;
+- основной API — `http://localhost:3001/api/v1`;
+- Evidence/Mastery/Decision API — `http://localhost:3001/api/v2`;
 - health check — `http://localhost:3001/api/health`.
 
 ## Учебные треки
@@ -226,6 +232,20 @@ GET /api/v1/learning/knowledge/v2/comparison?target=general|yandex|ozon
 GET /api/v1/learning/knowledge/v2/skills/:skillId
 ```
 
+Контракты v8 добавлены отдельно и не ломают установленный клиент v7:
+
+```text
+GET  /api/v2/learning/targets
+POST /api/v2/learning/targets/from-vacancy
+GET  /api/v2/learning/knowledge/overview?targetId=yandex
+GET  /api/v2/learning/knowledge/skills/:skillId?targetId=yandex
+GET  /api/v2/learning/decision/today?targetId=yandex&availableMinutes=120
+POST /api/v2/learning/readiness/snapshots
+POST /api/v2/learning/readiness/outcomes
+GET  /api/v2/learning/readiness/calibration?targetId=yandex
+GET  /api/v2/learning/ai/observability?days=30
+```
+
 <details>
 <summary><strong>MongoDB Atlas и production API</strong></summary>
 
@@ -275,6 +295,11 @@ Workflow `.github/workflows/ci.yml` запускает typecheck, lint, тест
    OPENAI_REVIEW_MODEL_COST_CLASS=standard
    OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
    INTERVIEW_V2_ENABLED=true
+   EVIDENCE_V3_WRITE=true
+   MASTERY_V3_SHADOW=true
+   INTERVIEW_V3_ENABLED=true
+   PLANNER_V8_ENABLED=true
+   READINESS_V8_ENABLED=true
    ```
 
 6. Настройте проверки контейнера:

@@ -23,6 +23,7 @@ import type { Model } from "mongoose";
 import { AssessmentResultV2Entry } from "../schemas/assessment-result-v2.schema";
 import { EvidenceEvent } from "../schemas/evidence-event.schema";
 import { EvidenceEventV2Entry } from "../schemas/evidence-event-v2.schema";
+import { EvidenceV3Service } from "./evidence-v3.service";
 
 export interface NativeAssessmentDraft {
   operationId: string;
@@ -81,6 +82,7 @@ export class EvidenceV2Service {
     private readonly evidenceV2Model: Model<EvidenceEventV2Entry>,
     @InjectModel(EvidenceEvent.name)
     private readonly evidenceV1Model: Model<EvidenceEvent>,
+    private readonly evidenceV3: EvidenceV3Service,
   ) {}
 
   isWriteEnabled() {
@@ -101,6 +103,7 @@ export class EvidenceV2Service {
       { $set: { ...evidence, occurredAt: new Date(evidence.occurredAt) } },
       { upsert: true },
     ).exec();
+    await this.evidenceV3.recordProjection(assessment);
     return evidence.eventId;
   }
 

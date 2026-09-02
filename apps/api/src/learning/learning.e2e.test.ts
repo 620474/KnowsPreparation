@@ -1,6 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { ValidationPipe, VersioningType } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 import { getConnectionToken, getModelToken, MongooseModule } from "@nestjs/mongoose";
 import { Test } from "@nestjs/testing";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -198,6 +198,79 @@ describe("Learning API", () => {
       completed: true,
       note: "Проверено интеграционным тестом",
     });
+  });
+
+  it("serves v8 targets, verified mastery, decisions and readiness snapshots on API v2", async () => {
+    const targets = await request(app.getHttpServer())
+      .get("/api/v2/learning/targets")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(targets.body.map((item: { targetId: string }) => item.targetId))
+      .toEqual(expect.arrayContaining(["general", "yandex", "ozon"]));
+
+    const custom = await request(app.getHttpServer())
+      .post("/api/v2/learning/targets/from-vacancy")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        company: "Realtime Corp",
+        role: "Frontend Developer",
+        vacancyText: "React, TypeScript, WebSocket reconnect и тестирование",
+      })
+      .expect(201);
+    expect(custom.body.requirements.map((item: { skillId: string }) => item.skillId))
+      .toContain("async.realtime");
+
+    const overview = await request(app.getHttpServer())
+      .get(`/api/v2/learning/knowledge/overview?targetId=${custom.body.targetId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(overview.body).toMatchObject({
+      evidenceVersion: "3",
+      masteryModelVersion: "verified-posterior-v3",
+      readinessModelVersion: "verified-readiness-v8",
+      readiness: { decision: expect.any(String) },
+    });
+
+    const decision = await request(app.getHttpServer())
+      .get(`/api/v2/learning/decision/today?targetId=${custom.body.targetId}&availableMinutes=60`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(decision.body.actions.length).toBeLessThanOrEqual(3);
+
+    const snapshot = await request(app.getHttpServer())
+      .post("/api/v2/learning/readiness/snapshots")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ targetId: custom.body.targetId })
+      .expect(201);
+    expect(snapshot.body).toMatchObject({
+      targetId: custom.body.targetId,
+      readiness: { targetId: custom.body.targetId },
+    });
+
+    await request(app.getHttpServer())
+      .post("/api/v2/learning/readiness/outcomes")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        snapshotId: snapshot.body.snapshotId,
+        technicalPassed: true,
+        codingPassed: true,
+        occurredAt: "2026-09-03T00:00:00.000Z",
+      })
+      .expect(201);
+
+    const calibration = await request(app.getHttpServer())
+      .get(`/api/v2/learning/readiness/calibration?targetId=${custom.body.targetId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(calibration.body).toMatchObject({
+      forecast: { status: "insufficient_outcomes", outcomeCount: 1 },
+    });
+
+    const observability = await request(app.getHttpServer())
+      .get("/api/v2/learning/ai/observability?days=30")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(observability.body).toMatchObject({ windowDays: 30, totalCalls: 0 });
   });
 
   it("stores only the Terra-reviewed lesson and its metadata", async () => {
@@ -1721,6 +1794,13 @@ describe("Learning API", () => {
   it("runs and restores a complete interview simulator session", async () => {
     const aiContent = app.get(AiContentService);
     const agents = app.get(AiAgentService);
+    const config = app.get(ConfigService);
+    const originalConfigGet = config.get.bind(config);
+    const configSpy = vi.spyOn(config, "get").mockImplementation(
+      ((key: string, defaultValue?: unknown) => key === "INTERVIEW_V3_ENABLED"
+        ? "false"
+        : originalConfigGet(key, defaultValue)) as typeof config.get,
+    );
     const assessmentSpy = vi
       .spyOn(agents, "assessInterviewAnswer")
       .mockImplementation(async (input) => ({
@@ -1954,6 +2034,7 @@ describe("Learning API", () => {
       assistantSpy.mockRestore();
       defenseSpy.mockRestore();
       evaluationSpy.mockRestore();
+      configSpy.mockRestore();
     }
   }, 30_000);
 
@@ -2023,6 +2104,13 @@ describe("Learning API", () => {
 
   it("runs an idempotent adaptive interview director conversation", async () => {
     const agents = app.get(AiAgentService);
+    const config = app.get(ConfigService);
+    const originalConfigGet = config.get.bind(config);
+    const configSpy = vi.spyOn(config, "get").mockImplementation(
+      ((key: string, defaultValue?: unknown) => key === "INTERVIEW_V3_ENABLED"
+        ? "true"
+        : originalConfigGet(key, defaultValue)) as typeof config.get,
+    );
     const proposalSpy = vi.spyOn(agents, "proposeInterviewAction").mockImplementation(async (input) => ({
       action: input.depth === 0 ? "request_tradeoff" : "move_on",
       prompt: input.depth === 0
@@ -2034,6 +2122,12 @@ describe("Learning API", () => {
       strengths: ["Ответ по существу"],
       gaps: input.depth === 0 ? ["Не назван компромисс"] : [],
     }));
+    const branchSpy = vi.spyOn(agents, "assessInterviewBranch").mockResolvedValue({
+      score: 80,
+      confidence: "high",
+      strengths: ["Ветка раскрыта"],
+      gaps: [],
+    });
 
     try {
       const started = await request(app.getHttpServer())
@@ -2042,7 +2136,7 @@ describe("Learning API", () => {
         .send({ mode: "express", company: "yandex", kind: "training" })
         .expect(201);
       expect(started.body).toMatchObject({
-        engineVersion: 2,
+        engineVersion: 3,
         currentStage: "platform",
         conversationState: { depth: 0, turnCount: 1 },
       });
@@ -2090,6 +2184,8 @@ describe("Learning API", () => {
       expect(finalRetry.body.turns).toHaveLength(session.turns.length);
     } finally {
       proposalSpy.mockRestore();
+      branchSpy.mockRestore();
+      configSpy.mockRestore();
     }
   });
 

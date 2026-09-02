@@ -92,8 +92,12 @@ export function TodayView({
     : "general";
   const missions = useTodayMissions(knowledgeTarget);
   const knowledge = useQuery({
-    queryKey: ["knowledge-overview", knowledgeTarget],
-    queryFn: () => learningApi.getKnowledgeOverview(knowledgeTarget),
+    queryKey: ["knowledge-overview-v3", knowledgeTarget],
+    queryFn: () => learningApi.getKnowledgeOverviewV3(knowledgeTarget),
+  });
+  const decisionPlan = useQuery({
+    queryKey: ["decision-plan-v8", knowledgeTarget, checkIn.availableMinutes],
+    queryFn: () => learningApi.getDecisionPlanV8(knowledgeTarget, checkIn.availableMinutes),
   });
   const position = getStudyPosition(data.settings.startDate);
   const day = getDayForOffset(data.curriculum, position.rawOffset);
@@ -209,17 +213,44 @@ export function TodayView({
           <Target size={26} />
           <div>
             <span>Готовность · {knowledge.data.readiness.targetLabel}</span>
-            <strong>
-              {knowledge.data.readiness.estimate ?? "—"}
-              {knowledge.data.readiness.estimate === null ? "" : "%"}
-            </strong>
+            <strong>{Math.round(knowledge.data.readiness.evidenceReadiness.index)}%</strong>
             <small>
-              диапазон {knowledge.data.readiness.lower ?? "—"}–{knowledge.data.readiness.upper ?? "—"}% ·
-              покрытие {knowledge.data.readiness.coverage}%
+              диапазон {Math.round(knowledge.data.readiness.evidenceReadiness.lower)}–{Math.round(knowledge.data.readiness.evidenceReadiness.upper)}% ·
+              покрытие {Math.round(knowledge.data.readiness.evidenceReadiness.coverage)}%
             </small>
           </div>
           <ArrowRight size={20} />
         </button>
+      ) : null}
+
+      {decisionPlan.data?.actions.length ? (
+        <section className="today-missions-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Decision Loop v8 · до трёх действий</p>
+              <h2>Что сильнее всего снизит риск</h2>
+              <p>План строится по нижней границе навыка, разнообразию форм и контекстов.</p>
+            </div>
+            <Route size={28} />
+          </div>
+          <div className="today-mission-list">
+            {decisionPlan.data.actions.map((action) => (
+              <button
+                key={action.actionId}
+                type="button"
+                onClick={action.kind === "stress_exam" ? onOpenMock : onOpenSkills}
+              >
+                <span className="mission-state">{action.estimatedMinutes} минут · {action.kind.replaceAll("_", " ")}</span>
+                <strong>{action.title}</strong>
+                <small>{action.reason}</small>
+                <span className="today-mission-link">
+                  {action.kind === "stress_exam" ? "Начать экзамен" : "Открыть доказательства"}
+                  <ArrowRight size={15} />
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {missions.data?.enabled && missions.data.missions.length ? (
@@ -406,17 +437,17 @@ export function TodayView({
       <section className="today-training-grid">
         <article>
           <BrainCircuit size={25} />
-          <div><strong>{reviewQueue.length}</strong><span>вопросов на сегодня</span></div>
+          <div className="today-training-copy"><strong>{reviewQueue.length}</strong><span>вопросов на сегодня</span></div>
           <Button className="primary-button" type="button" onClick={onOpenReview}>Начать повторение</Button>
         </article>
         <article>
           <MessagesSquare size={25} />
-          <div><strong>Интервью</strong><span>платформа, код и защита</span></div>
+          <div className="today-training-copy"><strong>Интервью</strong><span>платформа, код и защита</span></div>
           <Button className="secondary-button" type="button" variant="default" onClick={onOpenMock}>Начать тренировку</Button>
         </article>
         <article>
           <BarChart3 size={25} />
-          <div><strong>Слабые темы</strong><span>по тестам и ответам</span></div>
+          <div className="today-training-copy"><strong>Слабые темы</strong><span>по тестам и ответам</span></div>
           <Button className="secondary-button" type="button" variant="default" onClick={onOpenAnalytics}>Открыть аналитику</Button>
         </article>
       </section>

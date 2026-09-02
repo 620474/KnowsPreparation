@@ -11,6 +11,12 @@ export const EVALUATOR_REGISTRY = {
     schemaVersion: "2",
     maxOutputTokens: 4_000,
   },
+  interviewBranchAssessor: {
+    evaluatorVersion: "interview-branch-assessor-v1",
+    promptVersion: "interview-branch-assessor-prompt-v1",
+    schemaVersion: "1",
+    maxOutputTokens: 2_000,
+  },
 } as const;
 
 export type EvaluatorKey = keyof typeof EVALUATOR_REGISTRY;

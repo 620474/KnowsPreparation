@@ -4,8 +4,11 @@ import { skillCapabilitySchema } from "./skills";
 
 export * from "./evidence";
 export * from "./evidence-v2";
+export * from "./evidence-v3";
 export * from "./mastery";
 export * from "./mastery-v2";
+export * from "./mastery-v3";
+export * from "./ai-observability";
 export * from "./planning";
 export * from "./skills";
 
@@ -534,7 +537,7 @@ export const interviewSessionStageSchema = z.enum([
   "completed",
 ]);
 export const interviewReadinessConfidenceSchema = z.enum(["low", "medium", "high"]);
-export const interviewEngineVersionSchema = z.union([z.literal(1), z.literal(2)]);
+export const interviewEngineVersionSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 export const interviewerActionSchema = z.enum([
   "probe",
   "challenge",
@@ -566,6 +569,19 @@ export const interviewTurnSchema = z.object({
   assessment: interviewTurnAssessmentSchema.nullable(),
   createdAt: z.string(),
 });
+export const interviewClaimSchema = z.object({
+  claimId: z.string(),
+  normalizedClaim: z.string(),
+  sourceTurnId: z.string(),
+  confidence: z.number().min(0).max(1),
+  contradictedBy: z.array(z.string()).default([]),
+});
+export const interviewCapabilityCoverageSchema = z.object({
+  capability: z.enum(["recall", "explain", "apply", "debug", "code", "design", "defend", "transfer", "resilience"]),
+  observed: z.number().int().min(0),
+  target: z.number().int().min(0),
+  uncertainty: z.number().min(0).max(1),
+});
 export const interviewConversationStateSchema = z.object({
   questionId: z.string(),
   depth: z.number().int().min(0),
@@ -573,6 +589,11 @@ export const interviewConversationStateSchema = z.object({
   turnCount: z.number().int().min(0),
   lastAction: interviewerActionSchema.nullable(),
   policyVersion: z.string(),
+  difficultyBand: z.number().int().min(1).max(5).optional(),
+  claimLedger: z.array(interviewClaimSchema).optional(),
+  capabilityCoverage: z.array(interviewCapabilityCoverageSchema).optional(),
+  unresolvedGaps: z.array(z.string()).optional(),
+  contradictionCount: z.number().int().min(0).optional(),
 });
 
 export const interviewSessionQuestionSchema = z.object({
@@ -612,6 +633,14 @@ export const interviewExerciseSchema = z.object({
   solution: z.string(),
   result: interviewExerciseResultSchema.nullable(),
   attempts: z.number(),
+  process: z.object({
+    openedAt: z.string(),
+    durationMs: z.number().int().min(0),
+    runCount: z.number().int().min(0),
+    failedTestCount: z.number().int().min(0),
+    revisionCount: z.number().int().min(0),
+    lastCodeHash: z.string().nullable(),
+  }).optional(),
 });
 
 export const interviewSessionMessageSchema = z.object({
@@ -1692,6 +1721,8 @@ export type InterviewerAction = z.infer<typeof interviewerActionSchema>;
 export type InterviewTurnRole = z.infer<typeof interviewTurnRoleSchema>;
 export type InterviewTurnAssessment = z.infer<typeof interviewTurnAssessmentSchema>;
 export type InterviewTurn = z.infer<typeof interviewTurnSchema>;
+export type InterviewClaim = z.infer<typeof interviewClaimSchema>;
+export type InterviewCapabilityCoverage = z.infer<typeof interviewCapabilityCoverageSchema>;
 export type InterviewConversationState = z.infer<typeof interviewConversationStateSchema>;
 export type InterviewSessionQuestion = z.infer<typeof interviewSessionQuestionSchema>;
 export type InterviewExerciseResult = z.infer<typeof interviewExerciseResultSchema>;

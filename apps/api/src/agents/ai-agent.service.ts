@@ -1,10 +1,14 @@
+import { randomUUID } from "node:crypto";
+
 import {
   BadGatewayException,
   Injectable,
   Logger,
+  Optional,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { InjectModel } from "@nestjs/mongoose";
 import {
   adaptivePlanCheckInSchema,
   careerVacancyAnalysisSchema,
@@ -23,10 +27,12 @@ import {
   type ResearchProtocol,
 } from "@prep/contracts";
 import { z } from "zod";
+import type { Model } from "mongoose";
 
 import { extractResponseText, type GeneratedLesson } from "../learning/ai-course";
 import type { InterviewActionProposal } from "../learning/interview-director";
 import { createOpenAiAbortContext, isAbortError } from "../learning/openai-request";
+import { AiInvocationEntry } from "../learning/schemas/ai-invocation.schema";
 import { getEvaluatorDescriptor } from "./evaluator-registry";
 
 const OFFICIAL_SOURCE_DOMAINS = [
@@ -631,12 +637,21 @@ export type SourceVerification = z.infer<typeof sourceVerificationSchema>;
 export type InterviewAnswerAssessment = z.infer<
   typeof interviewAnswerAssessmentSchema
 >;
+export type InterviewBranchAssessment = Pick<
+  InterviewAnswerAssessment,
+  "score" | "confidence" | "strengths" | "gaps"
+>;
 
 @Injectable()
 export class AiAgentService {
   private readonly logger = new Logger(AiAgentService.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Optional()
+    @InjectModel(AiInvocationEntry.name)
+    private readonly invocationModel?: Model<AiInvocationEntry>,
+  ) {}
 
   get enabled() {
     return Boolean(this.config.get<string>("OPENAI_API_KEY")?.trim());
@@ -831,6 +846,10 @@ export class AiAgentService {
     depth: number;
     secondsRemaining: number;
     candidateQuestions: InterviewQuestion[];
+    difficultyBand?: number;
+    claimLedger?: Array<{ normalizedClaim: string; contradictedBy: string[] }>;
+    capabilityCoverage?: Array<{ capability: string; observed: number; target: number; uncertainty: number }>;
+    unresolvedGaps?: string[];
   }): Promise<InterviewActionProposal> {
     const evaluator = getEvaluatorDescriptor("interviewDirector");
     const response = await this.request(
@@ -857,6 +876,36 @@ export class AiAgentService {
         parsed.action === "move_on" && parsed.nextQuestionId && candidateIds.has(parsed.nextQuestionId)
           ? parsed.nextQuestionId
           : null,
+    };
+  }
+
+  async assessInterviewBranch(input: {
+    company: string;
+    vacancyContext?: string;
+    question: InterviewQuestion;
+    transcript: Array<{ role: "interviewer" | "candidate"; content: string }>;
+  }): Promise<InterviewBranchAssessment> {
+    const evaluator = getEvaluatorDescriptor("interviewBranchAssessor");
+    const response = await this.request(
+      evaluator.promptVersion,
+      jsonSchema.interviewAssessment,
+      [
+        "Ты независимый blind assessor технического frontend-интервью.",
+        UNTRUSTED_EXTERNAL_INPUT_POLICY,
+        "Оцени только полный transcript закрытой ветки и исходный вопрос.",
+        "Не учитывай readiness кандидата, действия Interview Director и предыдущие оценки.",
+        "Краткость не штрафуй, многословие не награждай. Убедительно неправильный ответ оценивай как неправильный.",
+        "followUpQuestion и nextQuestionId всегда верни null. Пиши по-русски.",
+      ].join(" "),
+      input,
+      evaluator.maxOutputTokens,
+    );
+    const parsed = interviewAnswerAssessmentSchema.parse(response.data);
+    return {
+      score: parsed.score,
+      confidence: parsed.confidence,
+      strengths: parsed.strengths,
+      gaps: parsed.gaps,
     };
   }
 
@@ -1153,6 +1202,10 @@ export class AiAgentService {
       throw new ServiceUnavailableException("AI-агенты не настроены: добавь OPENAI_API_KEY.");
     }
     const abortContext = createOpenAiAbortContext(externalSignal);
+    const startedAt = Date.now();
+    const selectedModel = options.model ?? this.model;
+    let status: "success" | "error" | "timeout" = "error";
+    let usage: Record<string, number> | null = null;
     try {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -1161,7 +1214,7 @@ export class AiAgentService {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: options.model ?? this.model,
+          model: selectedModel,
           instructions,
           input: JSON.stringify(input),
           max_output_tokens: maxOutputTokens,
@@ -1177,6 +1230,8 @@ export class AiAgentService {
         throw new BadGatewayException(`AI-агент не ответил (HTTP ${response.status}).`);
       }
       const data = JSON.parse(extractResponseText(body)) as unknown;
+      usage = this.extractUsage(body);
+      status = "success";
       return {
         data,
         sources: this.extractSources(body, options.sourcePolicy ?? "official"),
@@ -1189,6 +1244,7 @@ export class AiAgentService {
         throw error;
       }
       if (abortContext.timedOut() || isAbortError(error)) {
+        status = "timeout";
         throw new BadGatewayException("AI-агент не ответил за 90 секунд.");
       }
       this.logger.warn({
@@ -1199,7 +1255,29 @@ export class AiAgentService {
       throw new BadGatewayException("AI-агент вернул некорректный ответ.");
     } finally {
       abortContext.dispose();
+      if (this.invocationModel) {
+        void this.invocationModel.create({
+          invocationId: randomUUID(),
+          operation: name,
+          model: selectedModel,
+          promptVersion: name,
+          schemaVersion: null,
+          durationMs: Date.now() - startedAt,
+          usage,
+          status,
+          fallbackUsed: status !== "success",
+          occurredAt: new Date(),
+        }).catch(() => undefined);
+      }
     }
+  }
+
+  private extractUsage(value: unknown) {
+    if (!value || typeof value !== "object" || !("usage" in value)) return null;
+    const raw = (value as { usage?: unknown }).usage;
+    if (!raw || typeof raw !== "object") return null;
+    return Object.fromEntries(Object.entries(raw).filter((entry): entry is [string, number] =>
+      typeof entry[1] === "number"));
   }
 
   private extractSources(value: unknown, sourcePolicy: "official" | "all") {

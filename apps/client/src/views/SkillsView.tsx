@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Loader, Progress, SegmentedControl } from "@mantine/core";
+import { Button, Loader, Progress, Select } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BrainCircuit, Clock3, ShieldCheck, Target } from "lucide-react";
 
@@ -12,12 +12,6 @@ interface SkillsViewProps {
   onOpenSkill: (skillId: string | null) => void;
 }
 
-const confidenceLabel = {
-  low: "мало данных",
-  medium: "средняя уверенность",
-  high: "высокая уверенность",
-} as const;
-
 const assistanceLabel = {
   no_ai: "без AI",
   ai_assisted: "с AI",
@@ -25,21 +19,38 @@ const assistanceLabel = {
   unknown: "режим неизвестен",
 } as const;
 
+const capabilityLabel: Record<string, string> = {
+  recall: "Вспомнить",
+  explain: "Объяснить",
+  apply: "Применить",
+  debug: "Отладить",
+  code: "Написать код",
+  design: "Спроектировать",
+  defend: "Защитить решение",
+  transfer: "Перенести в новый контекст",
+  resilience: "Работать под давлением",
+};
+
 export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: SkillsViewProps) {
   const [target, setTargetState] = useState(
     () => new URLSearchParams(window.location.search).get("target") ?? "general",
   );
+  const targets = useQuery({
+    queryKey: ["target-profiles-v2"],
+    queryFn: learningApi.listTargetProfilesV2,
+  });
   const overview = useQuery({
-    queryKey: ["knowledge-overview", target],
-    queryFn: () => learningApi.getKnowledgeOverview(target),
+    queryKey: ["knowledge-overview-v3", target],
+    queryFn: () => learningApi.getKnowledgeOverviewV3(target),
   });
   const detail = useQuery({
-    queryKey: ["skill-detail", skillId],
-    queryFn: () => learningApi.getSkillDetail(skillId!),
+    queryKey: ["skill-detail-v3", target, skillId],
+    queryFn: () => learningApi.getSkillDetailV3(skillId!, target),
     enabled: Boolean(skillId),
   });
 
-  const setTarget = (value: string) => {
+  const setTarget = (value: string | null) => {
+    if (!value) return;
     const url = new URL(window.location.href);
     if (value === "general") url.searchParams.delete("target");
     else url.searchParams.set("target", value);
@@ -69,8 +80,8 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
             <p>{definition.description}</p>
           </div>
           <div className="skill-score-card">
-            <strong>{mastery.estimate ?? "—"}{mastery.estimate === null ? "" : "%"}</strong>
-            <span>{confidenceLabel[mastery.confidence]}</span>
+            <strong>{Math.round(mastery.posteriorMean)}%</strong>
+            <span>{Math.round(mastery.lower)}–{Math.round(mastery.upper)}% · покрытие {mastery.coverage}%</span>
           </div>
         </header>
 
@@ -78,14 +89,17 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
           {mastery.capabilities.map((capability) => (
             <article key={capability.capability}>
               <div>
-                <strong>{capability.capability}</strong>
-                <span>{capability.independentFamilyCount} независимых семейств</span>
+                <strong>{capabilityLabel[capability.capability] ?? capability.capability}</strong>
+                <span>{capability.independentFormCount} форм · {capability.independentContextCount} контекстов</span>
               </div>
-              <Progress color={capability.estimate === null ? "gray" : "mint"} value={capability.estimate ?? 0} />
+              <Progress
+                color={capability.evidenceCount === 0 ? "gray" : "mint"}
+                value={capability.evidenceCount === 0 ? 0 : capability.posteriorMean}
+              />
               <small>
-                {capability.estimate === null
+                {capability.evidenceCount === 0
                   ? "Пока не проверено"
-                  : `${capability.lower}–${capability.upper}% · transfer: ${capability.transferEvidenceCount}`}
+                  : `${Math.round(capability.lower)}–${Math.round(capability.upper)}% · без AI: ${capability.noAiEvidenceCount}`}
               </small>
             </article>
           ))}
@@ -104,12 +118,12 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
               {evidence.map((event) => (
                 <article key={event.eventId}>
                   <div>
-                    <strong>{event.source.itemId ?? event.source.kind}</strong>
+                    <strong>{event.source.taskId}</strong>
                     <span>{event.observations.map((item) => `${item.capability} ${item.score}%`).join(" · ")}</span>
                   </div>
                   <small>
                     <Clock3 size={14} /> {new Date(event.occurredAt).toLocaleDateString("ru-RU")} ·
-                    {assistanceLabel[event.assistance.mode]} · {event.transferLevel}
+                    {assistanceLabel[event.assistance.mode]} · {event.source.contextFamilyId}
                   </small>
                 </article>
               ))}
@@ -136,14 +150,12 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
         </Button>
       </header>
 
-      <SegmentedControl
-        data={[
-          { value: "general", label: "Общий Frontend" },
-          { value: "yandex", label: "Яндекс" },
-          { value: "ozon", label: "Ozon" },
-        ]}
+      <Select
+        label="Цель подготовки"
+        data={(targets.data ?? []).map((item) => ({ value: item.targetId, label: item.label }))}
         value={target}
         onChange={setTarget}
+        allowDeselect={false}
       />
 
       {overview.isPending ? <div className="page-loader"><Loader color="mint" /></div> : null}
@@ -153,10 +165,15 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
             <Target size={28} />
             <div>
               <p className="eyebrow">{overview.data.readiness.targetLabel}</p>
-              <h2>{overview.data.readiness.estimate ?? "—"}{overview.data.readiness.estimate === null ? "" : "%"}</h2>
+              <h2>{Math.round(overview.data.readiness.evidenceReadiness.index)}%</h2>
               <p>
-                Диапазон {overview.data.readiness.lower ?? "—"}–{overview.data.readiness.upper ?? "—"}% ·
-                покрытие {overview.data.readiness.coverage}% · без AI {overview.data.readiness.integrityCoverage}%
+                Диапазон {Math.round(overview.data.readiness.evidenceReadiness.lower)}–{Math.round(overview.data.readiness.evidenceReadiness.upper)}% ·
+                покрытие {Math.round(overview.data.readiness.evidenceReadiness.coverage)}% · решение: {overview.data.readiness.decision.replace("_", " ")}
+              </p>
+              <p>
+                Прогноз прохождения: {overview.data.readiness.interviewForecast.probability === null
+                  ? "недостаточно реальных исходов"
+                  : `${Math.round(overview.data.readiness.interviewForecast.probability * 100)}%`}
               </p>
             </div>
           </section>
@@ -166,11 +183,11 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
                 <div>
                   <span>{skill.category}</span>
                   <strong>{skill.label}</strong>
-                  <small>{skill.independentFamilyCount} семейств · transfer {skill.transferEvidenceCount}</small>
+                  <small>{skill.coverage}% покрытия · неизвестно: {skill.unknownCapabilities.length}</small>
                 </div>
                 <div className="skill-overview-score">
                   <BrainCircuit size={18} />
-                  <strong>{skill.estimate ?? "—"}{skill.estimate === null ? "" : "%"}</strong>
+                  <strong>{Math.round(skill.posteriorMean)}%</strong>
                 </div>
               </button>
             ))}

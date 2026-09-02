@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import {
   BadRequestException,
@@ -6,9 +6,10 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
 import { ConfigService } from "@nestjs/config";
+import { InjectModel } from "@nestjs/mongoose";
 import type {
+  AssessmentEventV3,
   InterviewConversationState,
   InterviewExercise,
   InterviewSessionEvaluation,
@@ -19,6 +20,7 @@ import { isValidObjectId, type Model } from "mongoose";
 import { AiAgentService, type InterviewAnswerAssessment } from "../agents/ai-agent.service";
 import { CareerApplicationEntry } from "../career/schemas/career-application.schema";
 import { AiContentService, type AiDeltaHandler } from "./ai-content.service";
+import { EvidenceV3Service } from "./evidence/evidence-v3.service";
 import type {
   SendInterviewAiMessageDto,
   StartInterviewSessionDto,
@@ -30,7 +32,10 @@ import type {
 import { runPracticeSolution } from "./generated-runner";
 import {
   INTERVIEW_POLICY_VERSION,
+  extractInterviewClaims,
+  mergeInterviewClaims,
   nextConversationState,
+  nextConversationStateV3,
   reduceInterviewAction,
   type InterviewActionProposal,
 } from "./interview-director";
@@ -120,6 +125,7 @@ export class InterviewSessionService {
     private readonly aiContent: AiContentService,
     private readonly agents: AiAgentService,
     private readonly signals: LearningSignalService,
+    private readonly evidenceV3: EvidenceV3Service,
     private readonly config: ConfigService,
   ) {}
 
@@ -169,7 +175,11 @@ export class InterviewSessionService {
     );
     const startedAt = new Date();
     const durationMinutes = interviewDurationMinutes(dto.mode, dto.kind);
-    const engineVersion = this.config.get<string>("INTERVIEW_V2_ENABLED") === "false" ? 1 : 2;
+    const engineVersion = this.config.get<string>("INTERVIEW_V3_ENABLED") !== "false"
+      ? 3
+      : this.config.get<string>("INTERVIEW_V2_ENABLED") === "false"
+        ? 1
+        : 2;
     const interview = await this.interviewModel.create({
       engineVersion,
       status: "in_progress",
@@ -202,6 +212,7 @@ export class InterviewSessionService {
       defenseAnswers: [],
       evaluation: null,
       conversationState: engineVersion === 2
+        || engineVersion === 3
         ? {
             questionId: questions[0]!.id,
             depth: 0,
@@ -209,11 +220,20 @@ export class InterviewSessionService {
             turnCount: 1,
             lastAction: null,
             policyVersion: INTERVIEW_POLICY_VERSION,
+            ...(engineVersion === 3
+              ? {
+                  difficultyBand: 2,
+                  claimLedger: [],
+                  capabilityCoverage: [],
+                  unresolvedGaps: [],
+                  contradictionCount: 0,
+                }
+              : {}),
           } satisfies InterviewConversationState
         : null,
       predictionSnapshotId: null,
     });
-    if (engineVersion === 2) {
+    if (engineVersion >= 2) {
       await this.interviewTurnModel.create({
         turnId: randomUUID(),
         interviewId: String(interview._id),
@@ -232,7 +252,7 @@ export class InterviewSessionService {
 
   async submitDirectorTurn(interviewId: string, dto: SubmitInterviewTurnDto) {
     const interview = await this.getDocument(interviewId);
-    if ((interview.engineVersion ?? 1) !== 2 || !interview.conversationState) {
+    if ((interview.engineVersion ?? 1) < 2 || !interview.conversationState) {
       throw new BadRequestException("Эта сессия использует прежний сценарий интервью");
     }
     const duplicate = await this.interviewTurnModel.findOne({ operationId: dto.operationId }).lean().exec();
@@ -250,6 +270,11 @@ export class InterviewSessionService {
       .lean()
       .exec();
     const answer = dto.answer.trim();
+    const candidateTurnId = randomUUID();
+    const contradictionPreview = mergeInterviewClaims(
+      state.claimLedger ?? [],
+      extractInterviewClaims(answer, candidateTurnId),
+    );
     const candidates = getInterviewQuestionCandidates(
       interview.platformItems.map((candidate) => candidate.question.id),
       interview.platformItems.length,
@@ -292,10 +317,25 @@ export class InterviewSessionService {
             Math.ceil(((interview.deadlineAt?.getTime() ?? Date.now()) - Date.now()) / 1_000),
           ),
           candidateQuestions: candidates,
+          difficultyBand: state.difficultyBand,
+          claimLedger: state.claimLedger?.map((claim) => ({
+            normalizedClaim: claim.normalizedClaim,
+            contradictedBy: claim.contradictedBy,
+          })),
+          capabilityCoverage: state.capabilityCoverage,
+          unresolvedGaps: state.unresolvedGaps,
         });
       } catch (error) {
         this.logFallback("director_action", error);
       }
+    }
+    if ((interview.engineVersion ?? 1) === 3 && contradictionPreview.contradictionCount > 0) {
+      proposal = {
+        ...proposal,
+        action: "challenge",
+        prompt: "В текущем ответе есть противоречие с предыдущим утверждением. Сформулируй одно точное правило и объясни, какое утверждение нужно исправить.",
+        nextQuestionId: null,
+      };
     }
     const nextQuestion = selectAdaptiveInterviewQuestion(candidates, proposal.nextQuestionId);
     const decision = reduceInterviewAction({
@@ -308,13 +348,35 @@ export class InterviewSessionService {
       ),
       hasNextQuestion: Boolean(nextQuestion),
     });
-    const assessment = {
+    let branchAssessment = {
       score: decision.score,
       confidence: decision.confidence,
       strengths: decision.strengths,
       gaps: decision.gaps,
-      assessed: decision.score !== null,
-      evaluatorVersion: "interview-director-evaluator-v1",
+    };
+    if ((interview.engineVersion ?? 1) === 3 && decision.action === "move_on" && this.agents.enabled) {
+      try {
+        branchAssessment = await this.agents.assessInterviewBranch({
+          company: interviewCompanyLabel(interview.company),
+          vacancyContext: interview.vacancyContext,
+          question: item.question,
+          transcript: [
+            ...turns
+              .filter((turn) => turn.questionId === item.question.id)
+              .map(({ role, content }) => ({ role, content })),
+            { role: "candidate", content: answer },
+          ],
+        });
+      } catch (error) {
+        this.logFallback("branch_assessment", error);
+      }
+    }
+    const assessment = {
+      ...branchAssessment,
+      assessed: branchAssessment.score !== null,
+      evaluatorVersion: (interview.engineVersion ?? 1) === 3
+        ? "interview-branch-assessor-v1"
+        : "interview-director-evaluator-v1",
     } as const;
     const interviewerContent = decision.action === "move_on" && nextQuestion
       ? nextQuestion.prompt
@@ -324,7 +386,7 @@ export class InterviewSessionService {
       : item.question.id;
     await this.interviewTurnModel.insertMany([
       {
-        turnId: randomUUID(),
+        turnId: candidateTurnId,
         interviewId,
         operationId: dto.operationId,
         sequence: state.turnCount,
@@ -376,13 +438,25 @@ export class InterviewSessionService {
         interview.currentStage = "coding";
       }
     }
-    interview.conversationState = nextConversationState(
-      state,
-      decision.action,
-      decision.action === "move_on" && nextQuestion && interview.currentStage === "platform"
-        ? nextQuestion.id
-        : null,
-    );
+    const nextQuestionId = decision.action === "move_on" && nextQuestion && interview.currentStage === "platform"
+      ? nextQuestion.id
+      : null;
+    interview.conversationState = (interview.engineVersion ?? 1) === 3
+      ? nextConversationStateV3({
+          state,
+          action: decision.action,
+          nextQuestionId,
+          answer,
+          sourceTurnId: candidateTurnId,
+          score: assessment.score,
+          capabilities: [
+            ...(item.question.capabilities ?? ["explain"]),
+            ...(decision.action === "change_constraint" ? ["transfer"] : []),
+            ...(state.depth > 0 ? ["resilience"] : []),
+          ],
+          gaps: assessment.gaps,
+        })
+      : nextConversationState(state, decision.action, nextQuestionId);
     interview.markModified("platformItems");
     interview.markModified("conversationState");
     await interview.save();
@@ -492,6 +566,16 @@ export class InterviewSessionService {
       interview.codingExercise,
       dto.solution,
     );
+    const previousProcess = interview.codingExercise.process;
+    interview.codingExercise.process = {
+      openedAt: previousProcess?.openedAt ?? interview.startedAt.toISOString(),
+      durationMs: Math.max(previousProcess?.durationMs ?? 0, dto.telemetry?.durationMs ?? 0),
+      runCount: Math.max(previousProcess?.runCount ?? 0, dto.telemetry?.runCount ?? interview.codingExercise.attempts),
+      failedTestCount: (previousProcess?.failedTestCount ?? 0)
+        + (interview.codingExercise.result?.tests.filter((test) => !test.passed).length ?? 0),
+      revisionCount: Math.max(previousProcess?.revisionCount ?? 0, dto.telemetry?.revisionCount ?? 0),
+      lastCodeHash: createHash("sha256").update(dto.solution).digest("hex"),
+    };
     interview.markModified("codingExercise");
     await interview.save();
     return this.serialize(interview);
@@ -931,6 +1015,127 @@ export class InterviewSessionService {
         },
       },
     });
+    if ((interview.engineVersion ?? 1) === 3) {
+      const interviewId = String(interview._id);
+      const turns = await this.interviewTurnModel.find({ interviewId }).sort({ sequence: 1 }).lean().exec();
+      const changedConstraint = turns.some((turn) => turn.action === "change_constraint");
+      const platformScore = interview.evaluation.sections.platform.score;
+      const codingScore = interview.evaluation.sections.coding.score;
+      const communicationScore = interview.evaluation.sections.communication.score;
+      const contradictionPenalty = Math.min(35, (interview.conversationState?.contradictionCount ?? 0) * 10);
+      const observations: AssessmentEventV3["observations"] = skillIds.flatMap((skillId) => [
+        ...(platformScore === null ? [] : [{
+          criterionId: "interview-v3:explain",
+          skillId,
+          capability: "explain" as const,
+          score: platformScore,
+          difficulty: interview.conversationState?.difficultyBand ?? 2,
+          reliability: 0.65,
+          rubricVersion: "interview-branch-rubric-v1",
+        }]),
+        ...(codingScore === null ? [] : [{
+          criterionId: "interview-v3:code",
+          skillId,
+          capability: "code" as const,
+          score: codingScore,
+          difficulty: 3,
+          reliability: 1,
+          rubricVersion: "quickjs-tests-v1",
+        }, {
+          criterionId: "interview-v3:debug",
+          skillId,
+          capability: "debug" as const,
+          score: Math.max(0, codingScore - Math.min(25, (interview.codingExercise.process?.failedTestCount ?? 0) * 2)),
+          difficulty: 3,
+          reliability: 0.85,
+          rubricVersion: "coding-process-v1",
+        }]),
+        ...(communicationScore === null ? [] : [{
+          criterionId: "interview-v3:design",
+          skillId,
+          capability: "design" as const,
+          score: communicationScore,
+          difficulty: 3,
+          reliability: 0.6,
+          rubricVersion: "oral-defense-v1",
+        }, {
+          criterionId: "interview-v3:defend",
+          skillId,
+          capability: "defend" as const,
+          score: communicationScore,
+          difficulty: 3,
+          reliability: 0.65,
+          rubricVersion: "oral-defense-v1",
+        }]),
+        ...(platformScore === null ? [] : [{
+          criterionId: "interview-v3:resilience",
+          skillId,
+          capability: "resilience" as const,
+          score: Math.max(0, platformScore - contradictionPenalty),
+          difficulty: interview.conversationState?.difficultyBand ?? 2,
+          reliability: 0.65,
+          rubricVersion: "follow-up-resilience-v1",
+        }]),
+        ...(changedConstraint && platformScore !== null ? [{
+          criterionId: "interview-v3:transfer",
+          skillId,
+          capability: "transfer" as const,
+          score: platformScore,
+          difficulty: 4,
+          reliability: 0.65,
+          rubricVersion: "changed-constraint-v1",
+        }] : []),
+      ]);
+      if (observations.length) {
+        const operationId = `interview:${interviewId}`;
+        await this.evidenceV3.recordNative({
+          eventId: createHash("sha256").update(`assessment-v3:${operationId}`).digest("hex"),
+          operationId,
+          schemaVersion: "3",
+          ontologyVersion: "frontend-v1",
+          targetId: interview.company,
+          source: {
+            kind: "interview_session",
+            entityId: interviewId,
+            taskId: `interview-${interview.company}`,
+            taskVersion: "interview-engine-v3",
+            conceptFamilyId: `interview:${interview.company}:${interview.platformItems.map((item) => item.question.category).sort().join("|")}`,
+            formId: interviewId,
+            contextFamilyId: `${interview.company}:${interview.mode}:${interview.kind}`,
+            track: interview.company === "general" ? null : interview.company,
+          },
+          conditions: {
+            aiMode: interview.kind === "exam" ? "none" : "assisted",
+            hintCount: 0,
+            timed: true,
+            timeLimitMs: interview.durationMinutes * 60_000,
+          },
+          process: interview.codingExercise.process
+            ? {
+                durationMs: interview.codingExercise.process.durationMs,
+                runCount: interview.codingExercise.process.runCount,
+                failedTestCount: interview.codingExercise.process.failedTestCount,
+                revisionCount: interview.codingExercise.process.revisionCount,
+              }
+            : null,
+          observations,
+          assistance: {
+            mode: interview.kind === "exam" ? "no_ai" : "ai_assisted",
+            hintCount: 0,
+            solutionViewed: false,
+          },
+          evaluator: {
+            type: "mixed",
+            model: null,
+            evaluatorVersion: "interview-branch-assessor-v1",
+            promptVersion: "interview-branch-assessor-prompt-v1",
+            schemaVersion: "3",
+          },
+          provenance: { kind: "native", sourceEventId: null },
+          occurredAt: (interview.completedAt ?? new Date()).toISOString(),
+        });
+      }
+    }
   }
 
   private async assertStage(
@@ -969,7 +1174,7 @@ export class InterviewSessionService {
   }
 
   private async serialize(interview: InterviewSession & { _id: unknown }) {
-    const turns = (interview.engineVersion ?? 1) === 2
+    const turns = (interview.engineVersion ?? 1) >= 2
       ? await this.interviewTurnModel
           .find({ interviewId: String(interview._id) })
           .sort({ sequence: 1 })

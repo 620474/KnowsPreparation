@@ -156,6 +156,28 @@ export function CareerView({ onOpenInterview }: CareerViewProps) {
     onSuccess: refresh,
     onError: handleError,
   });
+  const createTargetProfile = useMutation({
+    mutationFn: (application: {
+      company: string;
+      role: string;
+      level: string;
+      description: string;
+      interviewAt: string | null;
+    }) => {
+      return learningApi.createTargetProfileV2({
+        vacancyText: application.description,
+        company: application.company,
+        role: application.role,
+        seniority: application.level || null,
+        interviewAt: application.interviewAt,
+      });
+    },
+    onSuccess: async (target) => {
+      setMessage(`Профиль подготовки «${target.label}» создан. Он доступен в разделе «Знания».`);
+      await queryClient.invalidateQueries({ queryKey: ["target-profiles-v2"] });
+    },
+    onError: handleError,
+  });
   const startVacancyMock = useMutation({
     mutationFn: (applicationId: string) =>
       learningApi.startInterviewSession("full", "general", "training", applicationId),
@@ -391,10 +413,12 @@ export function CareerView({ onOpenInterview }: CareerViewProps) {
           opened
           saving={updateApplication.isPending}
           analyzing={analyzeApplication.isPending}
+          creatingTarget={createTargetProfile.isPending}
           startingMock={startVacancyMock.isPending}
           onClose={() => setSelectedApplicationId(null)}
           onSave={(data) => updateApplication.mutate({ applicationId: selectedApplication.applicationId, data })}
           onAnalyze={() => analyzeApplication.mutate(selectedApplication.applicationId)}
+          onCreateTarget={(input) => createTargetProfile.mutate(input)}
           onStartMock={() => startVacancyMock.mutate(selectedApplication.applicationId)}
           onDelete={() => window.confirm("Удалить вакансию и историю интервью?") && deleteApplication.mutate(selectedApplication.applicationId)}
           onCreateInterview={(data) => createInterview.mutate({ applicationId: selectedApplication.applicationId, data })}

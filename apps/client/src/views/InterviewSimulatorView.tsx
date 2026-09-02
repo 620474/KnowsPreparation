@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Loader, Progress, SegmentedControl, Select, Textarea } from "@mantine/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -138,6 +138,7 @@ export function InterviewSimulatorView() {
   const [streamedReply, setStreamedReply] = useState("");
   const [defenseDrafts, setDefenseDrafts] = useState<Record<number, string>>({});
   const [directorDraft, setDirectorDraft] = useState("");
+  const codingTelemetryRef = useRef({ sessionId: "", openedAt: 0, revisionCount: 0 });
 
   const session = selectedSession ?? currentQuery.data ?? null;
   const codingSolution = session && codingDraft?.sessionId === session.id
@@ -146,6 +147,18 @@ export function InterviewSimulatorView() {
   const aiSolution = session && aiCodeDraft?.sessionId === session.id
     ? aiCodeDraft.value
     : session?.aiExercise.solution ?? "";
+  const submitCodingAttempt = async () => {
+    if (!session) throw new Error("Интервью не найдено");
+    if (codingTelemetryRef.current.sessionId !== session.id) {
+      codingTelemetryRef.current = { sessionId: session.id, openedAt: Date.now(), revisionCount: 0 };
+    }
+    return learningApi.submitInterviewCodingAttempt(session.id, codingSolution, {
+      durationMs: Date.now() - codingTelemetryRef.current.openedAt,
+      runCount: (session.codingExercise.process?.runCount ?? 0) + 1,
+      failedTestCount: session.codingExercise.process?.failedTestCount ?? 0,
+      revisionCount: codingTelemetryRef.current.revisionCount,
+    });
+  };
   const refetchCurrent = currentQuery.refetch;
   const unresolvedPrediction = calibrationQuery.data?.snapshots.find(
     (snapshot) => !calibrationQuery.data?.outcomes.some(
@@ -469,7 +482,7 @@ export function InterviewSimulatorView() {
       {error ? <Alert color="red" icon={<AlertTriangle size={16} />}>{error}</Alert> : null}
 
       {session.currentStage === "platform" && activePlatformItem ? (
-        session.engineVersion === 2 ? (
+        session.engineVersion >= 2 ? (
         <section className="interview-stage-card interview-director-card">
           <div className="interview-platform-progress">
             Interview Director · вопрос {(session.conversationState?.completedQuestions ?? 0) + 1}
@@ -486,7 +499,7 @@ export function InterviewSimulatorView() {
                     : "Твой ответ"}
                 </span>
                 <p>{turn.content}</p>
-                {turn.assessment ? (
+                {turn.assessment && session.kind !== "exam" ? (
                   <small>
                     {turn.assessment.assessed && turn.assessment.score !== null
                       ? `${turn.assessment.score}/100`
@@ -691,12 +704,18 @@ export function InterviewSimulatorView() {
             label="Решение"
             minHeight={420}
             value={codingSolution}
-            onChange={(value) => setCodingDraft({ sessionId: session.id, value })}
-            onRun={() => void run("coding-attempt", () => learningApi.submitInterviewCodingAttempt(session.id, codingSolution))}
+            onChange={(value) => {
+              if (codingTelemetryRef.current.sessionId !== session.id) {
+                codingTelemetryRef.current = { sessionId: session.id, openedAt: Date.now(), revisionCount: 0 };
+              }
+              codingTelemetryRef.current.revisionCount += 1;
+              setCodingDraft({ sessionId: session.id, value });
+            }}
+            onRun={() => void run("coding-attempt", submitCodingAttempt)}
           />
           <ExerciseResult exercise={session.codingExercise} />
           <div className="interview-actions">
-            <Button className="secondary-button" variant="default" leftSection={<Play size={16} />} loading={busy === "coding-attempt"} onClick={() => void run("coding-attempt", () => learningApi.submitInterviewCodingAttempt(session.id, codingSolution))}>Запустить тесты</Button>
+            <Button className="secondary-button" variant="default" leftSection={<Play size={16} />} loading={busy === "coding-attempt"} onClick={() => void run("coding-attempt", submitCodingAttempt)}>Запустить тесты</Button>
             <Button className="primary-button" disabled={!session.codingExercise.result} loading={busy === "coding-complete"} onClick={() => void run("coding-complete", () => learningApi.completeInterviewCoding(session.id))}>{session.kind === "exam" ? "Перейти к защите" : "Перейти к AI-секции"}</Button>
           </div>
         </section>

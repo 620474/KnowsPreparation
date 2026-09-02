@@ -3527,20 +3527,24 @@ p {
   color: var(--accent);
 }
 
-.today-training-grid article strong,
-.today-training-grid article span {
+.today-training-copy > strong,
+.today-training-copy > span {
   display: block;
 }
 
-.today-training-grid article strong {
+.today-training-copy > strong {
   margin-bottom: 4px;
   color: var(--text-strong);
   font-size: 1.15rem;
 }
 
-.today-training-grid article span {
+.today-training-copy > span {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.today-training-grid article > .mantine-Button-root {
+  width: 100%;
 }
 
 .adaptive-today-panel {

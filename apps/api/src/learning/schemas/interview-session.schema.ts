@@ -32,8 +32,8 @@ export type InterviewSessionDocument = HydratedDocument<InterviewSession>;
 
 @Schema({ timestamps: true, versionKey: false })
 export class InterviewSession {
-  @Prop({ type: Number, enum: [1, 2], default: 1, index: true })
-  engineVersion!: 1 | 2;
+  @Prop({ type: Number, enum: [1, 2, 3], default: 1, index: true })
+  engineVersion!: 1 | 2 | 3;
 
   @Prop({ type: String, enum: INTERVIEW_SESSION_STATUSES, default: "in_progress" })
   status!: InterviewSessionStatus;

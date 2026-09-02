@@ -12,14 +12,19 @@ import { LearningBackupService } from "./learning-backup.service";
 import { LearningBootstrapService } from "./learning-bootstrap.service";
 import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
+import { LearningV2Controller } from "./learning-v2.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { LearningMissionService } from "./learning-mission.service";
 import { ReadinessCalibrationService } from "./readiness-calibration.service";
 import { EvidenceService } from "./evidence/evidence.service";
 import { EvidenceV2Service } from "./evidence/evidence-v2.service";
+import { EvidenceV3Service } from "./evidence/evidence-v3.service";
 import { MasteryService } from "./mastery/mastery.service";
 import { MasteryV2Service } from "./mastery/mastery-v2.service";
+import { MasteryV3Service } from "./mastery/mastery-v3.service";
+import { TargetProfileService } from "./target-profile.service";
+import { DecisionV8Service } from "./decision-v8.service";
 import { InterviewSessionService } from "./interview-session.service";
 import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
@@ -116,6 +121,13 @@ import {
   ReadinessOutcomeEntry,
   ReadinessOutcomeEntrySchema,
 } from "./schemas/readiness-outcome.schema";
+import { AssessmentEventV3Entry, AssessmentEventV3EntrySchema } from "./schemas/assessment-event-v3.schema";
+import { MasterySnapshotV3Entry, MasterySnapshotV3EntrySchema } from "./schemas/mastery-snapshot-v3.schema";
+import { TargetProfileV2Entry, TargetProfileV2EntrySchema } from "./schemas/target-profile-v2.schema";
+import { ReadinessSnapshotV2Entry, ReadinessSnapshotV2EntrySchema } from "./schemas/readiness-snapshot-v2.schema";
+import { ReadinessOutcomeV2Entry, ReadinessOutcomeV2EntrySchema } from "./schemas/readiness-outcome-v2.schema";
+import { AiInvocationEntry, AiInvocationEntrySchema } from "./schemas/ai-invocation.schema";
+import { AiObservabilityService } from "./ai-observability.service";
 
 @Module({
   imports: [
@@ -146,6 +158,12 @@ import {
       { name: AssessmentResultV2Entry.name, schema: AssessmentResultV2EntrySchema },
       { name: EvidenceEventV2Entry.name, schema: EvidenceEventV2EntrySchema },
       { name: MasterySnapshotV2Entry.name, schema: MasterySnapshotV2EntrySchema },
+      { name: AssessmentEventV3Entry.name, schema: AssessmentEventV3EntrySchema },
+      { name: MasterySnapshotV3Entry.name, schema: MasterySnapshotV3EntrySchema },
+      { name: TargetProfileV2Entry.name, schema: TargetProfileV2EntrySchema },
+      { name: ReadinessSnapshotV2Entry.name, schema: ReadinessSnapshotV2EntrySchema },
+      { name: ReadinessOutcomeV2Entry.name, schema: ReadinessOutcomeV2EntrySchema },
+      { name: AiInvocationEntry.name, schema: AiInvocationEntrySchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
@@ -156,7 +174,7 @@ import {
       },
     ]),
   ],
-  controllers: [LearningController],
+  controllers: [LearningController, LearningV2Controller],
   providers: [
     AiContentService,
     AdaptivePlanService,
@@ -167,8 +185,13 @@ import {
     LearningService,
     EvidenceService,
     EvidenceV2Service,
+    EvidenceV3Service,
     MasteryService,
     MasteryV2Service,
+    MasteryV3Service,
+    TargetProfileService,
+    DecisionV8Service,
+    AiObservabilityService,
     LearningSignalService,
     LearningMissionService,
     ReadinessCalibrationService,

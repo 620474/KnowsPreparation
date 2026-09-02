@@ -1,11 +1,19 @@
 import {
   adaptivePlanSchema,
+  aiObservabilitySummarySchema,
   aiLessonSchema,
   careerActivitySchema,
   careerApplicationSchema,
   careerSettingsSchema,
   careerWorkspaceSchema,
   interviewSessionSchema,
+  decisionPlanV8Schema,
+  knowledgeOverviewV3Schema,
+  readinessCalibrationV2Schema,
+  readinessOutcomeV2Schema,
+  readinessSnapshotV2Schema,
+  skillDetailV3Schema,
+  targetProfileV2Schema,
   readinessCalibrationSummarySchema,
   readinessOutcomeSchema,
   readinessPredictionSnapshotSchema,
@@ -38,6 +46,7 @@ import type {
   AlgorithmEntry,
   AdaptivePlan,
   AdaptivePlanCheckIn,
+  AiObservabilitySummary,
   AiCourse,
   AiCourseProfile,
   AiChatHistory,
@@ -103,6 +112,13 @@ import type {
   UpdateCareerSettings,
   CareerActivity,
   CreateCareerActivity,
+  DecisionPlanV8,
+  KnowledgeOverviewV3,
+  ReadinessCalibrationV2,
+  ReadinessOutcomeV2,
+  ReadinessSnapshotV2,
+  SkillDetailV3,
+  TargetProfileV2,
 } from "./types";
 import { SseParser } from "./lib/sse";
 
@@ -129,6 +145,10 @@ export function getApiUrl() {
   return migrated;
 }
 
+export function getApiV2Url() {
+  return getApiUrl().replace(/\/v1$/, "/v2");
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -143,11 +163,19 @@ export function normalizeApiUrl(url: string) {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return requestFrom<T>(getApiUrl(), path, init);
+}
+
+async function requestV2<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return requestFrom<T>(getApiV2Url(), path, init);
+}
+
+async function requestFrom<T>(baseUrl: string, path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers = new Headers(init.headers);
   if (!(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${getApiUrl()}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers,
   });
@@ -315,6 +343,57 @@ export const learningApi = {
     request<SkillDetail>(`/learning/knowledge/skills/${encodeURIComponent(skillId)}`).then(
       (result) => skillDetailSchema.parse(result),
     ),
+  listTargetProfilesV2: () =>
+    requestV2<unknown[]>("/learning/targets").then((items) =>
+      items.map((item) => targetProfileV2Schema.parse(item)),
+    ) as Promise<TargetProfileV2[]>,
+  createTargetProfileV2: (input: {
+    vacancyText: string;
+    company?: string | null;
+    role?: string | null;
+    seniority?: string | null;
+    interviewAt?: string | null;
+  }) => requestV2<TargetProfileV2>("/learning/targets/from-vacancy", {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((result) => targetProfileV2Schema.parse(result)),
+  getKnowledgeOverviewV3: (targetId = "general") =>
+    requestV2<KnowledgeOverviewV3>(
+      `/learning/knowledge/overview?targetId=${encodeURIComponent(targetId)}`,
+    ).then((result) => knowledgeOverviewV3Schema.parse(result)),
+  getSkillDetailV3: (skillId: string, targetId = "general") =>
+    requestV2<SkillDetailV3>(
+      `/learning/knowledge/skills/${encodeURIComponent(skillId)}?targetId=${encodeURIComponent(targetId)}`,
+    ).then((result) => skillDetailV3Schema.parse(result)),
+  getDecisionPlanV8: (targetId = "general", availableMinutes = 90) =>
+    requestV2<DecisionPlanV8>(
+      `/learning/decision/today?targetId=${encodeURIComponent(targetId)}&availableMinutes=${availableMinutes}`,
+    ).then((result) => decisionPlanV8Schema.parse(result)),
+  freezeReadinessV8: (targetId: string, applicationId?: string | null) =>
+    requestV2<ReadinessSnapshotV2>("/learning/readiness/snapshots", {
+      method: "POST",
+      body: JSON.stringify({ targetId, applicationId: applicationId ?? null }),
+    }).then((result) => readinessSnapshotV2Schema.parse(result)),
+  recordReadinessOutcomeV2: (input: {
+    snapshotId: string;
+    company?: string | null;
+    technicalPassed: boolean;
+    codingPassed?: boolean | null;
+    topics?: string[];
+    notes?: string;
+    occurredAt: string;
+  }) => requestV2<ReadinessOutcomeV2>("/learning/readiness/outcomes", {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((result) => readinessOutcomeV2Schema.parse(result)),
+  getReadinessCalibrationV2: (targetId = "general") =>
+    requestV2<ReadinessCalibrationV2>(
+      `/learning/readiness/calibration?targetId=${encodeURIComponent(targetId)}`,
+    ).then((result) => readinessCalibrationV2Schema.parse(result)),
+  getAiObservabilityV2: (days = 30) =>
+    requestV2<AiObservabilitySummary>(
+      `/learning/ai/observability?days=${days}`,
+    ).then((result) => aiObservabilitySummarySchema.parse(result)),
   listResearchProjects: () =>
     request<ResearchProject[]>("/learning/research/projects").then((projects) =>
       projects.map((project) => researchProjectSchema.parse(project)),
@@ -742,10 +821,14 @@ export const learningApi = {
       method: "POST",
       body: JSON.stringify({ answer, operationId }),
     }).then((result) => interviewSessionSchema.parse(result)),
-  submitInterviewCodingAttempt: (interviewId: string, solution: string) =>
+  submitInterviewCodingAttempt: (
+    interviewId: string,
+    solution: string,
+    telemetry?: { durationMs: number; runCount: number; failedTestCount: number; revisionCount: number },
+  ) =>
     request<InterviewSession>(`${interviewSessionPath(interviewId)}/coding/attempt`, {
       method: "POST",
-      body: JSON.stringify({ solution }),
+      body: JSON.stringify({ solution, telemetry }),
     }).then((result) => interviewSessionSchema.parse(result)),
   completeInterviewCoding: (interviewId: string) =>
     request<InterviewSession>(`${interviewSessionPath(interviewId)}/coding/complete`, {

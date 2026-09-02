@@ -5,6 +5,7 @@ import {
   InterviewSession,
   InterviewSessionSchema,
 } from "../learning/schemas/interview-session.schema";
+import { AiInvocationEntry, AiInvocationEntrySchema } from "../learning/schemas/ai-invocation.schema";
 import { AiAgentService } from "./ai-agent.service";
 import { ExamAiLockService } from "./exam-ai-lock.service";
 
@@ -13,6 +14,7 @@ import { ExamAiLockService } from "./exam-ai-lock.service";
   imports: [
     MongooseModule.forFeature([
       { name: InterviewSession.name, schema: InterviewSessionSchema },
+      { name: AiInvocationEntry.name, schema: AiInvocationEntrySchema },
     ]),
   ],
   providers: [AiAgentService, ExamAiLockService],

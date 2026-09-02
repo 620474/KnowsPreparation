@@ -9,6 +9,7 @@ const createService = () => new InterviewSessionService(
   { enabled: false } as never,
   { enabled: false } as never,
   {} as never,
+  {} as never,
   { get: () => "true" } as never,
 );
 

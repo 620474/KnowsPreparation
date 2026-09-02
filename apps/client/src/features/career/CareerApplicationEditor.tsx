@@ -8,7 +8,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { Bot, CalendarPlus, ExternalLink, Play, Save, Trash2 } from "lucide-react";
+import { Bot, CalendarPlus, ExternalLink, Play, Save, Target, Trash2 } from "lucide-react";
 
 import {
   careerInterviewTypeLabels,
@@ -31,6 +31,7 @@ interface CareerApplicationEditorProps {
   opened: boolean;
   saving: boolean;
   analyzing: boolean;
+  creatingTarget: boolean;
   startingMock: boolean;
   onClose: () => void;
   onCreateInterview: (data: CreateCareerInterview) => void;
@@ -38,6 +39,13 @@ interface CareerApplicationEditorProps {
   onDeleteInterview: (interviewId: string) => void;
   onSave: (data: UpdateCareerApplication) => void;
   onAnalyze: () => void;
+  onCreateTarget: (input: {
+    company: string;
+    role: string;
+    level: string;
+    description: string;
+    interviewAt: string | null;
+  }) => void;
   onStartMock: () => void;
   onUpdateInterview: (interviewId: string, data: UpdateCareerInterview) => void;
 }
@@ -65,6 +73,7 @@ export function CareerApplicationEditor({
   opened,
   saving,
   analyzing,
+  creatingTarget,
   startingMock,
   onClose,
   onCreateInterview,
@@ -72,6 +81,7 @@ export function CareerApplicationEditor({
   onDeleteInterview,
   onSave,
   onAnalyze,
+  onCreateTarget,
   onStartMock,
   onUpdateInterview,
 }: CareerApplicationEditorProps) {
@@ -154,6 +164,22 @@ export function CareerApplicationEditor({
           <div className="career-form-wide career-editor-actions">
             <Button className="primary-button" leftSection={<Save size={17} />} loading={saving} type="submit">Сохранить</Button>
             <Button leftSection={<Bot size={17} />} loading={analyzing} type="button" variant="default" onClick={onAnalyze}>Разобрать вакансию</Button>
+            <Button
+              disabled={!draft.description.trim()}
+              leftSection={<Target size={17} />}
+              loading={creatingTarget}
+              type="button"
+              variant="default"
+              onClick={() => onCreateTarget({
+                company: draft.company,
+                role: draft.role,
+                level: draft.level,
+                description: draft.description,
+                interviewAt: draft.interviews.find((item) => item.status === "planned")?.scheduledAt ?? null,
+              })}
+            >
+              Создать цель v8
+            </Button>
             <Button leftSection={<Play size={17} />} loading={startingMock} type="button" variant="default" onClick={onStartMock}>Мок по вакансии</Button>
             {draft.url ? <Button component="a" href={draft.url} target="_blank" rel="noreferrer" leftSection={<ExternalLink size={17} />} variant="default">Открыть вакансию</Button> : null}
             <Button color="red" leftSection={<Trash2 size={17} />} type="button" variant="subtle" onClick={onDelete}>Удалить</Button>
