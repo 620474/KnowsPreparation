@@ -2649,6 +2649,42 @@ p {
   font-size: 0.9rem;
 }
 
+.ai-lesson-source-details {
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ai-lesson-source-details summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.ai-lesson-source-details article {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-input);
+}
+
+.ai-lesson-source-details small {
+  color: var(--accent);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ai-lesson-source-details blockquote {
+  margin: 2px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--line-strong);
+  color: var(--muted);
+}
+
 .ai-lesson-verified-sources {
   display: grid;
   gap: 8px;
@@ -3886,6 +3922,12 @@ p {
 
 .today-primary-action {
   width: fit-content;
+}
+
+.today-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 24px;
 }
 
@@ -5529,15 +5571,34 @@ p {
 
 .interview-setup-card {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) repeat(2, minmax(180px, 240px)) auto;
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) auto;
   align-items: end;
   gap: 18px;
   padding: 26px;
 }
 
+.interview-setup-card > div:first-child {
+  grid-column: 1 / -1;
+}
+
 .interview-setup-card h2,
 .interview-setup-card p {
   margin: 0;
+}
+
+.interview-kind-label,
+.interview-kind-hint {
+  display: block;
+}
+
+.interview-kind-label {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.interview-kind-hint {
+  margin-top: 0.55rem;
+  color: var(--text-muted);
 }
 
 .interview-setup-card p {
@@ -5948,6 +6009,11 @@ p {
 
   .today-primary-action {
     width: 100%;
+  }
+
+  .today-hero-actions {
+    width: 100%;
+    flex-direction: column;
   }
 
   .ide-editor-heading {

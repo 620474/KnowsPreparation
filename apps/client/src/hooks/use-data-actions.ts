@@ -5,9 +5,10 @@ import {
   BOOTSTRAP_QUERY_KEY,
   type BootstrapMutationContext,
 } from "../lib/bootstrap-cache";
-import { saveBackupFile } from "../lib/backup";
+import { saveBackupFile, type PortableBackup } from "../lib/backup";
 import { offlineMutationKeys } from "../lib/offline-mutation-keys";
-import type { AlgorithmEntry, BootstrapData, LearningBackup } from "../types";
+import { restorePracticeDrafts } from "../lib/practice-drafts";
+import type { AlgorithmEntry, BootstrapData } from "../types";
 
 interface UseDataActionsOptions {
   setError: (message: string) => void;
@@ -80,12 +81,13 @@ export function useDataActions({ setError }: UseDataActionsOptions) {
     }
   };
 
-  const importBackup = async (backup: LearningBackup) => {
+  const importBackup = async (backup: PortableBackup) => {
     setError("");
     try {
-      const result = await learningApi.importBackup(backup);
+      const result = await learningApi.importBackup(backup.server);
+      const localDraftCount = await restorePracticeDrafts(backup.localPracticeDrafts);
       await queryClient.invalidateQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
-      return result.total;
+      return result.total + localDraftCount;
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Не удалось восстановить бэкап",

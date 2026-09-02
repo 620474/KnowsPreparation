@@ -1,6 +1,7 @@
 import type {
   TrackKey,
   PracticeAttemptSource,
+  PracticeAttemptTelemetry,
   QuestionProgress,
   ReviewRating,
   SettingsPatch,
@@ -40,6 +41,7 @@ export type PracticeAttemptMutationVariables = {
   source: PracticeAttemptSource;
   lessonVersion?: number;
   solution: string;
+  telemetry?: PracticeAttemptTelemetry;
   operationId: string;
 };
 export type MockAnswerMutationVariables = {

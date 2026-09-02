@@ -122,11 +122,12 @@ export class InterviewSessionService {
     const interview = await this.interviewModel.create({
       status: "in_progress",
       mode: dto.mode,
+      kind: dto.kind ?? "training",
       company: dto.company,
       applicationId: application?.applicationId ?? null,
       vacancyContext,
       currentStage: "platform",
-      durationMinutes: interviewDurationMinutes(dto.mode),
+      durationMinutes: interviewDurationMinutes(dto.mode, dto.kind),
       startedAt: new Date(),
       completedAt: null,
       platformQuestionTarget: questions.length,
@@ -261,7 +262,15 @@ export class InterviewSessionService {
     if (interview.codingExercise.attempts < 1) {
       throw new BadRequestException("Сначала запусти решение по тестам");
     }
-    interview.currentStage = "ai";
+    if (interview.kind === "exam") {
+      interview.defenseQuestions = await this.defenseOrFallback(interview);
+      interview.defenseAnswers = interview.defenseQuestions.map(() => "");
+      interview.currentStage = "defense";
+      interview.markModified("defenseQuestions");
+      interview.markModified("defenseAnswers");
+    } else {
+      interview.currentStage = "ai";
+    }
     await interview.save();
     return serializeInterviewSession(interview);
   }
@@ -273,6 +282,9 @@ export class InterviewSessionService {
     signal?: AbortSignal,
   ) {
     const interview = await this.getDocument(interviewId);
+    if (interview.kind === "exam") {
+      throw new BadRequestException("AI недоступен до завершения экзамена");
+    }
     this.assertStage(interview, "ai");
     if (dto.solution !== undefined) {
       interview.aiExercise.solution = dto.solution;
@@ -377,13 +389,21 @@ export class InterviewSessionService {
       const generated = await this.evaluationOrFallback(interview);
       const codingScore = scoreExercise(interview.codingExercise);
       const aiTaskScore = scoreExercise(interview.aiExercise);
-      const aiScore = clampScore((generated.aiScore + aiTaskScore) / 2);
-      const overallScore = clampScore(
-        generated.platformScore * 0.3 +
-          codingScore * 0.3 +
-          aiScore * 0.25 +
-          generated.communicationScore * 0.15,
-      );
+      const aiScore = interview.kind === "exam"
+        ? 0
+        : clampScore((generated.aiScore + aiTaskScore) / 2);
+      const overallScore = interview.kind === "exam"
+        ? clampScore(
+            generated.platformScore * 0.4 +
+              codingScore * 0.4 +
+              generated.communicationScore * 0.2,
+          )
+        : clampScore(
+            generated.platformScore * 0.3 +
+              codingScore * 0.3 +
+              aiScore * 0.25 +
+              generated.communicationScore * 0.15,
+          );
       interview.evaluation = {
         overallScore,
         readinessConfidence: getReadinessConfidence(completedCount),
@@ -402,7 +422,13 @@ export class InterviewSessionService {
               ? "Решение прошло все серверные тесты."
               : `Пройдено ${interview.codingExercise.result?.passedCount ?? 0} из ${interview.codingExercise.result?.totalCount ?? 0} тестов.`,
           },
-          ai: { score: aiScore, feedback: generated.aiFeedback },
+          ai: {
+            score: aiScore,
+            assessed: interview.kind !== "exam",
+            feedback: interview.kind === "exam"
+              ? "AI-помощь была отключена на время экзамена."
+              : generated.aiFeedback,
+          },
           communication: {
             score: generated.communicationScore,
             feedback: generated.communicationFeedback,
@@ -471,9 +497,15 @@ export class InterviewSessionService {
     if (!this.aiContent.enabled) return DEFENSE_FALLBACK;
     try {
       return await this.aiContent.generateInterviewDefenseQuestions({
-        task: interview.aiExercise.statement,
-        solution: interview.aiExercise.solution,
-        messages: interview.aiMessages.map(({ role, content }) => ({ role, content })),
+        task: interview.kind === "exam"
+          ? interview.codingExercise.statement
+          : interview.aiExercise.statement,
+        solution: interview.kind === "exam"
+          ? interview.codingExercise.solution
+          : interview.aiExercise.solution,
+        messages: interview.kind === "exam"
+          ? []
+          : interview.aiMessages.map(({ role, content }) => ({ role, content })),
       });
     } catch (error) {
       this.logFallback("defense", error);
@@ -502,6 +534,7 @@ export class InterviewSessionService {
       return await this.aiContent.evaluateInterviewSession({
         company: interviewCompanyLabel(interview.company),
         mode: interview.mode,
+        examMode: interview.kind === "exam",
         platform: interview.platformItems,
         coding: {
           statement: interview.codingExercise.statement,
@@ -534,6 +567,12 @@ export class InterviewSessionService {
         score: interview.evaluation.overallScore,
         weakTopics: interview.evaluation.weakTopics,
         interviewSession: true,
+        sections: {
+          platform: interview.evaluation.sections.platform.score,
+          coding: interview.evaluation.sections.coding.score,
+          ai: interview.evaluation.sections.ai.score,
+          communication: interview.evaluation.sections.communication.score,
+        },
       },
       operationId: `interview:${String(interview._id)}`,
       occurredAt: interview.completedAt ?? new Date(),

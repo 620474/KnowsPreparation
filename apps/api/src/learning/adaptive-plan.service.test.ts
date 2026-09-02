@@ -1,7 +1,10 @@
 import type { AdaptivePlanItem } from "@prep/contracts";
 import { describe, expect, it } from "vitest";
 
-import { selectAdaptivePlanItems } from "./adaptive-plan.service";
+import {
+  applyReadinessPriority,
+  selectAdaptivePlanItems,
+} from "./adaptive-plan.service";
 
 const candidate = (
   id: string,
@@ -39,5 +42,24 @@ describe("selectAdaptivePlanItems", () => {
     );
 
     expect(result.map((item) => item.id)).toEqual(["quiz"]);
+  });
+
+  it("raises evidence-backed weak skills above already strong skills", () => {
+    const weak = candidate("weak", 60, 30);
+    const strong: AdaptivePlanItem = {
+      ...candidate("strong", 60, 30),
+      skillKeys: ["react"],
+    };
+    const ranked = applyReadinessPriority(
+      [weak, strong],
+      new Map([
+        ["javascript", { score: 30, signalCount: 3 }],
+        ["react", { score: 90, signalCount: 3 }],
+      ]),
+      "mixed",
+    );
+
+    expect(ranked[0]!.score).toBeGreaterThan(ranked[1]!.score);
+    expect(ranked[0]!.reason).toContain("дефицит 70%");
   });
 });

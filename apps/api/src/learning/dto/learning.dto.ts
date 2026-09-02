@@ -244,6 +244,34 @@ export class SubmitPracticeAttemptDto {
   @MinLength(1)
   @MaxLength(80)
   operationId!: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(86_400_000)
+  responseTimeMs?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1_000)
+  runCount?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000)
+  hintCount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  aiAssisted?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  confidence?: number;
 }
 
 export class ListPracticeAttemptsDto {
@@ -283,6 +311,10 @@ export class StartInterviewSessionDto {
 
   @IsIn(INTERVIEW_SESSION_COMPANIES)
   company!: InterviewSessionCompany;
+
+  @IsOptional()
+  @IsIn(["training", "exam"])
+  kind?: "training" | "exam";
 
   @IsOptional()
   @IsString()

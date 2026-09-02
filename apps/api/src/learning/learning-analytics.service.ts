@@ -4,6 +4,7 @@ import { SKILL_KEYS, type LearningAnalytics, type SkillKey } from "@prep/contrac
 import type { Model } from "mongoose";
 
 import { LearningSignal } from "./schemas/learning-signal.schema";
+import { buildReadiness } from "./readiness";
 import { SKILL_DEFINITIONS } from "./skills";
 
 const DAY_MS = 86_400_000;
@@ -112,6 +113,7 @@ export class LearningAnalyticsService {
     const practicePassed = days.reduce((sum, day) => sum + day.practicePassed, 0);
     const quizScores = days.flatMap((day) => day.quizScores);
     const mockScores = days.flatMap((day) => day.mockScores);
+    const readiness = buildReadiness(signals);
     return {
       windowDays,
       startedAt: signals[0]?.occurredAt.toISOString() ?? null,
@@ -142,6 +144,7 @@ export class LearningAnalyticsService {
         if (right.score === null) return -1;
         return left.score - right.score;
       }),
+      readiness: readiness.dimensions,
     };
   }
 }

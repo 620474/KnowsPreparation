@@ -133,7 +133,7 @@ describe("shared API contracts", () => {
       result: null,
       attempts: 0,
     };
-    expect(interviewSessionSchema.parse({
+    const parsed = interviewSessionSchema.parse({
       id: "session-1",
       status: "in_progress",
       mode: "express",
@@ -154,7 +154,9 @@ describe("shared API contracts", () => {
       defenseQuestions: [],
       defenseAnswers: [],
       evaluation: null,
-    }).currentStage).toBe("platform");
+    });
+    expect(parsed.currentStage).toBe("platform");
+    expect(parsed.kind).toBe("training");
   });
 
   it("keeps hidden Yandex mock answers nullable until reveal", () => {

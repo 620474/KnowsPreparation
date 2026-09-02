@@ -16,6 +16,7 @@ import { CareerApplicationEntry } from "../career/schemas/career-application.sch
 import { CURRICULUM, QUESTION_BANK } from "./curriculum";
 import { inferSkillKeys } from "./skills";
 import { LearningSignalService } from "./learning-signal.service";
+import { buildReadiness } from "./readiness";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import { AdaptiveDayPlan } from "./schemas/adaptive-day-plan.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
@@ -61,6 +62,43 @@ export function selectAdaptivePlanItems(
     usedMinutes += candidate.minutes;
   }
   return selected;
+}
+
+export function applyReadinessPriority(
+  candidates: AdaptivePlanItem[],
+  skillReadiness: Map<SkillKey, { score: number | null; signalCount: number }>,
+  focus: AdaptivePlanCheckIn["focus"],
+) {
+  return candidates.map((candidate) => {
+    const evidence = candidate.skillKeys
+      .map((skill) => skillReadiness.get(skill))
+      .filter((item): item is { score: number | null; signalCount: number } => Boolean(item));
+    const measured = evidence.filter(
+      (item): item is { score: number; signalCount: number } => item.score !== null,
+    );
+    const deficit = measured.length
+      ? measured.reduce((sum, item) => sum + (100 - item.score), 0) / measured.length
+      : candidate.skillKeys.length
+        ? 20
+        : 0;
+    const focusBoost =
+      (focus === "yandex" && candidate.track === "yandex") ||
+      (focus === "ozon" && candidate.track === "ozon")
+        ? 25
+        : focus === "core" && candidate.skillKeys.length > 0
+          ? 10
+          : focus === "job_search" && candidate.kind === "career"
+            ? 25
+            : 0;
+    const readinessBoost = Math.round(deficit * 0.4);
+    return {
+      ...candidate,
+      score: candidate.score + readinessBoost + focusBoost,
+      reason: measured.length
+        ? `${candidate.reason} · подтверждённый дефицит ${Math.round(deficit)}%`
+        : candidate.reason,
+    };
+  });
 }
 
 @Injectable()
@@ -112,6 +150,7 @@ export class AdaptivePlanService {
       latestMockSignal,
       careerApplications,
       skippedSignals,
+      readinessSignals,
     ] = await Promise.all([
       this.settingsModel.findOne({ key: "main" }).lean().exec(),
       this.taskModel.find().lean().exec(),
@@ -134,6 +173,15 @@ export class AdaptivePlanService {
         .exec(),
       this.signalModel
         .find({ type: "recommendation_skipped", occurredAt: { $gte: startOfDay } })
+        .lean()
+        .exec(),
+      this.signalModel
+        .find({
+          type: { $in: ["question_reviewed", "quiz_submitted", "practice_attempted", "mock_completed"] },
+          occurredAt: { $gte: new Date(now.getTime() - 90 * DAY_MS) },
+        })
+        .sort({ occurredAt: -1 })
+        .limit(1_000)
         .lean()
         .exec(),
     ]);
@@ -315,39 +363,29 @@ export class AdaptivePlanService {
           : [],
       ),
     );
-    const candidateMap = new Map(candidates.map((candidate) => [candidate.id, candidate]));
-    if (!checkIn) {
-      const cached = await this.dayPlanModel.findOne({ date }).lean().exec();
-      if (cached) {
-        const items = cached.items.filter(
-          (item) => candidateMap.has(item.id) && !skippedIds.has(item.id),
-        );
-        return {
-          date,
-          budgetMinutes: cached.checkIn.availableMinutes,
-          totalMinutes: items.reduce((sum, item) => sum + item.minutes, 0),
-          generatedAt: cached.updatedAt.toISOString(),
-          strategy: cached.strategy,
-          rationale: cached.rationale,
-          checkIn: cached.checkIn,
-          items,
-        };
-      }
-    }
-
-    const effectiveCheckIn = checkIn ?? {
+    const cached = checkIn
+      ? null
+      : await this.dayPlanModel.findOne({ date }).lean().exec();
+    const effectiveCheckIn = checkIn ?? cached?.checkIn ?? {
       availableMinutes: budgetMinutes,
       energy: "normal",
       focus: "mixed",
       note: "",
     };
-    const availableCandidates = candidates.filter((candidate) => !skippedIds.has(candidate.id));
+    const readiness = buildReadiness(readinessSignals);
+    const availableCandidates = applyReadinessPriority(
+      candidates.filter((candidate) => !skippedIds.has(candidate.id)),
+      readiness.skills,
+      effectiveCheckIn.focus,
+    );
     let items = selectAdaptivePlanItems(
       availableCandidates,
       effectiveCheckIn.availableMinutes,
     );
     let strategy: "ai" | "deterministic" = "deterministic";
-    let rationale = "План собран по срочности, результатам тестов и срокам.";
+    let rationale = cached
+      ? "Приоритеты обновлены по свежим результатам; настройки дня сохранены."
+      : "План собран по срочности, результатам тестов и срокам.";
     if (checkIn && this.agents.enabled && availableCandidates.length > 0) {
       try {
         const generated = await this.agents.orderAdaptivePlan({

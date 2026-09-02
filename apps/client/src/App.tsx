@@ -241,7 +241,7 @@ export default function App() {
           />
         ) : null}
       </Suspense>
-      <AiChatWidget
+      {activeView !== "interview" ? <AiChatWidget
         key={`ai-chat-${chatDraftRequest?.id ?? 0}`}
         enabled={data.ai.enabled}
         track={chatTrack}
@@ -252,7 +252,7 @@ export default function App() {
         onOpen={() => openChat(activeChatItemId)}
         onClose={closeChat}
         onItemChange={setChatItemId}
-      />
+      /> : null}
     </AppShell>
   );
 }

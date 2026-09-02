@@ -39,12 +39,14 @@ import type {
   LearningBackup,
   InterviewSession,
   InterviewSessionCompany,
+  InterviewSessionKind,
   InterviewSessionMode,
   MockInterview,
   PracticeSolutionSaveResult,
   PracticeAttempt,
   PracticeAttemptHistory,
   PracticeAttemptSource,
+  PracticeAttemptTelemetry,
   QuestionProgress,
   ReviewRating,
   TaskProgress,
@@ -525,6 +527,7 @@ export const learningApi = {
     lessonVersion: number | undefined,
     solution: string,
     operationId: string,
+    telemetry?: PracticeAttemptTelemetry,
   ) =>
     request<PracticeAttempt>(`${trackItemPath(track, itemId)}/practice/attempts`, {
       method: "POST",
@@ -533,6 +536,7 @@ export const learningApi = {
         lessonVersion,
         solution,
         operationId,
+        ...telemetry,
       }),
     }).then((result) => practiceAttemptSchema.parse(result)),
   getCurrentMockInterview: () =>
@@ -599,11 +603,12 @@ export const learningApi = {
   startInterviewSession: (
     mode: InterviewSessionMode,
     company: InterviewSessionCompany,
+    kind: InterviewSessionKind = "training",
     applicationId?: string,
   ) =>
     request<InterviewSession>("/learning/interview-sessions", {
       method: "POST",
-      body: JSON.stringify({ mode, company, applicationId }),
+      body: JSON.stringify({ mode, company, kind, applicationId }),
     }).then((result) => interviewSessionSchema.parse(result)),
   updateInterviewPlatformAnswer: (
     interviewId: string,

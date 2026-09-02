@@ -51,7 +51,16 @@ const sourceVerificationSchema = z.object({
     severity: z.enum(["warning", "critical"]),
     claim: z.string().trim().min(1).max(2_000),
     message: z.string().trim().min(1).max(2_000),
-    sourceUrls: z.array(z.url()).max(8),
+    sourceUrls: z.array(z.url()).min(1).max(8),
+    location: z.enum([
+      "explanation",
+      "code_example",
+      "diagram",
+      "practice",
+      "quiz",
+      "summary",
+    ]),
+    excerpt: z.string().trim().min(8).max(600),
   })).max(20),
   sources: z.array(z.object({
     title: z.string().trim().min(1).max(500),
@@ -256,8 +265,27 @@ const jsonSchema = {
             claim: { type: "string" },
             message: { type: "string" },
             sourceUrls: { type: "array", items: { type: "string" } },
+            location: {
+              type: "string",
+              enum: [
+                "explanation",
+                "code_example",
+                "diagram",
+                "practice",
+                "quiz",
+                "summary",
+              ],
+            },
+            excerpt: { type: "string" },
           },
-          required: ["severity", "claim", "message", "sourceUrls"],
+          required: [
+            "severity",
+            "claim",
+            "message",
+            "sourceUrls",
+            "location",
+            "excerpt",
+          ],
         },
       },
       sources: {
@@ -584,6 +612,8 @@ export class AiAgentService {
         "Ты проверяешь технический урок по frontend-разработке по первичным официальным источникам.",
         "Используй web search и сверяй только проверяемые технические утверждения, семантику кода и ответы квиза.",
         "Не оценивай стиль повторно. Не используй форумы, блоги и агрегаторы.",
+        "Для каждого замечания укажи location и дословный excerpt из соответствующего поля урока. Не создавай замечание, если точной цитаты в уроке нет.",
+        "Не выноси второстепенные детали, которые не влияют на учебную цель, корректность примера, практики или ответа квиза.",
         "critical означает фактическую ошибку, способную научить неправильному; warning — неполное или недостаточно подтверждённое утверждение.",
         "Верни только реально использованные URL. Если доказательств недостаточно, поставь partial, а не выдумывай подтверждение.",
       ].join(" "),
@@ -604,10 +634,16 @@ export class AiAgentService {
       (source) => consulted.has(source.url) && this.isAllowedOfficialUrl(source.url),
     );
     const sourceUrls = new Set(sources.map((source) => source.url));
-    const issues = parsed.issues.map((issue) => ({
-      ...issue,
-      sourceUrls: issue.sourceUrls.filter((url) => sourceUrls.has(url)),
-    }));
+    const lessonSections = this.buildLessonVerificationSections(input.lesson);
+    const issues = parsed.issues
+      .map((issue) => ({
+        ...issue,
+        sourceUrls: issue.sourceUrls.filter((url) => sourceUrls.has(url)),
+      }))
+      .filter((issue) =>
+        issue.sourceUrls.length > 0 &&
+        this.sectionContainsExcerpt(lessonSections[issue.location], issue.excerpt)
+      );
     const hasCritical = issues.some((issue) => issue.severity === "critical");
     return {
       status: hasCritical
@@ -619,6 +655,58 @@ export class AiAgentService {
       issues,
       sources,
     };
+  }
+
+  private buildLessonVerificationSections(lesson: GeneratedLesson) {
+    return {
+      explanation: lesson.explanation,
+      code_example: lesson.codeExamples
+        .flatMap((example) => [example.title, example.code, example.explanation])
+        .join("\n"),
+      diagram: lesson.diagrams
+        .flatMap((diagram) => [
+          diagram.title,
+          diagram.description,
+          ...diagram.nodes.flatMap((node) => [node.label, node.detail]),
+          ...diagram.edges.flatMap((edge) => [edge.label]),
+        ])
+        .join("\n"),
+      practice: [
+        lesson.practice.title,
+        lesson.practice.statement,
+        ...lesson.practice.constraints,
+        ...lesson.practice.examples.flatMap((example) => [
+          example.input,
+          example.output,
+          example.explanation,
+        ]),
+        lesson.practice.runner.starterCode,
+        ...lesson.practice.runner.testCases.flatMap((testCase) => [
+          testCase.title,
+          testCase.expression,
+          JSON.stringify(testCase.expected),
+        ]),
+      ].join("\n"),
+      quiz: lesson.quiz
+        .flatMap((question) => [
+          question.prompt,
+          ...question.options,
+          question.explanation,
+          question.topic,
+        ])
+        .join("\n"),
+      summary: lesson.summary,
+    } satisfies Record<z.infer<typeof sourceVerificationSchema>["issues"][number]["location"], string>;
+  }
+
+  private sectionContainsExcerpt(section: string, excerpt: string) {
+    const normalize = (value: string) => value
+      .normalize("NFKC")
+      .replace(/[“”«»]/g, '"')
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLocaleLowerCase("ru-RU");
+    return normalize(section).includes(normalize(excerpt));
   }
 
   async assessInterviewAnswer(input: {

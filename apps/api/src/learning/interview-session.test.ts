@@ -31,6 +31,8 @@ describe("interview session selection", () => {
   it("calculates duration and evidence confidence", () => {
     expect(interviewDurationMinutes("express")).toBe(35);
     expect(interviewDurationMinutes("full")).toBe(75);
+    expect(interviewDurationMinutes("express", "exam")).toBe(60);
+    expect(interviewDurationMinutes("full", "exam")).toBe(90);
     expect(getReadinessConfidence(0)).toBe("low");
     expect(getReadinessConfidence(2)).toBe("medium");
     expect(getReadinessConfidence(5)).toBe("high");

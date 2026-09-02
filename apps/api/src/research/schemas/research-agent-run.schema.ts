@@ -73,6 +73,12 @@ export class ResearchAgentRunEntry {
   leaseUntil!: Date | null;
 
   @Prop({ type: String, default: null })
+  leaseOwner!: string | null;
+
+  @Prop({ type: Number, default: 0 })
+  leaseEpoch!: number;
+
+  @Prop({ type: String, default: null })
   applyOperationId!: string | null;
 
   @Prop({ type: Date, default: null })

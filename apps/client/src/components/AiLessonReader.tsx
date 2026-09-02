@@ -23,6 +23,15 @@ import type {
 } from "../types";
 import type { LocalPracticeDraft } from "../lib/practice-drafts";
 
+const sourceIssueLocationLabels = {
+  explanation: "Текст урока",
+  code_example: "Пример кода",
+  diagram: "Схема",
+  practice: "Практика",
+  quiz: "Квиз",
+  summary: "Итоги",
+} as const;
+
 interface AiLessonReaderProps {
   lesson: AiLesson;
   track: TrackKey;
@@ -72,6 +81,9 @@ export function AiLessonReader({
   onSubmitQuiz,
 }: AiLessonReaderProps) {
   const quizRef = useRef<HTMLDivElement>(null);
+  const sourceIssues = lesson.sourceVerificationIssues ?? [];
+  const criticalSourceIssues = sourceIssues.filter((issue) => issue.severity === "critical");
+  const sourceWarnings = sourceIssues.filter((issue) => issue.severity === "warning");
 
   useEffect(() => {
     if (!focusQuiz) return;
@@ -161,23 +173,48 @@ export function AiLessonReader({
             {lesson.sourceVerificationStatus ? (
               <div className="ai-lesson-source-verification">
                 <Badge
-                  color={lesson.sourceVerificationStatus === "verified" ? "green" : "yellow"}
+                  color={criticalSourceIssues.length
+                    ? "red"
+                    : lesson.sourceVerificationStatus === "verified"
+                      ? "green"
+                      : "yellow"}
                   radius="xl"
                   size="lg"
                   variant="light"
                 >
-                  {lesson.sourceVerificationStatus === "verified"
-                    ? "Факты сверены"
-                    : "Источники сверены частично"}
+                  {criticalSourceIssues.length
+                    ? "Найдена критическая ошибка"
+                    : lesson.sourceVerificationStatus === "verified"
+                      ? sourceWarnings.length
+                        ? `Проверено · уточнений: ${sourceWarnings.length}`
+                        : "Факты сверены"
+                      : "Источники сверены частично"}
                   {lesson.sourceVerificationScore === undefined
                     ? ""
                     : ` · ${lesson.sourceVerificationScore}/100`}
                 </Badge>
-                {lesson.sourceVerificationIssues?.map((issue, index) => (
+                {criticalSourceIssues.map((issue, index) => (
                   <p key={`${issue.claim}-${index}`}>
                     <strong>{issue.claim}:</strong> {issue.message}
                   </p>
                 ))}
+                {sourceWarnings.length ? (
+                  <details className="ai-lesson-source-details">
+                    <summary>Показать уточнения проверки</summary>
+                    {sourceWarnings.map((issue, index) => (
+                      <article key={`${issue.claim}-${index}`}>
+                        <small>
+                          {issue.location
+                            ? sourceIssueLocationLabels[issue.location]
+                            : "Сохранённое замечание"}
+                        </small>
+                        <strong>{issue.claim}</strong>
+                        <p>{issue.message}</p>
+                        {issue.excerpt ? <blockquote>{issue.excerpt}</blockquote> : null}
+                      </article>
+                    ))}
+                  </details>
+                ) : null}
               </div>
             ) : null}
           </header>

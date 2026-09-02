@@ -120,6 +120,8 @@ interface ReviewedRunnableLesson {
     claim: string;
     message: string;
     sourceUrls: string[];
+    location?: "explanation" | "code_example" | "diagram" | "practice" | "quiz" | "summary";
+    excerpt?: string;
   }>;
   verifiedSources: Array<{ title: string; url: string }>;
   sourceVerifiedAt: string;
@@ -917,6 +919,12 @@ export class LearningService {
       dto.source,
       dto.lessonVersion,
     );
+    const attemptNumber = await this.practiceAttemptModel.countDocuments({
+      track: trackKey,
+      itemId,
+      source: dto.source,
+      exerciseVersion: scope.exerciseVersion,
+    }).exec() + 1;
     const execution = await runPracticeSolution(scope.runner, dto.solution);
     try {
       const created = await this.practiceAttemptModel.create({
@@ -932,6 +940,13 @@ export class LearningService {
         passedCount: execution.passedCount,
         totalCount: execution.totalCount,
         durationMs: execution.durationMs,
+        responseTimeMs: dto.responseTimeMs,
+        runCount: dto.runCount,
+        hintCount: dto.hintCount,
+        aiAssisted: dto.aiAssisted,
+        confidence: dto.confidence,
+        attemptNumber,
+        firstAttemptPassed: attemptNumber === 1 && execution.passed,
         error: execution.error,
         tests: execution.tests,
         operationId: dto.operationId,
@@ -1032,6 +1047,13 @@ export class LearningService {
         passedCount: attempt.passedCount,
         totalCount: attempt.totalCount,
         durationMs: attempt.durationMs,
+        responseTimeMs: attempt.responseTimeMs,
+        runCount: attempt.runCount,
+        hintCount: attempt.hintCount,
+        aiAssisted: attempt.aiAssisted,
+        confidence: attempt.confidence,
+        attemptNumber: attempt.attemptNumber,
+        firstAttemptPassed: attempt.firstAttemptPassed,
       },
       operationId: `practice:${attempt.operationId}`,
       occurredAt: attempt.createdAt,

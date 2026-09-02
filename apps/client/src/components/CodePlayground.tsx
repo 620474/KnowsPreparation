@@ -1,5 +1,5 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
-import { Alert, Button } from "@mantine/core";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { Alert, Button, Checkbox } from "@mantine/core";
 import { AlertTriangle, Check, Play, X } from "lucide-react";
 
 import { runCode, type CodeRunResult } from "../lib/code-runner";
@@ -32,6 +32,9 @@ export const CodePlayground = forwardRef<CodePlaygroundHandle, CodePlaygroundPro
     const [running, setRunning] = useState(false);
     const [result, setResult] = useState<CodeRunResult | null>(null);
     const [error, setError] = useState("");
+    const [aiAssisted, setAiAssisted] = useState(false);
+    const openedAtRef = useRef(Date.now());
+    const runCountRef = useRef(0);
     const { history, historyError, mutation, submit } = usePracticeAttempts(attemptTarget);
     const latestAttempt = mutation.data ?? history[0];
     const bestAttempt = history.reduce(
@@ -42,9 +45,14 @@ export const CodePlayground = forwardRef<CodePlaygroundHandle, CodePlaygroundPro
 
     async function handleRun() {
       setRunning(true);
+      runCountRef.current += 1;
       setError("");
       setResult(null);
-      submit(code);
+      submit(code, {
+        responseTimeMs: Date.now() - openedAtRef.current,
+        runCount: runCountRef.current,
+        ...(aiAssisted ? { aiAssisted: true } : {}),
+      });
       try {
         setResult(await runCode(code, runner));
       } catch (runError) {
@@ -76,6 +84,13 @@ export const CodePlayground = forwardRef<CodePlaygroundHandle, CodePlaygroundPro
             Запустить тесты
           </Button>
         </div>
+        {attemptTarget ? (
+          <Checkbox
+            checked={aiAssisted}
+            label="Использовал AI или подсказку"
+            onChange={(event) => setAiAssisted(event.currentTarget.checked)}
+          />
+        ) : null}
         {error ? (
           <Alert color="red" icon={<AlertTriangle size={16} />}>
             {error}

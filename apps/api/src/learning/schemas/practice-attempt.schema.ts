@@ -64,6 +64,27 @@ export class PracticeAttempt {
   @Prop({ required: true, min: 0 })
   durationMs!: number;
 
+  @Prop({ required: false, min: 0 })
+  responseTimeMs?: number;
+
+  @Prop({ required: false, min: 1 })
+  runCount?: number;
+
+  @Prop({ required: false, min: 0 })
+  hintCount?: number;
+
+  @Prop({ required: false })
+  aiAssisted?: boolean;
+
+  @Prop({ required: false, min: 1, max: 5 })
+  confidence?: number;
+
+  @Prop({ required: false, min: 1 })
+  attemptNumber?: number;
+
+  @Prop({ required: false })
+  firstAttemptPassed?: boolean;
+
   @Prop({ type: String, default: null })
   error!: string | null;
 

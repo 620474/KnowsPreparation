@@ -16,6 +16,13 @@ interface AnalyticsViewProps {
 
 const formatPercent = (value: number | null) => value === null ? "—" : `${value}%`;
 
+const readinessLabels = {
+  recall: ["Вспомнить", "Ответить без подсказки"],
+  code: ["Написать", "Решить и пройти тесты"],
+  explain: ["Объяснить", "Разобрать решение вслух"],
+  defend: ["Защитить", "Ответить на уточнения"],
+} as const;
+
 export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: AnalyticsViewProps) {
   const analytics = calculateProgressAnalytics(data);
   const [windowDays, setWindowDays] = useState<7 | 30>(7);
@@ -60,6 +67,39 @@ export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: Analyt
         <article><Clock3 /><strong>{analytics.due}</strong><span>просрочено</span></article>
         <article><BrainCircuit /><strong>{analytics.reviewCount}</strong><span>повторений</span></article>
         <article><Gauge /><strong>{analytics.averageMockScore ?? "—"}</strong><span>средний балл моков</span></article>
+      </section>
+
+      <section className="analytics-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Readiness evidence</p>
+            <h2>Что уже получается самостоятельно</h2>
+            <p>Показатели разделены: прочитанный материал сам по себе не считается готовностью.</p>
+          </div>
+        </div>
+        {learningAnalytics.data ? (
+          <div className="analytics-skill-list readiness-dimension-list">
+            {Object.entries(learningAnalytics.data.readiness).map(([key, dimension]) => {
+              const [label, description] = readinessLabels[key as keyof typeof readinessLabels];
+              return (
+                <article key={key}>
+                  <div>
+                    <strong>{label}</strong>
+                    <span>{description} · {dimension.signalCount} сигналов</span>
+                  </div>
+                  <Progress
+                    color={dimension.score === null ? "gray" : "mint"}
+                    value={dimension.score ?? 0}
+                    size="md"
+                  />
+                  <b>{formatPercent(dimension.score)}</b>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p>После практики и мок-интервью здесь появятся независимые показатели готовности.</p>
+        )}
       </section>
 
       <section className="analytics-panel">

@@ -245,6 +245,15 @@ export class AiLessonSourceIssue {
 
   @Prop({ type: [String], required: true, default: [] })
   sourceUrls!: string[];
+
+  @Prop({
+    required: false,
+    enum: ["explanation", "code_example", "diagram", "practice", "quiz", "summary"],
+  })
+  location?: "explanation" | "code_example" | "diagram" | "practice" | "quiz" | "summary";
+
+  @Prop({ required: false })
+  excerpt?: string;
 }
 
 export const AiLessonSourceIssueSchema =

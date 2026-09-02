@@ -10,6 +10,7 @@ import type {
   PracticeAttempt,
   PracticeAttemptHistory,
   PracticeAttemptSource,
+  PracticeAttemptTelemetry,
   TrackKey,
 } from "../types";
 
@@ -55,6 +56,7 @@ export function usePracticeAttempts(target: PracticeAttemptTarget | undefined) {
       source,
       lessonVersion,
       solution,
+      telemetry,
       operationId,
     }) =>
       learningApi.submitPracticeAttempt(
@@ -64,6 +66,7 @@ export function usePracticeAttempts(target: PracticeAttemptTarget | undefined) {
         lessonVersion,
         solution,
         operationId,
+        telemetry,
       ),
     onSuccess: (attempt) => {
       queryClient.setQueryData<PracticeAttemptHistory>(queryKey, (current) => ({
@@ -81,11 +84,12 @@ export function usePracticeAttempts(target: PracticeAttemptTarget | undefined) {
     history: history.data?.attempts ?? [],
     historyError: history.error,
     mutation,
-    submit(solution: string) {
+    submit(solution: string, telemetry?: PracticeAttemptTelemetry) {
       if (!target) return;
       mutation.mutate({
         ...target,
         solution,
+        telemetry,
         operationId: createOperationId(),
       });
     },

@@ -158,7 +158,7 @@ export function CareerView({ onOpenInterview }: CareerViewProps) {
   });
   const startVacancyMock = useMutation({
     mutationFn: (applicationId: string) =>
-      learningApi.startInterviewSession("full", "general", applicationId),
+      learningApi.startInterviewSession("full", "general", "training", applicationId),
     onSuccess: () => onOpenInterview?.(),
     onError: handleError,
   });

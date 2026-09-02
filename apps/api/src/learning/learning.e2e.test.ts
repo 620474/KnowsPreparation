@@ -1000,6 +1000,11 @@ describe("Learning API", () => {
       source: "task",
       solution: runnerCase.referenceSolution,
       operationId: "static-attempt-1",
+      responseTimeMs: 42_000,
+      runCount: 1,
+      hintCount: 0,
+      aiAssisted: false,
+      confidence: 4,
     };
 
     const first = await request(app.getHttpServer())
@@ -1016,6 +1021,10 @@ describe("Learning API", () => {
       source: "task",
       passed: true,
       passedCount: first.body.totalCount,
+      attemptNumber: 1,
+      firstAttemptPassed: true,
+      responseTimeMs: 42_000,
+      confidence: 4,
     });
     expect(duplicate.body).toEqual(first.body);
 
@@ -1406,6 +1415,64 @@ describe("Learning API", () => {
         .set("Authorization", `Bearer ${token}`)
         .expect(200);
       expect(backup.body.data.interviewSessions).toHaveLength(1);
+
+      const examStarted = await request(app.getHttpServer())
+        .post("/api/v1/learning/interview-sessions")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ mode: "express", company: "yandex", kind: "exam" })
+        .expect(201);
+      expect(examStarted.body).toMatchObject({
+        kind: "exam",
+        currentStage: "platform",
+        durationMinutes: 60,
+      });
+
+      let exam = examStarted.body;
+      while (exam.currentStage === "platform") {
+        const item = exam.platformItems.find(
+          (candidate: { completed?: boolean }) => !candidate.completed,
+        );
+        if (!item) throw new Error("Active exam question is missing");
+        exam = (
+          await request(app.getHttpServer())
+            .put(`/api/v1/learning/interview-sessions/${exam.id}/platform/${item.question.id}`)
+            .set("Authorization", `Bearer ${token}`)
+            .send({ answer: "Основной ответ с примером." })
+            .expect(200)
+        ).body;
+        exam = (
+          await request(app.getHttpServer())
+            .put(`/api/v1/learning/interview-sessions/${exam.id}/platform/${item.question.id}`)
+            .set("Authorization", `Bearer ${token}`)
+            .send({
+              answer: "Основной ответ с примером.",
+              followUpAnswer: "Объясняю компромисс без подсказок.",
+            })
+            .expect(200)
+        ).body;
+      }
+      const examSolution = runners.get(exam.codingExercise.id)?.referenceSolution;
+      if (!examSolution) throw new Error("Exam reference solution is missing");
+      exam = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${exam.id}/coding/attempt`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ solution: examSolution })
+          .expect(201)
+      ).body;
+      exam = (
+        await request(app.getHttpServer())
+          .post(`/api/v1/learning/interview-sessions/${exam.id}/coding/complete`)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(201)
+      ).body;
+      expect(exam.currentStage).toBe("defense");
+      expect(exam.aiMessages).toHaveLength(0);
+      await request(app.getHttpServer())
+        .post(`/api/v1/learning/interview-sessions/${exam.id}/ai/messages`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ content: "Подскажи решение" })
+        .expect(400);
     } finally {
       assessmentSpy.mockRestore();
       assistantSpy.mockRestore();

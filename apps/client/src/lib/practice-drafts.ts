@@ -237,11 +237,39 @@ export async function writePracticeDraft(draft: LocalPracticeDraft) {
 }
 
 export async function readDirtyPracticeDrafts() {
+  return (await readStoredPracticeDrafts()).filter((draft) => draft.dirty);
+}
+
+export async function readPendingPracticeDrafts() {
+  return (await readStoredPracticeDrafts()).filter(
+    (draft) => draft.dirty || draft.conflictSolution !== undefined,
+  );
+}
+
+async function readStoredPracticeDrafts() {
   if (!("indexedDB" in window)) return [];
   const drafts = await runStoreRequest<unknown[]>("readonly", (store) =>
     store.getAll(),
   );
   return drafts
     .map(migrateStoredPracticeDraft)
-    .filter((draft): draft is LocalPracticeDraft => Boolean(draft?.dirty));
+    .filter((draft): draft is LocalPracticeDraft => Boolean(draft));
+}
+
+export async function restorePracticeDrafts(values: unknown[]) {
+  let restored = 0;
+  for (const value of values) {
+    const draft = migrateStoredPracticeDraft(value);
+    if (!draft || (!draft.dirty && draft.conflictSolution === undefined)) continue;
+    const current = await readPracticeDraft(draft.key);
+    if (
+      current?.dirty &&
+      new Date(current.updatedAt).getTime() > new Date(draft.updatedAt).getTime()
+    ) {
+      continue;
+    }
+    await writePracticeDraft(draft);
+    restored += 1;
+  }
+  return restored;
 }

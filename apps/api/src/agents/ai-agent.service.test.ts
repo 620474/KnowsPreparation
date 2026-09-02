@@ -103,6 +103,42 @@ describe("AiAgentService", () => {
     }]);
   });
 
+  it("drops source issues whose exact excerpt is absent from the lesson", async () => {
+    const sourceUrl = "https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
+      status: "verified",
+      score: 92,
+      issues: [
+        {
+          severity: "warning",
+          claim: "Promise callbacks are microtasks",
+          message: "Формулировку стоит уточнить.",
+          sourceUrls: [sourceUrl],
+          location: "explanation",
+          excerpt: "Promise callbacks выполняются как microtasks.",
+        },
+        {
+          severity: "warning",
+          claim: "Array.prototype.shift() has linear complexity",
+          message: "Это зависит от реализации движка.",
+          sourceUrls: [sourceUrl],
+          location: "explanation",
+          excerpt: "Array.prototype.shift() обычно требует сдвига элементов.",
+        },
+      ],
+      sources: [{ title: "MDN Microtask guide", url: sourceUrl }],
+    }, [{ title: "MDN Microtask guide", url: sourceUrl }]));
+
+    const result = await createService().verifyLesson({
+      track: "yandex",
+      title: "Event loop",
+      lesson,
+    });
+
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]?.excerpt).toBe("Promise callbacks выполняются как microtasks.");
+  });
+
   it("rejects unknown and over-budget ids from an AI day plan", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
       orderedIds: ["unknown", "first", "second"],

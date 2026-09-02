@@ -12,15 +12,15 @@ import {
 } from "lucide-react";
 
 import { getApiUrl } from "../api";
-import { parseBackupJson } from "../lib/backup";
+import { parseBackupJson, type PortableBackup } from "../lib/backup";
 import { remindersAvailable } from "../lib/notifications";
-import type { BootstrapData, LearningBackup, SettingsPatch } from "../types";
+import type { BootstrapData, SettingsPatch } from "../types";
 
 interface SettingsViewProps {
   data: BootstrapData;
   onUpdateSettings: (settings: SettingsPatch) => Promise<boolean>;
   onExportBackup: () => Promise<boolean>;
-  onImportBackup: (backup: LearningBackup) => Promise<number | null>;
+  onImportBackup: (backup: PortableBackup) => Promise<number | null>;
   onLogout: () => void;
 }
 
@@ -187,7 +187,7 @@ export function SettingsView({
         <div className="settings-icon"><Download /></div>
         <div>
           <h2>Экспорт и восстановление</h2>
-          <p>JSON-бэкап содержит прогресс, решения, AI-статьи, чаты и мок-интервью. Пароль и адрес API не экспортируются.</p>
+          <p>JSON-бэкап содержит прогресс, решения, AI-статьи, чаты, мок-интервью и несинхронизированные локальные черновики. Пароль и адрес API не экспортируются.</p>
           <div className="settings-controls">
             <Button className="primary-button" type="button" leftSection={<Download size={17} />} loading={busy === "export"} onClick={() => void handleExport()}>
               Создать бэкап

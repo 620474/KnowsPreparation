@@ -109,5 +109,7 @@ export function getReadinessConfidence(
   return "high";
 }
 
-export const interviewDurationMinutes = (mode: InterviewSessionMode) =>
-  mode === "full" ? 75 : 35;
+export const interviewDurationMinutes = (
+  mode: InterviewSessionMode,
+  kind: "training" | "exam" = "training",
+) => kind === "exam" ? (mode === "full" ? 90 : 60) : mode === "full" ? 75 : 35;

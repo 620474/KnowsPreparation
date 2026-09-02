@@ -112,6 +112,9 @@ export function TodayView({
   if (!day || !week) return null;
 
   const nextBlock = day.blocks.find((block) => !data.progress.tasks[block.id]?.completed);
+  const primaryRecommendation = data.settings.adaptiveTodayEnabled
+    ? adaptive.plan?.items[0]
+    : undefined;
 
   return (
     <div className="page-stack today-dashboard">
@@ -121,21 +124,55 @@ export function TodayView({
             <span className="status-pill"><Flame size={15} /> День {day.offset + 1}</span>
             <span>{getDateForOffset(data.settings.startDate, day.offset)}</span>
           </div>
-          <p className="eyebrow">Неделя {week.number} · {week.isBuffer ? "Буфер" : "Основной план"}</p>
-          <h1>{day.title}</h1>
-          <p>{nextBlock ? `Следующий шаг: ${nextBlock.title}` : "План на сегодня полностью завершён."}</p>
+          <p className="eyebrow">
+            {primaryRecommendation
+              ? "Следующее лучшее действие"
+              : `Неделя ${week.number} · ${week.isBuffer ? "Буфер" : "Основной план"}`}
+          </p>
+          <h1>{primaryRecommendation?.title ?? day.title}</h1>
+          <p>
+            {primaryRecommendation?.reason ??
+              (nextBlock
+                ? `Следующий шаг: ${nextBlock.title}`
+                : "План на сегодня полностью завершён.")}
+          </p>
           <div className="hero-meta">
-            <span><Clock3 size={18} /> {data.settings.dailyMinutes} минут</span>
-            <span><Target size={18} /> {dayCompleted} из {day.blocks.length} блоков</span>
+            <span><Clock3 size={18} /> {primaryRecommendation?.minutes ?? data.settings.dailyMinutes} минут</span>
+            <span>
+              <Target size={18} />
+              {primaryRecommendation
+                ? primaryRecommendation.skillKeys.map((skill) => skillLabels[skill]).join(" · ") || "Смешанная подготовка"
+                : `${dayCompleted} из ${day.blocks.length} блоков`}
+            </span>
           </div>
-          <Button
-            className="primary-button today-primary-action"
-            rightSection={<ArrowRight size={17} />}
-            type="button"
-            onClick={() => onOpenDay(day.id)}
-          >
-            {dayProgress === 100 ? "Посмотреть день" : nextBlock ? "Продолжить день" : "Открыть день"}
-          </Button>
+          <div className="today-hero-actions">
+            <Button
+              className="primary-button today-primary-action"
+              rightSection={<ArrowRight size={17} />}
+              type="button"
+              onClick={() => primaryRecommendation
+                ? onOpenAdaptiveItem(primaryRecommendation)
+                : onOpenDay(day.id)}
+            >
+              {primaryRecommendation
+                ? "Начать"
+                : dayProgress === 100
+                  ? "Посмотреть день"
+                  : nextBlock
+                    ? "Продолжить день"
+                    : "Открыть день"}
+            </Button>
+            {primaryRecommendation ? (
+              <Button
+                className="secondary-button today-primary-action"
+                type="button"
+                variant="default"
+                onClick={() => onOpenDay(day.id)}
+              >
+                План по календарю
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="progress-card today-progress-card">
@@ -146,12 +183,129 @@ export function TodayView({
             </div>
           </div>
           <div>
-            <p className="eyebrow">Общий прогресс</p>
+            <p className="eyebrow">Покрытие плана</p>
             <h2>{completedCount} / {allBlocks.length}</h2>
-            <p>Текущий день закрыт на {dayProgress}%.</p>
+            <p>Это выполненные блоки, а не оценка готовности к интервью.</p>
           </div>
         </div>
       </section>
+
+      {data.settings.adaptiveTodayEnabled ? (
+        <section className="adaptive-today-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Адаптивный маршрут · {adaptive.plan?.totalMinutes ?? 0} минут</p>
+              <h2>Что даст максимум сегодня</h2>
+              <p>Приоритеты собраны из повторений, тестов, практики, моков и ближайших интервью.</p>
+            </div>
+            {adaptive.isPending && !adaptive.plan ? <Loader color="mint" size="sm" /> : null}
+          </div>
+          <details className="adaptive-check-in">
+            <summary>Настроить время, энергию и фокус</summary>
+            <div>
+              <NumberInput
+                label="Сколько минут есть"
+                min={15}
+                max={360}
+                value={checkIn.availableMinutes}
+                onChange={(value) => setCheckIn({
+                  ...checkIn,
+                  availableMinutes: typeof value === "number" ? value : 120,
+                })}
+              />
+              <Select
+                label="Энергия"
+                data={[
+                  { value: "low", label: "Низкая" },
+                  { value: "normal", label: "Обычная" },
+                  { value: "high", label: "Высокая" },
+                ]}
+                value={checkIn.energy}
+                onChange={(value) => setCheckIn({
+                  ...checkIn,
+                  energy: (value ?? "normal") as AdaptivePlanCheckIn["energy"],
+                })}
+              />
+              <Select
+                label="Главный фокус"
+                data={[
+                  { value: "mixed", label: "Смешанный" },
+                  { value: "yandex", label: "Яндекс" },
+                  { value: "ozon", label: "Ozon" },
+                  { value: "core", label: "Frontend core" },
+                  { value: "job_search", label: "Поиск работы" },
+                ]}
+                value={checkIn.focus}
+                onChange={(value) => setCheckIn({
+                  ...checkIn,
+                  focus: (value ?? "mixed") as AdaptivePlanCheckIn["focus"],
+                })}
+              />
+              <Textarea
+                label="Что обязательно учесть"
+                placeholder="Например: завтра интервью, тяжело концентрироваться…"
+                value={checkIn.note}
+                onChange={(event) => setCheckIn({ ...checkIn, note: event.currentTarget.value })}
+              />
+              <Button
+                className="primary-button"
+                loading={adaptive.isGenerating}
+                type="button"
+                onClick={() => adaptive.generate(checkIn)}
+              >
+                Пересобрать план
+              </Button>
+            </div>
+          </details>
+          {adaptive.plan?.rationale ? <p className="adaptive-rationale">{adaptive.plan.rationale}</p> : null}
+          {adaptive.error ? <Alert color="yellow">{adaptive.error.message}</Alert> : null}
+          {adaptive.isFallback && !adaptive.plan ? (
+            <Alert color="yellow" variant="light">
+              Адаптивный план сейчас недоступен. Обычный план дня остаётся доступен.
+            </Alert>
+          ) : null}
+          {adaptive.plan?.items.length ? (
+            <div className="adaptive-today-list">
+              {adaptive.plan.items.map((item, index) => (
+                <article key={item.id}>
+                  <span className="adaptive-today-index">{index + 1}</span>
+                  <div>
+                    <div className="adaptive-today-meta">
+                      <span>{item.minutes} минут</span>
+                      <span>{item.skillKeys.map((skill) => skillLabels[skill]).join(" · ")}</span>
+                    </div>
+                    <h3>{item.title}</h3>
+                    <p>{item.reason}</p>
+                  </div>
+                  <div className="adaptive-today-actions">
+                    <Button
+                      className="primary-button"
+                      leftSection={<Play size={15} />}
+                      size="xs"
+                      type="button"
+                      onClick={() => onOpenAdaptiveItem(item)}
+                    >
+                      Начать
+                    </Button>
+                    <Button
+                      className="secondary-button"
+                      leftSection={<RefreshCw size={15} />}
+                      size="xs"
+                      type="button"
+                      variant="default"
+                      onClick={() => adaptive.skip(item.id)}
+                    >
+                      Заменить
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : adaptive.plan && !adaptive.isPending ? (
+            <p>На сегодня дополнительных заданий нет — продолжай план по календарю.</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="today-focus-panel">
         <div className="section-heading">
@@ -216,65 +370,6 @@ export function TodayView({
             </div>
             <FlaskConical size={25} />
           </div>
-          <details className="adaptive-check-in">
-            <summary>Настроить сегодняшний день</summary>
-            <div>
-              <NumberInput
-                label="Сколько минут есть"
-                min={15}
-                max={360}
-                value={checkIn.availableMinutes}
-                onChange={(value) => setCheckIn({
-                  ...checkIn,
-                  availableMinutes: typeof value === "number" ? value : 120,
-                })}
-              />
-              <Select
-                label="Энергия"
-                data={[
-                  { value: "low", label: "Низкая" },
-                  { value: "normal", label: "Обычная" },
-                  { value: "high", label: "Высокая" },
-                ]}
-                value={checkIn.energy}
-                onChange={(value) => setCheckIn({
-                  ...checkIn,
-                  energy: (value ?? "normal") as AdaptivePlanCheckIn["energy"],
-                })}
-              />
-              <Select
-                label="Главный фокус"
-                data={[
-                  { value: "mixed", label: "Смешанный" },
-                  { value: "yandex", label: "Яндекс" },
-                  { value: "ozon", label: "Ozon" },
-                  { value: "core", label: "Frontend core" },
-                  { value: "job_search", label: "Поиск работы" },
-                ]}
-                value={checkIn.focus}
-                onChange={(value) => setCheckIn({
-                  ...checkIn,
-                  focus: (value ?? "mixed") as AdaptivePlanCheckIn["focus"],
-                })}
-              />
-              <Textarea
-                label="Что обязательно учесть"
-                placeholder="Например: завтра интервью, тяжело концентрироваться…"
-                value={checkIn.note}
-                onChange={(event) => setCheckIn({ ...checkIn, note: event.currentTarget.value })}
-              />
-              <Button
-                className="primary-button"
-                loading={adaptive.isGenerating}
-                type="button"
-                onClick={() => adaptive.generate(checkIn)}
-              >
-                Пересобрать план
-              </Button>
-            </div>
-          </details>
-          {adaptive.plan?.rationale ? <p className="adaptive-rationale">{adaptive.plan.rationale}</p> : null}
-          {adaptive.error ? <Alert color="yellow">{adaptive.error.message}</Alert> : null}
           <p>{activeResearch.nextAction || "Определи следующее конкретное действие по проекту."}</p>
           <Button className="secondary-button" type="button" variant="default" onClick={onOpenResearch}>
             Открыть контрольный центр
@@ -300,63 +395,6 @@ export function TodayView({
         </Button>
       </section>
 
-      {data.settings.adaptiveTodayEnabled ? (
-        <section className="adaptive-today-panel">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Адаптивный маршрут · {adaptive.plan?.totalMinutes ?? 0} минут</p>
-              <h2>Что даст максимум сегодня</h2>
-              <p>Дополнительные приоритеты собраны из повторений, тестов, практики и моков.</p>
-            </div>
-            {adaptive.isPending && !adaptive.plan ? <Loader color="mint" size="sm" /> : null}
-          </div>
-          {adaptive.isFallback && !adaptive.plan ? (
-            <Alert color="yellow" variant="light">
-              Адаптивный план сейчас недоступен. Обычный план дня остаётся выше.
-            </Alert>
-          ) : null}
-          {adaptive.plan?.items.length ? (
-            <div className="adaptive-today-list">
-              {adaptive.plan.items.map((item, index) => (
-                <article key={item.id}>
-                  <span className="adaptive-today-index">{index + 1}</span>
-                  <div>
-                    <div className="adaptive-today-meta">
-                      <span>{item.minutes} минут</span>
-                      <span>{item.skillKeys.map((skill) => skillLabels[skill]).join(" · ")}</span>
-                    </div>
-                    <h3>{item.title}</h3>
-                    <p>{item.reason}</p>
-                  </div>
-                  <div className="adaptive-today-actions">
-                    <Button
-                      className="primary-button"
-                      leftSection={<Play size={15} />}
-                      size="xs"
-                      type="button"
-                      onClick={() => onOpenAdaptiveItem(item)}
-                    >
-                      Начать
-                    </Button>
-                    <Button
-                      className="secondary-button"
-                      leftSection={<RefreshCw size={15} />}
-                      size="xs"
-                      type="button"
-                      variant="default"
-                      onClick={() => adaptive.skip(item.id)}
-                    >
-                      Заменить
-                    </Button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : adaptive.plan && !adaptive.isPending ? (
-            <p>На сегодня дополнительных заданий нет — продолжай план по календарю.</p>
-          ) : null}
-        </section>
-      ) : null}
     </div>
   );
 }

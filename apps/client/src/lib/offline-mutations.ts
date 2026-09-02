@@ -60,6 +60,7 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
       source,
       lessonVersion,
       solution,
+      telemetry,
       operationId,
     }: PracticeAttemptMutationVariables) =>
       learningApi.submitPracticeAttempt(
@@ -69,6 +70,7 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
         lessonVersion,
         solution,
         operationId,
+        telemetry,
       ),
     onSuccess: (_attempt, variables) => {
       void queryClient.invalidateQueries({

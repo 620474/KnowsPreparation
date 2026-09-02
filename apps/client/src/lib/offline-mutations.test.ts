@@ -99,6 +99,7 @@ describe("offline mutations", () => {
       undefined,
       "function solve() {}",
       "attempt-operation-1",
+      undefined,
     );
     source.clear();
     restored.clear();

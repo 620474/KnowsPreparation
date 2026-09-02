@@ -33,6 +33,7 @@ import { ResearchAgentRunEntry } from "./schemas/research-agent-run.schema";
 import { ResearchActionEntry } from "./schemas/research-action.schema";
 
 const LEASE_MS = 120_000;
+const HEARTBEAT_MS = 30_000;
 const RECOVERY_INTERVAL_MS = 30_000;
 
 const MODE_BUDGETS = {
@@ -57,6 +58,12 @@ const MODE_BUDGETS = {
 } satisfies Record<ResearchAgentMode, ResearchAgentRunEntry["budget"]>;
 
 class ResearchBudgetExceededError extends Error {}
+class ResearchLeaseLostError extends Error {}
+
+interface ResearchRunLease {
+  owner: string;
+  epoch: number;
+}
 
 const cloneEmptyDraft = (): ResearchAgentDraft => ({
   protocol: { ...EMPTY_RESEARCH_AGENT_DRAFT.protocol },
@@ -173,6 +180,8 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       logs: [{ phase: "queued", message: "Исследование поставлено в очередь", at: now }],
       error: null,
       leaseUntil: null,
+      leaseOwner: null,
+      leaseEpoch: 0,
       applyOperationId: null,
       appliedAt: null,
       startedAt: new Date(),
@@ -199,6 +208,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           phase: "complete",
           error: null,
           leaseUntil: null,
+          leaseOwner: null,
         },
         $push: {
           logs: {
@@ -373,6 +383,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
     const recoverable = await this.runModel.find({
       $or: [
         { status: "queued" },
+        { status: "running", leaseUntil: null },
         { status: "running", leaseUntil: { $lte: new Date() } },
       ],
     }).select({ runId: 1 }).limit(3).lean().exec();
@@ -380,26 +391,28 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async executeRun(runId: string) {
+    const owner = randomUUID();
     const run = await this.runModel.findOneAndUpdate(
       {
         runId,
         $or: [
           { status: "queued" },
+          { status: "running", leaseUntil: null },
           { status: "running", leaseUntil: { $lte: new Date() } },
         ],
       },
       {
         $set: {
           status: "running",
-          phase: "planning",
-          progress: 5,
           error: null,
           leaseUntil: new Date(Date.now() + LEASE_MS),
+          leaseOwner: owner,
         },
+        $inc: { leaseEpoch: 1 },
         $push: {
           logs: {
             phase: "planning",
-            message: "Формирую исследовательский протокол",
+            message: "Агент получил lease и продолжает исследование",
             at: new Date().toISOString(),
           },
         },
@@ -407,6 +420,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       { returnDocument: "after" },
     ).exec();
     if (!run) return;
+    const lease = { owner, epoch: run.leaseEpoch } satisfies ResearchRunLease;
     const controller = new AbortController();
     this.controllers.set(runId, controller);
     try {
@@ -421,47 +435,107 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       const researchModel = run.mode === "quick"
         ? run.reviewModel
         : run.model;
-      const plan = await this.runModelStep(runId, researchModel, () =>
-        this.aiAgent.planResearch({
-          ...projectInput,
-          existingProtocol: project.protocol,
-        }, controller.signal, researchModel)
-      );
-      await this.setPhase(runId, "discovery", 20, "Ищу сильные источники", {
-        "draft.protocol": plan.protocol,
-      });
-      const discovery = await this.runModelStep(runId, researchModel, () =>
-        this.aiAgent.discoverResearchEvidence({
-          project: projectInput,
-          protocol: plan.protocol,
-          searchQueries: plan.searchQueries,
-          mode: "discovery",
-        }, controller.signal, researchModel)
-      );
-      let allEvidence = this.mergeEvidence(discovery.evidence, run.budget.maximumSources);
-      let challengeSummary = "Быстрый режим: отдельный red-team проход пропущен.";
-      let gaps = [...discovery.gaps];
-      await this.updateSourceUsage(runId, discovery.evidence.length, allEvidence.length);
-      await this.setPhase(
-        runId,
-        run.mode === "quick" ? "synthesis" : "challenge",
-        run.mode === "quick" ? 45 : 35,
-        run.mode === "quick" ? "Формирую выводы" : "Ищу опровержения и пропуски",
-        {
-          "draft.evidence": allEvidence,
-          "draft.summary": discovery.summary,
-          "draft.unresolvedGaps": discovery.gaps,
-        },
-      );
-      if (run.mode !== "quick") {
-        const challenge = await this.runModelStep(runId, run.reviewModel, () =>
+      const hasProtocol = Boolean(run.draft.protocol.subQuestions.trim());
+      const plan = hasProtocol
+        ? {
+            protocol: run.draft.protocol,
+            searchQueries: [project.primaryQuestion, ...run.draft.protocol.subQuestions.split("\n")]
+              .map((query) => query.trim())
+              .filter((query) => query.length >= 3)
+              .slice(0, 8),
+          }
+        : await this.runModelStep(runId, lease, researchModel, () =>
+            this.aiAgent.planResearch({
+              ...projectInput,
+              existingProtocol: project.protocol,
+            }, controller.signal, researchModel), controller
+          );
+      if (!hasProtocol) {
+        await this.setPhase(runId, lease, "discovery", 20, "Ищу сильные источники", {
+          "draft.protocol": plan.protocol,
+        });
+      }
+
+      let allEvidence = run.draft.evidence;
+      const resumesChallenge = allEvidence.length > 0 && run.phase === "challenge";
+      let discoverySummary = run.draft.summary;
+      let challengeSummary = "Продолжаю исследование с сохранённого checkpoint.";
+      let gaps = [...run.draft.unresolvedGaps];
+      if (allEvidence.length === 0) {
+        const discovery = await this.runModelStep(runId, lease, researchModel, () =>
           this.aiAgent.discoverResearchEvidence({
             project: projectInput,
             protocol: plan.protocol,
             searchQueries: plan.searchQueries,
+            mode: "discovery",
+          }, controller.signal, researchModel), controller
+        );
+        allEvidence = this.mergeEvidence(discovery.evidence, run.budget.maximumSources);
+        discoverySummary = discovery.summary;
+        gaps = [...discovery.gaps];
+        await this.updateSourceUsage(runId, lease, discovery.evidence.length, allEvidence.length);
+        await this.setPhase(
+          runId,
+          lease,
+          run.mode === "quick" ? "synthesis" : "challenge",
+          run.mode === "quick" ? 45 : 35,
+          run.mode === "quick" ? "Формирую выводы" : "Ищу опровержения и пропуски",
+          {
+            "draft.evidence": allEvidence,
+            "draft.summary": discovery.summary,
+            "draft.unresolvedGaps": discovery.gaps,
+          },
+        );
+        if (run.mode !== "quick") {
+          const challenge = await this.runModelStep(runId, lease, run.reviewModel, () =>
+            this.aiAgent.discoverResearchEvidence({
+              project: projectInput,
+              protocol: plan.protocol,
+              searchQueries: plan.searchQueries,
+              existingEvidence: allEvidence,
+              mode: "challenge",
+            }, controller.signal, run.reviewModel), controller
+          );
+          allEvidence = this.mergeEvidence(
+            [...allEvidence, ...challenge.evidence],
+            run.budget.maximumSources,
+          );
+          challengeSummary = challenge.summary;
+          gaps = [...new Set([...gaps, ...challenge.gaps])];
+          await this.updateSourceUsage(runId, lease, challenge.evidence.length, allEvidence.length);
+        }
+        if (run.mode === "deep") {
+          await this.setPhase(runId, lease, "challenge", 50, "Проверяю критические пробелы повторно", {
+            "draft.evidence": allEvidence,
+            "draft.unresolvedGaps": gaps,
+          });
+          const gapSearch = await this.runModelStep(runId, lease, run.reviewModel, () =>
+            this.aiAgent.discoverResearchEvidence({
+              project: projectInput,
+              protocol: plan.protocol,
+              searchQueries: [...plan.searchQueries, ...gaps].slice(0, 8),
+              existingEvidence: allEvidence,
+              mode: "challenge",
+            }, controller.signal, run.reviewModel), controller
+          );
+          allEvidence = this.mergeEvidence(
+            [...allEvidence, ...gapSearch.evidence],
+            run.budget.maximumSources,
+          );
+          challengeSummary = `${challengeSummary}\n${gapSearch.summary}`.trim();
+          gaps = [...new Set([...gaps, ...gapSearch.gaps])];
+          await this.updateSourceUsage(runId, lease, gapSearch.evidence.length, allEvidence.length);
+        }
+      }
+      if (resumesChallenge && run.mode !== "quick") {
+        const challenge = await this.runModelStep(runId, lease, run.reviewModel, () =>
+          this.aiAgent.discoverResearchEvidence({
+            project: projectInput,
+            protocol: plan.protocol,
+            searchQueries: [...plan.searchQueries, ...gaps].slice(0, 8),
             existingEvidence: allEvidence,
             mode: "challenge",
-          }, controller.signal, run.reviewModel)
+          }, controller.signal, run.reviewModel), controller
         );
         allEvidence = this.mergeEvidence(
           [...allEvidence, ...challenge.evidence],
@@ -469,89 +543,86 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         );
         challengeSummary = challenge.summary;
         gaps = [...new Set([...gaps, ...challenge.gaps])];
-        await this.updateSourceUsage(runId, challenge.evidence.length, allEvidence.length);
+        await this.updateSourceUsage(runId, lease, challenge.evidence.length, allEvidence.length);
       }
-      if (run.mode === "deep") {
-        await this.setPhase(runId, "challenge", 50, "Проверяю критические пробелы повторно", {
+
+      if (run.draft.claims.length === 0) {
+        await this.setPhase(runId, lease, "synthesis", 68, "Связываю выводы с доказательствами", {
           "draft.evidence": allEvidence,
           "draft.unresolvedGaps": gaps,
         });
-        const gapSearch = await this.runModelStep(runId, run.reviewModel, () =>
-          this.aiAgent.discoverResearchEvidence({
-            project: projectInput,
-            protocol: plan.protocol,
-            searchQueries: [...plan.searchQueries, ...gaps].slice(0, 8),
-            existingEvidence: allEvidence,
-            mode: "challenge",
-          }, controller.signal, run.reviewModel)
-        );
-        allEvidence = this.mergeEvidence(
-          [...allEvidence, ...gapSearch.evidence],
-          run.budget.maximumSources,
-        );
-        challengeSummary = `${challengeSummary}\n${gapSearch.summary}`.trim();
-        gaps = [...new Set([...gaps, ...gapSearch.gaps])];
-        await this.updateSourceUsage(runId, gapSearch.evidence.length, allEvidence.length);
       }
-      await this.setPhase(runId, "synthesis", 68, "Связываю выводы с доказательствами", {
-        "draft.evidence": allEvidence,
-        "draft.unresolvedGaps": gaps,
-      });
       const synthesisModel = run.mode === "deep" ? run.model : run.reviewModel;
-      const synthesis = await this.runModelStep(runId, synthesisModel, () =>
-        this.aiAgent.synthesizeResearch({
-          project: projectInput,
-          protocol: plan.protocol,
-          evidence: allEvidence,
-          discoverySummary: discovery.summary,
-          challengeSummary,
-          gaps,
-        }, controller.signal, synthesisModel)
-      );
-      await this.setPhase(runId, "auditing", 82, "Проверяю каждую связь вывода с источником", {
-        "draft.claims": synthesis.claims,
-        "draft.summary": synthesis.summary,
-        "draft.unresolvedGaps": synthesis.unresolvedGaps,
-        "draft.stopReason": synthesis.stopReason,
-      });
-      const audit = await this.runModelStep(runId, run.reviewModel, () =>
-        this.aiAgent.auditResearchClaims({
-          type: run.type,
-          mode: run.mode,
-          claims: synthesis.claims,
-          evidence: allEvidence,
-        }, controller.signal, run.reviewModel)
-      );
+      const synthesis = run.draft.claims.length > 0
+        ? {
+            claims: run.draft.claims,
+            summary: run.draft.summary,
+            unresolvedGaps: run.draft.unresolvedGaps,
+            stopReason: run.draft.stopReason,
+          }
+        : await this.runModelStep(runId, lease, synthesisModel, () =>
+            this.aiAgent.synthesizeResearch({
+              project: projectInput,
+              protocol: plan.protocol,
+              evidence: allEvidence,
+              discoverySummary,
+              challengeSummary,
+              gaps,
+            }, controller.signal, synthesisModel), controller
+          );
+      if (run.draft.claims.length === 0) {
+        await this.setPhase(runId, lease, "auditing", 82, "Проверяю каждую связь вывода с источником", {
+          "draft.claims": synthesis.claims,
+          "draft.summary": synthesis.summary,
+          "draft.unresolvedGaps": synthesis.unresolvedGaps,
+          "draft.stopReason": synthesis.stopReason,
+        });
+      }
+      const audit = run.draft.citationAudits.length > 0
+        ? { audits: run.draft.citationAudits, contradictions: run.draft.contradictions }
+        : await this.runModelStep(runId, lease, run.reviewModel, () =>
+            this.aiAgent.auditResearchClaims({
+              type: run.type,
+              mode: run.mode,
+              claims: synthesis.claims,
+              evidence: allEvidence,
+            }, controller.signal, run.reviewModel), controller
+          );
       const verifiedClaimIds = new Set(
         audit.audits.filter((entry) => entry.verified).map((entry) => entry.claimCandidateId),
       );
       await this.runModel.updateOne(
-        { runId },
+        this.leaseFilter(runId, lease),
         { $set: { "usage.validatedClaims": verifiedClaimIds.size } },
       ).exec();
-      await this.setPhase(runId, "actions", 92, "Готовлю изменения для учебного плана", {
-        "draft.citationAudits": audit.audits,
-        "draft.contradictions": audit.contradictions,
-      });
-      const actions = await this.runModelStep(runId, run.reviewModel, () =>
-        this.aiAgent.mapResearchActions({
-          type: run.type,
-          mode: run.mode,
-          decisionStatement: project.decisionStatement,
-          summary: synthesis.summary,
-          claims: synthesis.claims.filter((claim) => verifiedClaimIds.has(claim.candidateId)),
-          contradictions: audit.contradictions,
-          unresolvedGaps: synthesis.unresolvedGaps,
-        }, controller.signal, run.reviewModel)
-      );
+      if (run.draft.actions.length === 0) {
+        await this.setPhase(runId, lease, "actions", 92, "Готовлю изменения для учебного плана", {
+          "draft.citationAudits": audit.audits,
+          "draft.contradictions": audit.contradictions,
+        });
+      }
+      const actions = run.draft.actions.length > 0
+        ? run.draft.actions
+        : await this.runModelStep(runId, lease, run.reviewModel, () =>
+            this.aiAgent.mapResearchActions({
+              type: run.type,
+              mode: run.mode,
+              decisionStatement: project.decisionStatement,
+              summary: synthesis.summary,
+              claims: synthesis.claims.filter((claim) => verifiedClaimIds.has(claim.candidateId)),
+              contradictions: audit.contradictions,
+              unresolvedGaps: synthesis.unresolvedGaps,
+            }, controller.signal, run.reviewModel), controller
+          );
       await this.runModel.updateOne(
-        { runId, status: "running" },
+        this.leaseFilter(runId, lease),
         {
           $set: {
             status: "review_ready",
             phase: "review",
             progress: 100,
             leaseUntil: null,
+            leaseOwner: null,
             draft: {
               protocol: plan.protocol,
               evidence: allEvidence,
@@ -578,15 +649,16 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         .select({ status: 1 })
         .lean()
         .exec();
-      if (current?.status !== "cancelled") {
+      if (current?.status !== "cancelled" && !(error instanceof ResearchLeaseLostError)) {
         const budgetExceeded = error instanceof ResearchBudgetExceededError;
         await this.runModel.updateOne(
-          { runId },
+          this.leaseFilter(runId, lease),
           {
             $set: {
               status: budgetExceeded ? "partially_completed" : "failed",
               phase: budgetExceeded ? "review" : "complete",
               leaseUntil: null,
+              leaseOwner: null,
               error: error instanceof Error ? error.message : "Неизвестная ошибка агента",
             },
             $push: {
@@ -602,19 +674,23 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         ).exec();
       }
     } finally {
-      this.controllers.delete(runId);
+      if (this.controllers.get(runId) === controller) {
+        this.controllers.delete(runId);
+      }
     }
   }
 
   private async runModelStep<T>(
     runId: string,
+    lease: ResearchRunLease,
     model: string,
     operation: () => Promise<T>,
+    controller: AbortController,
   ) {
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const run = await this.runModel.findOne({ runId }).lean().exec();
-      if (!run || run.status !== "running") throw new Error("Исследование остановлено");
+      const run = await this.runModel.findOne(this.leaseFilter(runId, lease)).lean().exec();
+      if (!run || run.status !== "running") throw new ResearchLeaseLostError();
       const startedAt = run.startedAt?.getTime() ?? Date.now();
       const deadlineAt = startedAt + run.budget.maximumDurationMinutes * 60_000;
       if (Date.now() >= deadlineAt) {
@@ -627,8 +703,8 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       if (usesSol && run.usage.solCalls >= run.budget.maximumSolCalls) {
         throw new ResearchBudgetExceededError("Исчерпан лимит вызовов Sol");
       }
-      await this.runModel.updateOne(
-        { runId, status: "running" },
+      const reserved = await this.runModel.updateOne(
+        this.leaseFilter(runId, lease),
         {
           $inc: {
             "usage.modelCalls": 1,
@@ -637,13 +713,32 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           $set: { leaseUntil: new Date(Date.now() + LEASE_MS) },
         },
       ).exec();
+      if (reserved.modifiedCount === 0) throw new ResearchLeaseLostError();
+      let leaseLost = false;
+      const heartbeat = setInterval(() => {
+        void this.runModel.updateOne(
+          this.leaseFilter(runId, lease),
+          { $set: { leaseUntil: new Date(Date.now() + LEASE_MS) } },
+        ).exec().then((result) => {
+          if (result.matchedCount === 0) {
+            leaseLost = true;
+            controller.abort();
+          }
+        });
+      }, HEARTBEAT_MS);
+      heartbeat.unref?.();
       try {
-        return await operation();
+        const result = await operation();
+        if (leaseLost) throw new ResearchLeaseLostError();
+        return result;
       } catch (error) {
         lastError = error;
+        if (leaseLost || error instanceof ResearchLeaseLostError) {
+          throw new ResearchLeaseLostError();
+        }
         if (attempt === 1) throw error;
         await this.runModel.updateOne(
-          { runId, status: "running" },
+          this.leaseFilter(runId, lease),
           {
             $push: {
               logs: {
@@ -654,6 +749,8 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
             },
           },
         ).exec();
+      } finally {
+        clearInterval(heartbeat);
       }
     }
     throw lastError;
@@ -661,11 +758,12 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
 
   private async updateSourceUsage(
     runId: string,
+    lease: ResearchRunLease,
     discovered: number,
     accepted: number,
   ) {
     await this.runModel.updateOne(
-      { runId },
+      this.leaseFilter(runId, lease),
       {
         $inc: { "usage.sourcesDiscovered": discovered },
         $set: { "usage.sourcesAccepted": accepted },
@@ -686,13 +784,14 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
 
   private async setPhase(
     runId: string,
+    lease: ResearchRunLease,
     phase: ResearchAgentPhase,
     progress: number,
     message: string,
     fields: Record<string, unknown>,
   ) {
     const result = await this.runModel.updateOne(
-      { runId, status: "running" },
+      this.leaseFilter(runId, lease),
       {
         $set: {
           phase,
@@ -703,7 +802,16 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         $push: { logs: { phase, message, at: new Date().toISOString() } },
       },
     ).exec();
-    if (result.modifiedCount === 0) throw new Error("Исследование остановлено");
+    if (result.modifiedCount === 0) throw new ResearchLeaseLostError();
+  }
+
+  private leaseFilter(runId: string, lease: ResearchRunLease) {
+    return {
+      runId,
+      status: "running" as const,
+      leaseOwner: lease.owner,
+      leaseEpoch: lease.epoch,
+    };
   }
 
   private async requireRun(projectId: string, runId: string) {

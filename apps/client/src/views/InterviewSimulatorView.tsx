@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Loader, Progress, Select, Textarea } from "@mantine/core";
+import { Alert, Button, Loader, Progress, SegmentedControl, Select, Textarea } from "@mantine/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -22,6 +22,7 @@ import type {
   InterviewExercise,
   InterviewSession,
   InterviewSessionCompany,
+  InterviewSessionKind,
   InterviewSessionMode,
 } from "../types";
 
@@ -29,8 +30,13 @@ const CURRENT_QUERY_KEY = ["interview-sessions", "current"] as const;
 const HISTORY_QUERY_KEY = ["interview-sessions", "history"] as const;
 
 const modeOptions = [
-  { value: "express", label: "Экспресс · 35 минут" },
-  { value: "full", label: "Полное · 75 минут" },
+  { value: "express", label: "Экспресс" },
+  { value: "full", label: "Полное" },
+];
+
+const kindOptions = [
+  { value: "training", label: "Тренировка" },
+  { value: "exam", label: "Экзамен без AI" },
 ];
 
 const companyOptions = [
@@ -102,6 +108,7 @@ export function InterviewSimulatorView() {
   });
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null);
   const [mode, setMode] = useState<InterviewSessionMode>("express");
+  const [kind, setKind] = useState<InterviewSessionKind>("training");
   const [company, setCompany] = useState<InterviewSessionCompany>("yandex");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -215,11 +222,25 @@ export function InterviewSimulatorView() {
             value={company}
             onChange={(value) => value && setCompany(value as InterviewSessionCompany)}
           />
+          <div>
+            <span className="interview-kind-label">Режим</span>
+            <SegmentedControl
+              data={kindOptions}
+              fullWidth
+              value={kind}
+              onChange={(value) => setKind(value as InterviewSessionKind)}
+            />
+            <small className="interview-kind-hint">
+              {kind === "exam"
+                ? `${mode === "full" ? 90 : 60} минут, AI и подсказки скрыты до итоговой оценки.`
+                : `${mode === "full" ? 75 : 35} минут с отдельной секцией работы с AI.`}
+            </small>
+          </div>
           <Button
             className="primary-button"
             leftSection={<Play size={17} />}
             loading={busy === "start"}
-            onClick={() => void run("start", () => learningApi.startInterviewSession(mode, company))}
+            onClick={() => void run("start", () => learningApi.startInterviewSession(mode, company, kind))}
           >
             Начать интервью
           </Button>
@@ -235,7 +256,10 @@ export function InterviewSimulatorView() {
                 <button key={item.id} type="button" onClick={() => setSelectedSession(item)}>
                   <span>{formatDate(item.completedAt ?? item.startedAt)}</span>
                   <strong>{item.evaluation?.overallScore ?? 0}/100</strong>
-                  <small>{companyOptions.find((option) => option.value === item.company)?.label}</small>
+                  <small>
+                    {companyOptions.find((option) => option.value === item.company)?.label}
+                    {item.kind === "exam" ? " · Экзамен" : " · Тренировка"}
+                  </small>
                 </button>
               ))}
             </div>
@@ -261,8 +285,8 @@ export function InterviewSimulatorView() {
           {Object.entries(evaluation.sections).map(([key, section]) => (
             <article key={key}>
               <span>{sectionLabels[key as keyof typeof sectionLabels]}</span>
-              <strong>{section.score}</strong>
-              <Progress color="mint" value={section.score} />
+              <strong>{section.assessed === false ? "—" : section.score}</strong>
+              <Progress color={section.assessed === false ? "gray" : "mint"} value={section.assessed === false ? 0 : section.score} />
               <p>{section.feedback}</p>
             </article>
           ))}
@@ -279,7 +303,10 @@ export function InterviewSimulatorView() {
     );
   }
 
-  const stageIndex = ["platform", "coding", "ai", "defense"].indexOf(
+  const stages = session.kind === "exam"
+    ? ["platform", "coding", "defense"]
+    : ["platform", "coding", "ai", "defense"];
+  const stageIndex = stages.indexOf(
     session.currentStage,
   );
 
@@ -287,12 +314,14 @@ export function InterviewSimulatorView() {
     <div className="page-stack interview-page">
       <header className="interview-session-header">
         <div>
-          <p className="eyebrow">{stageLabels[session.currentStage]}</p>
+          <p className="eyebrow">
+            {session.kind === "exam" ? "Экзамен · " : ""}{stageLabels[session.currentStage]}
+          </p>
           <h1>{companyOptions.find((option) => option.value === session.company)?.label}</h1>
         </div>
         <span><Clock3 size={17} /> {formatRemaining(remaining)}</span>
       </header>
-      <Progress color="mint" value={Math.max(8, ((stageIndex + 1) / 4) * 100)} />
+      <Progress color="mint" value={Math.max(8, ((stageIndex + 1) / stages.length) * 100)} />
       {error ? <Alert color="red" icon={<AlertTriangle size={16} />}>{error}</Alert> : null}
 
       {session.currentStage === "platform" && activePlatformItem ? (
@@ -459,7 +488,7 @@ export function InterviewSimulatorView() {
           <ExerciseResult exercise={session.codingExercise} />
           <div className="interview-actions">
             <Button className="secondary-button" variant="default" leftSection={<Play size={16} />} loading={busy === "coding-attempt"} onClick={() => void run("coding-attempt", () => learningApi.submitInterviewCodingAttempt(session.id, codingSolution))}>Запустить тесты</Button>
-            <Button className="primary-button" disabled={!session.codingExercise.result} loading={busy === "coding-complete"} onClick={() => void run("coding-complete", () => learningApi.completeInterviewCoding(session.id))}>Перейти к AI-секции</Button>
+            <Button className="primary-button" disabled={!session.codingExercise.result} loading={busy === "coding-complete"} onClick={() => void run("coding-complete", () => learningApi.completeInterviewCoding(session.id))}>{session.kind === "exam" ? "Перейти к защите" : "Перейти к AI-секции"}</Button>
           </div>
         </section>
       ) : null}

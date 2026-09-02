@@ -243,6 +243,15 @@ export const aiLessonSourceIssueSchema = z.object({
   claim: z.string(),
   message: z.string(),
   sourceUrls: z.array(z.url()),
+  location: z.enum([
+    "explanation",
+    "code_example",
+    "diagram",
+    "practice",
+    "quiz",
+    "summary",
+  ]).optional(),
+  excerpt: z.string().optional(),
 });
 
 export const aiLessonSchema = z.object({
@@ -324,6 +333,14 @@ export const practiceSolutionSaveResultSchema = z.object({
 
 export const practiceAttemptSourceSchema = z.enum(["task", "lesson"]);
 
+export const practiceAttemptTelemetrySchema = z.object({
+  responseTimeMs: z.number().int().min(0).max(86_400_000).optional(),
+  runCount: z.number().int().min(1).max(1_000).optional(),
+  hintCount: z.number().int().min(0).max(1_000).optional(),
+  aiAssisted: z.boolean().optional(),
+  confidence: z.number().int().min(1).max(5).optional(),
+});
+
 export const practiceAttemptTestResultSchema = z.object({
   title: z.string(),
   passed: z.boolean(),
@@ -342,6 +359,13 @@ export const practiceAttemptSchema = z.object({
   passedCount: z.number(),
   totalCount: z.number(),
   durationMs: z.number(),
+  responseTimeMs: z.number().optional(),
+  runCount: z.number().optional(),
+  hintCount: z.number().optional(),
+  aiAssisted: z.boolean().optional(),
+  confidence: z.number().optional(),
+  attemptNumber: z.number().optional(),
+  firstAttemptPassed: z.boolean().optional(),
   error: z.string().nullable(),
   tests: z.array(practiceAttemptTestResultSchema),
   createdAt: z.string(),
@@ -424,6 +448,7 @@ export const yandexPlatformMockAttemptSchema = z.object({
 });
 
 export const interviewSessionModeSchema = z.enum(["express", "full"]);
+export const interviewSessionKindSchema = z.enum(["training", "exam"]);
 export const interviewSessionCompanySchema = z.enum(["general", "yandex", "ozon"]);
 export const interviewSessionStatusSchema = z.enum([
   "in_progress",
@@ -485,6 +510,7 @@ export const interviewSessionMessageSchema = z.object({
 export const interviewSectionEvaluationSchema = z.object({
   score: z.number(),
   feedback: z.string(),
+  assessed: z.boolean().optional(),
 });
 
 export const interviewSessionEvaluationSchema = z.object({
@@ -506,6 +532,7 @@ export const interviewSessionSchema = z.object({
   id: z.string(),
   status: interviewSessionStatusSchema,
   mode: interviewSessionModeSchema,
+  kind: interviewSessionKindSchema.default("training"),
   company: interviewSessionCompanySchema,
   applicationId: z.string().nullable().optional(),
   vacancyContext: z.string().optional(),
@@ -601,6 +628,11 @@ export const learningAnalyticsSkillSchema = z.object({
   signalCount: z.number(),
 });
 
+export const readinessDimensionSchema = z.object({
+  score: z.number().nullable(),
+  signalCount: z.number().int().min(0),
+});
+
 export const learningAnalyticsSchema = z.object({
   windowDays: z.number(),
   startedAt: z.string().nullable(),
@@ -616,6 +648,17 @@ export const learningAnalyticsSchema = z.object({
   }),
   days: z.array(learningAnalyticsDaySchema),
   skills: z.array(learningAnalyticsSkillSchema),
+  readiness: z.object({
+    recall: readinessDimensionSchema,
+    code: readinessDimensionSchema,
+    explain: readinessDimensionSchema,
+    defend: readinessDimensionSchema,
+  }).default({
+    recall: { score: null, signalCount: 0 },
+    code: { score: null, signalCount: 0 },
+    explain: { score: null, signalCount: 0 },
+    defend: { score: null, signalCount: 0 },
+  }),
 });
 
 export const RESEARCH_STAGE_KEYS = [
@@ -1304,6 +1347,7 @@ export type LessonQuizProgress = z.infer<typeof lessonQuizProgressSchema>;
 export type PracticeSolutionProgress = z.infer<typeof practiceSolutionProgressSchema>;
 export type PracticeSolutionSaveResult = z.infer<typeof practiceSolutionSaveResultSchema>;
 export type PracticeAttemptSource = z.infer<typeof practiceAttemptSourceSchema>;
+export type PracticeAttemptTelemetry = z.infer<typeof practiceAttemptTelemetrySchema>;
 export type PracticeAttemptTestResult = z.infer<typeof practiceAttemptTestResultSchema>;
 export type PracticeAttempt = z.infer<typeof practiceAttemptSchema>;
 export type PracticeAttemptHistory = z.infer<typeof practiceAttemptHistorySchema>;
@@ -1323,6 +1367,7 @@ export type YandexPlatformMockAttempt = z.infer<
   typeof yandexPlatformMockAttemptSchema
 >;
 export type InterviewSessionMode = z.infer<typeof interviewSessionModeSchema>;
+export type InterviewSessionKind = z.infer<typeof interviewSessionKindSchema>;
 export type InterviewSessionCompany = z.infer<typeof interviewSessionCompanySchema>;
 export type InterviewSessionStatus = z.infer<typeof interviewSessionStatusSchema>;
 export type InterviewSessionStage = z.infer<typeof interviewSessionStageSchema>;

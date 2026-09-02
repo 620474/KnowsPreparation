@@ -3,8 +3,18 @@ import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 
 import type { LearningBackup } from "../types";
+import {
+  readPendingPracticeDrafts,
+  type LocalPracticeDraft,
+} from "./practice-drafts";
 
 const BACKUP_FORMAT = "knows-preparation-backup";
+const CLIENT_BACKUP_FORMAT = "frontend-sprint-device-backup";
+
+export interface PortableBackup {
+  server: LearningBackup;
+  localPracticeDrafts: LocalPracticeDraft[];
+}
 
 export const createBackupFilename = (exportedAt: string) => {
   const date = new Date(exportedAt);
@@ -14,8 +24,24 @@ export const createBackupFilename = (exportedAt: string) => {
   return `frontend-sprint-backup-${safeDate}.json`;
 };
 
-export function parseBackupJson(content: string): LearningBackup {
+export function parseBackupJson(content: string): PortableBackup {
   const value: unknown = JSON.parse(content);
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "format" in value &&
+    value.format === CLIENT_BACKUP_FORMAT &&
+    "version" in value &&
+    value.version === 2 &&
+    "server" in value &&
+    "localPracticeDrafts" in value &&
+    Array.isArray(value.localPracticeDrafts)
+  ) {
+    return {
+      server: value.server as LearningBackup,
+      localPracticeDrafts: value.localPracticeDrafts,
+    };
+  }
   if (
     typeof value !== "object" ||
     value === null ||
@@ -26,12 +52,18 @@ export function parseBackupJson(content: string): LearningBackup {
   ) {
     throw new Error("Выбранный JSON не является бэкапом Frontend Sprint");
   }
-  return value as LearningBackup;
+  return { server: value as LearningBackup, localPracticeDrafts: [] };
 }
 
 export async function saveBackupFile(backup: LearningBackup) {
   const filename = createBackupFilename(backup.exportedAt);
-  const content = JSON.stringify(backup, null, 2);
+  const content = JSON.stringify({
+    format: CLIENT_BACKUP_FORMAT,
+    version: 2,
+    exportedAt: backup.exportedAt,
+    server: backup,
+    localPracticeDrafts: await readPendingPracticeDrafts(),
+  }, null, 2);
   if (Capacitor.isNativePlatform()) {
     const saved = await Filesystem.writeFile({
       path: filename,

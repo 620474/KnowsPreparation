@@ -3,6 +3,7 @@ import type {
   InterviewExercise,
   InterviewSessionCompany,
   InterviewSessionEvaluation,
+  InterviewSessionKind,
   InterviewSessionMessage,
   InterviewSessionMode,
   InterviewSessionQuestion,
@@ -35,6 +36,9 @@ export class InterviewSession {
 
   @Prop({ type: String, required: true, enum: INTERVIEW_SESSION_MODES })
   mode!: InterviewSessionMode;
+
+  @Prop({ type: String, enum: ["training", "exam"], default: "training" })
+  kind!: InterviewSessionKind;
 
   @Prop({ type: String, required: true, enum: INTERVIEW_SESSION_COMPANIES })
   company!: InterviewSessionCompany;
