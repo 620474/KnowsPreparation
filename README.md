@@ -232,6 +232,8 @@ Workflow `.github/workflows/ci.yml` запускает typecheck, lint, тест
    OPENAI_REVIEW_MODEL=gpt-5.6-terra
    OPENAI_AGENT_MODEL=gpt-5.6-terra
    OPENAI_RESEARCH_MODEL=gpt-5.6-sol
+   OPENAI_RESEARCH_MODEL_COST_CLASS=sol
+   OPENAI_REVIEW_MODEL_COST_CLASS=standard
    OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
    ```
 

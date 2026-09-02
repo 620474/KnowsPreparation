@@ -1,9 +1,11 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { LEGACY_RESEARCH_PIPELINE_CONFIGURATION } from "@prep/contracts";
 import type {
   ResearchAgentDraft,
   ResearchAgentLogEntry,
   ResearchAgentMode,
   ResearchAgentPhase,
+  ResearchPipelineConfiguration,
   ResearchAgentRunStatus,
   ResearchAgentType,
 } from "@prep/contracts";
@@ -45,6 +47,13 @@ export class ResearchAgentRunEntry {
 
   @Prop({ required: true })
   reviewModel!: string;
+
+  @Prop({
+    type: MongooseSchema.Types.Mixed,
+    required: true,
+    default: () => ({ ...LEGACY_RESEARCH_PIPELINE_CONFIGURATION }),
+  })
+  configuration!: ResearchPipelineConfiguration;
 
   @Prop({ type: MongooseSchema.Types.Mixed, required: true })
   budget!: {

@@ -12,6 +12,7 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import {
   EMPTY_RESEARCH_AGENT_DRAFT,
+  LEGACY_RESEARCH_PIPELINE_CONFIGURATION,
   applyResearchAgentRunSchema,
   startResearchAgentRunSchema,
   type ApplyResearchAgentRun,
@@ -20,6 +21,7 @@ import {
   type ResearchAgentMode,
   type ResearchAgentPhase,
   type ResearchAgentRun,
+  type ResearchModelCostClass,
   type StartResearchAgentRun,
 } from "@prep/contracts";
 import type { Model } from "mongoose";
@@ -35,6 +37,12 @@ import { ResearchActionEntry } from "./schemas/research-action.schema";
 const LEASE_MS = 120_000;
 const HEARTBEAT_MS = 30_000;
 const RECOVERY_INTERVAL_MS = 30_000;
+const RESEARCH_PIPELINE_VERSIONS = {
+  pipelineVersion: "research-pipeline-v2",
+  promptVersion: "research-prompts-v2",
+  schemaVersion: "research-schema-v2",
+  toolPolicyVersion: "untrusted-sources-v1",
+} as const;
 
 const MODE_BUDGETS = {
   quick: {
@@ -91,6 +99,7 @@ const serializeRun = (run: ResearchAgentRunEntry): ResearchAgentRun => ({
   progress: run.progress,
   model: run.model,
   reviewModel: run.reviewModel,
+  configuration: run.configuration ?? LEGACY_RESEARCH_PIPELINE_CONFIGURATION,
   budget: run.budget,
   usage: run.usage,
   draft: {
@@ -168,6 +177,11 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         progress: 0,
         model: this.aiAgent.researchModel,
         reviewModel: this.aiAgent.researchReviewModel,
+        configuration: {
+          ...RESEARCH_PIPELINE_VERSIONS,
+          modelCostClass: this.aiAgent.researchModelCostClass,
+          reviewModelCostClass: this.aiAgent.researchReviewModelCostClass,
+        },
         budget,
         usage: {
           modelCalls: 0,
@@ -454,9 +468,13 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         primaryQuestion: project.primaryQuestion,
         scope: project.scope,
       };
+      const configuration = run.configuration ?? LEGACY_RESEARCH_PIPELINE_CONFIGURATION;
       const researchModel = run.mode === "quick"
         ? run.reviewModel
         : run.model;
+      const researchModelCostClass = run.mode === "quick"
+        ? configuration.reviewModelCostClass
+        : configuration.modelCostClass;
       const hasProtocol = Boolean(run.draft.protocol.subQuestions.trim());
       const plan = hasProtocol
         ? {
@@ -466,11 +484,16 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
               .filter((query) => query.length >= 3)
               .slice(0, 8),
           }
-        : await this.runModelStep(runId, lease, researchModel, () =>
-            this.aiAgent.planResearch({
+        : await this.runModelStep(
+            runId,
+            lease,
+            researchModel,
+            researchModelCostClass,
+            () => this.aiAgent.planResearch({
               ...projectInput,
               existingProtocol: project.protocol,
-            }, controller.signal, researchModel), controller
+            }, controller.signal, researchModel),
+            controller,
           );
       if (!hasProtocol) {
         await this.setPhase(runId, lease, "discovery", 20, "Ищу сильные источники", {
@@ -484,13 +507,18 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       let challengeSummary = "Продолжаю исследование с сохранённого checkpoint.";
       let gaps = [...run.draft.unresolvedGaps];
       if (allEvidence.length === 0) {
-        const discovery = await this.runModelStep(runId, lease, researchModel, () =>
-          this.aiAgent.discoverResearchEvidence({
+        const discovery = await this.runModelStep(
+          runId,
+          lease,
+          researchModel,
+          researchModelCostClass,
+          () => this.aiAgent.discoverResearchEvidence({
             project: projectInput,
             protocol: plan.protocol,
             searchQueries: plan.searchQueries,
             mode: "discovery",
-          }, controller.signal, researchModel), controller
+          }, controller.signal, researchModel),
+          controller,
         );
         allEvidence = this.mergeEvidence(discovery.evidence, run.budget.maximumSources);
         discoverySummary = discovery.summary;
@@ -509,14 +537,19 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           },
         );
         if (run.mode !== "quick") {
-          const challenge = await this.runModelStep(runId, lease, run.reviewModel, () =>
-            this.aiAgent.discoverResearchEvidence({
+          const challenge = await this.runModelStep(
+            runId,
+            lease,
+            run.reviewModel,
+            configuration.reviewModelCostClass,
+            () => this.aiAgent.discoverResearchEvidence({
               project: projectInput,
               protocol: plan.protocol,
               searchQueries: plan.searchQueries,
               existingEvidence: allEvidence,
               mode: "challenge",
-            }, controller.signal, run.reviewModel), controller
+            }, controller.signal, run.reviewModel),
+            controller,
           );
           allEvidence = this.mergeEvidence(
             [...allEvidence, ...challenge.evidence],
@@ -531,14 +564,19 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
             "draft.evidence": allEvidence,
             "draft.unresolvedGaps": gaps,
           });
-          const gapSearch = await this.runModelStep(runId, lease, run.reviewModel, () =>
-            this.aiAgent.discoverResearchEvidence({
+          const gapSearch = await this.runModelStep(
+            runId,
+            lease,
+            run.reviewModel,
+            configuration.reviewModelCostClass,
+            () => this.aiAgent.discoverResearchEvidence({
               project: projectInput,
               protocol: plan.protocol,
               searchQueries: [...plan.searchQueries, ...gaps].slice(0, 8),
               existingEvidence: allEvidence,
               mode: "challenge",
-            }, controller.signal, run.reviewModel), controller
+            }, controller.signal, run.reviewModel),
+            controller,
           );
           allEvidence = this.mergeEvidence(
             [...allEvidence, ...gapSearch.evidence],
@@ -550,14 +588,19 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         }
       }
       if (resumesChallenge && run.mode !== "quick") {
-        const challenge = await this.runModelStep(runId, lease, run.reviewModel, () =>
-          this.aiAgent.discoverResearchEvidence({
+        const challenge = await this.runModelStep(
+          runId,
+          lease,
+          run.reviewModel,
+          configuration.reviewModelCostClass,
+          () => this.aiAgent.discoverResearchEvidence({
             project: projectInput,
             protocol: plan.protocol,
             searchQueries: [...plan.searchQueries, ...gaps].slice(0, 8),
             existingEvidence: allEvidence,
             mode: "challenge",
-          }, controller.signal, run.reviewModel), controller
+          }, controller.signal, run.reviewModel),
+          controller,
         );
         allEvidence = this.mergeEvidence(
           [...allEvidence, ...challenge.evidence],
@@ -575,6 +618,9 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         });
       }
       const synthesisModel = run.mode === "deep" ? run.model : run.reviewModel;
+      const synthesisModelCostClass = run.mode === "deep"
+        ? configuration.modelCostClass
+        : configuration.reviewModelCostClass;
       const synthesis = run.draft.claims.length > 0
         ? {
             claims: run.draft.claims,
@@ -582,15 +628,20 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
             unresolvedGaps: run.draft.unresolvedGaps,
             stopReason: run.draft.stopReason,
           }
-        : await this.runModelStep(runId, lease, synthesisModel, () =>
-            this.aiAgent.synthesizeResearch({
+        : await this.runModelStep(
+            runId,
+            lease,
+            synthesisModel,
+            synthesisModelCostClass,
+            () => this.aiAgent.synthesizeResearch({
               project: projectInput,
               protocol: plan.protocol,
               evidence: allEvidence,
               discoverySummary,
               challengeSummary,
               gaps,
-            }, controller.signal, synthesisModel), controller
+            }, controller.signal, synthesisModel),
+            controller,
           );
       if (run.draft.claims.length === 0) {
         await this.setPhase(runId, lease, "auditing", 82, "Проверяю каждую связь вывода с источником", {
@@ -602,13 +653,18 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       }
       const audit = run.draft.citationAudits.length > 0
         ? { audits: run.draft.citationAudits, contradictions: run.draft.contradictions }
-        : await this.runModelStep(runId, lease, run.reviewModel, () =>
-            this.aiAgent.auditResearchClaims({
+        : await this.runModelStep(
+            runId,
+            lease,
+            run.reviewModel,
+            configuration.reviewModelCostClass,
+            () => this.aiAgent.auditResearchClaims({
               type: run.type,
               mode: run.mode,
               claims: synthesis.claims,
               evidence: allEvidence,
-            }, controller.signal, run.reviewModel), controller
+            }, controller.signal, run.reviewModel),
+            controller,
           );
       const verifiedClaimIds = new Set(
         audit.audits.filter((entry) => entry.verified).map((entry) => entry.claimCandidateId),
@@ -625,8 +681,12 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       }
       const actions = run.draft.actions.length > 0
         ? run.draft.actions
-        : await this.runModelStep(runId, lease, run.reviewModel, () =>
-            this.aiAgent.mapResearchActions({
+        : await this.runModelStep(
+            runId,
+            lease,
+            run.reviewModel,
+            configuration.reviewModelCostClass,
+            () => this.aiAgent.mapResearchActions({
               type: run.type,
               mode: run.mode,
               decisionStatement: project.decisionStatement,
@@ -634,7 +694,8 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
               claims: synthesis.claims.filter((claim) => verifiedClaimIds.has(claim.candidateId)),
               contradictions: audit.contradictions,
               unresolvedGaps: synthesis.unresolvedGaps,
-            }, controller.signal, run.reviewModel), controller
+            }, controller.signal, run.reviewModel),
+            controller,
           );
       await this.runModel.updateOne(
         this.leaseFilter(runId, lease),
@@ -708,6 +769,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
     runId: string,
     lease: ResearchRunLease,
     model: string,
+    costClass: ResearchModelCostClass,
     operation: () => Promise<T>,
     controller: AbortController,
   ) {
@@ -720,7 +782,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       if (Date.now() >= deadlineAt) {
         throw new ResearchBudgetExceededError("Истекло максимальное время исследования");
       }
-      const usesSol = model.toLowerCase().includes("sol");
+      const usesSol = costClass === "sol";
       if (run.usage.modelCalls >= run.budget.maximumModelCalls) {
         throw new ResearchBudgetExceededError("Исчерпан лимит AI-вызовов");
       }

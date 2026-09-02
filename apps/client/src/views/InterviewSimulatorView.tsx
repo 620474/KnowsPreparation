@@ -276,11 +276,16 @@ export function InterviewSimulatorView() {
 
   if (session.status === "completed" && session.evaluation) {
     const evaluation = session.evaluation;
+    const assessmentLabel = evaluation.assessmentSource === "deterministic"
+      ? "Только серверные тесты"
+      : evaluation.assessmentSource === "mixed"
+        ? "AI + серверные тесты"
+        : "AI-оценка";
     return (
       <div className="page-stack interview-page">
         <header className="interview-result-hero">
           <div>
-            <p className="eyebrow">Готовность · {confidenceLabels[evaluation.readinessConfidence]}</p>
+            <p className="eyebrow">Готовность · {confidenceLabels[evaluation.readinessConfidence]} · {assessmentLabel}</p>
             <h1>{evaluation.overallScore}<span>/100</span></h1>
             <p>{evaluation.summary}</p>
           </div>
@@ -290,8 +295,11 @@ export function InterviewSimulatorView() {
           {Object.entries(evaluation.sections).map(([key, section]) => (
             <article key={key}>
               <span>{sectionLabels[key as keyof typeof sectionLabels]}</span>
-              <strong>{section.assessed === false ? "—" : section.score}</strong>
-              <Progress color={section.assessed === false ? "gray" : "mint"} value={section.assessed === false ? 0 : section.score} />
+              <strong>{section.assessed === false || section.score === null ? "—" : section.score}</strong>
+              <Progress
+                color={section.assessed === false || section.score === null ? "gray" : "mint"}
+                value={section.assessed === false || section.score === null ? 0 : section.score}
+              />
               <p>{section.feedback}</p>
             </article>
           ))}
@@ -491,7 +499,11 @@ export function InterviewSimulatorView() {
             <div className="interview-answer-assessments">
               {session.platformItems.filter((item) => item.completed && item.assessment).map((item) => (
                 <article key={item.question.id}>
-                  <strong>{item.assessment?.score}/100 · {item.question.category}</strong>
+                  <strong>
+                    {item.assessment?.assessed === false || item.assessment?.score === null
+                      ? "Не оценено"
+                      : `${item.assessment?.score}/100`} · {item.question.category}
+                  </strong>
                   {item.assessment?.gaps.map((gap) => <span key={gap}>{gap}</span>)}
                 </article>
               ))}

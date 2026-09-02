@@ -56,6 +56,36 @@ const scoreExercise = (exercise: InterviewExercise) =>
 
 const clampScore = (score: number) => Math.min(100, Math.max(0, Math.round(score)));
 
+const weightedScore = (sections: Array<{ score: number; weight: number }>) => {
+  const totalWeight = sections.reduce((sum, section) => sum + section.weight, 0);
+  if (totalWeight === 0) return 0;
+  return clampScore(
+    sections.reduce((sum, section) => sum + section.score * section.weight, 0) /
+      totalWeight,
+  );
+};
+
+type InterviewAnswerOutcome = Omit<InterviewAnswerAssessment, "score"> & {
+  score: number | null;
+  assessed: boolean;
+  unavailableReason: string | null;
+};
+
+type GeneratedInterviewEvaluation = Awaited<
+  ReturnType<AiContentService["evaluateInterviewSession"]>
+>;
+type InterviewEvaluationOutcome =
+  | (GeneratedInterviewEvaluation & { assessed: true })
+  | (Omit<
+      GeneratedInterviewEvaluation,
+      "platformScore" | "aiScore" | "communicationScore"
+    > & {
+      platformScore: null;
+      aiScore: null;
+      communicationScore: null;
+      assessed: false;
+    });
+
 const isPlatformItemComplete = (item: InterviewSessionDocument["platformItems"][number]) =>
   item.completed ?? Boolean(
     item.answer.trim() && item.followUpQuestion && item.followUpAnswer.trim(),
@@ -197,6 +227,9 @@ export class InterviewSessionService {
       confidence: assessment.confidence,
       strengths: assessment.strengths,
       gaps: assessment.gaps,
+      assessed: assessment.assessed,
+      assessmentSource: assessment.assessed ? "ai" : "unassessed",
+      unavailableReason: assessment.unavailableReason,
       evaluatedAt: new Date().toISOString(),
     };
     if (!item.followUpQuestion && assessment.followUpQuestion) {
@@ -395,34 +428,45 @@ export class InterviewSessionService {
       const codingScore = scoreExercise(interview.codingExercise);
       const aiTaskScore = scoreExercise(interview.aiExercise);
       const aiScore = interview.kind === "exam"
-        ? 0
-        : clampScore((generated.aiScore + aiTaskScore) / 2);
-      const overallScore = interview.kind === "exam"
-        ? clampScore(
-            generated.platformScore * 0.4 +
-              codingScore * 0.4 +
-              generated.communicationScore * 0.2,
-          )
-        : clampScore(
-            generated.platformScore * 0.3 +
-              codingScore * 0.3 +
-              aiScore * 0.25 +
-              generated.communicationScore * 0.15,
-          );
+        ? null
+        : generated.assessed
+          ? clampScore((generated.aiScore + aiTaskScore) / 2)
+          : aiTaskScore;
+      const measuredSections = [
+        ...(generated.assessed
+          ? [{ score: generated.platformScore, weight: interview.kind === "exam" ? 0.4 : 0.3 }]
+          : []),
+        { score: codingScore, weight: interview.kind === "exam" ? 0.4 : 0.3 },
+        ...(aiScore === null ? [] : [{ score: aiScore, weight: 0.25 }]),
+        ...(generated.assessed
+          ? [{ score: generated.communicationScore, weight: interview.kind === "exam" ? 0.2 : 0.15 }]
+          : []),
+      ];
+      const overallScore = weightedScore(measuredSections);
+      const assessmentSource = generated.assessed
+        ? "mixed"
+        : "deterministic";
       interview.evaluation = {
         overallScore,
-        readinessConfidence: getReadinessConfidence(completedCount),
+        assessmentSource,
+        readinessConfidence: generated.assessed
+          ? getReadinessConfidence(completedCount)
+          : "low",
         summary: generated.summary,
         strengths: generated.strengths,
         weakTopics: generated.weakTopics,
         recommendations: generated.recommendations,
         sections: {
           platform: {
-            score: generated.platformScore,
+            score: generated.assessed ? generated.platformScore : null,
+            assessed: generated.assessed,
+            source: generated.assessed ? "ai" : "unassessed",
             feedback: generated.platformFeedback,
           },
           coding: {
             score: codingScore,
+            assessed: true,
+            source: "deterministic",
             feedback: interview.codingExercise.result?.passed
               ? "Решение прошло все серверные тесты."
               : `Пройдено ${interview.codingExercise.result?.passedCount ?? 0} из ${interview.codingExercise.result?.totalCount ?? 0} тестов.`,
@@ -430,12 +474,21 @@ export class InterviewSessionService {
           ai: {
             score: aiScore,
             assessed: interview.kind !== "exam",
+            source: interview.kind === "exam"
+              ? "unassessed"
+              : generated.assessed
+                ? "mixed"
+                : "deterministic",
             feedback: interview.kind === "exam"
               ? "AI-помощь была отключена на время экзамена."
-              : generated.aiFeedback,
+              : generated.assessed
+                ? generated.aiFeedback
+                : "Оценены только результаты серверных тестов; AI-разбор недоступен.",
           },
           communication: {
-            score: generated.communicationScore,
+            score: generated.assessed ? generated.communicationScore : null,
+            assessed: generated.assessed,
+            source: generated.assessed ? "ai" : "unassessed",
             feedback: generated.communicationFeedback,
           },
         },
@@ -483,18 +536,26 @@ export class InterviewSessionService {
     };
   }
 
-  private async assessAnswerOrFallback(input: Parameters<AiAgentService["assessInterviewAnswer"]>[0]) {
-    const fallback: InterviewAnswerAssessment = {
-      score: 55,
+  private async assessAnswerOrFallback(
+    input: Parameters<AiAgentService["assessInterviewAnswer"]>[0],
+  ): Promise<InterviewAnswerOutcome> {
+    const fallback: InterviewAnswerOutcome = {
+      score: null,
       confidence: "low",
       strengths: ["Ответ зафиксирован"],
       gaps: ["Содержательная AI-оценка временно недоступна"],
       followUpQuestion: input.followUpCount === 0 ? FOLLOW_UP_FALLBACK : null,
       nextQuestionId: input.candidateQuestions[0]?.id ?? null,
+      assessed: false,
+      unavailableReason: "ai_unavailable",
     };
     if (!this.agents.enabled) return fallback;
     try {
-      return await this.agents.assessInterviewAnswer(input);
+      return {
+        ...await this.agents.assessInterviewAnswer(input),
+        assessed: true,
+        unavailableReason: null,
+      };
     } catch (error) {
       this.logFallback("answer_assessment", error);
       return fallback;
@@ -521,14 +582,16 @@ export class InterviewSessionService {
     }
   }
 
-  private async evaluationOrFallback(interview: InterviewSessionDocument) {
-    const fallback = {
-      platformScore: 55,
-      aiScore: 55,
-      communicationScore: 55,
+  private async evaluationOrFallback(
+    interview: InterviewSessionDocument,
+  ): Promise<InterviewEvaluationOutcome> {
+    const fallback: InterviewEvaluationOutcome = {
+      platformScore: null,
+      aiScore: null,
+      communicationScore: null,
       summary: "Сессия завершена. Для точной AI-оценки повтори её при доступном AI.",
       strengths: ["Сессия пройдена до конца", "Код проверен серверными тестами"],
-      weakTopics: interview.platformItems.map((item) => item.question.category).slice(0, 4),
+      weakTopics: [],
       recommendations: [
         "Повтори слабые темы и сформулируй ответы вслух",
         "Разбери непройденные тесты обеих задач",
@@ -536,10 +599,12 @@ export class InterviewSessionService {
       platformFeedback: "Автоматическая содержательная оценка временно недоступна.",
       aiFeedback: "Проверь, какие советы AI были приняты и как они валидировались.",
       communicationFeedback: "Повтори защиту решения с таймером и структурой тезис → пример → вывод.",
+      assessed: false,
     };
     if (!this.aiContent.enabled) return fallback;
     try {
-      return await this.aiContent.evaluateInterviewSession({
+      return {
+        ...await this.aiContent.evaluateInterviewSession({
         company: interviewCompanyLabel(interview.company),
         mode: interview.mode,
         examMode: interview.kind === "exam",
@@ -559,7 +624,9 @@ export class InterviewSessionService {
           question,
           answer: interview.defenseAnswers[index],
         })),
-      });
+        }),
+        assessed: true,
+      };
     } catch (error) {
       this.logFallback("evaluation", error);
       return fallback;
@@ -573,6 +640,8 @@ export class InterviewSessionService {
       skillKeys: inferSkillKeys(...interview.evaluation.weakTopics),
       payload: {
         score: interview.evaluation.overallScore,
+        assessmentSource: interview.evaluation.assessmentSource,
+        reliability: interview.evaluation.assessmentSource === "deterministic" ? 0.6 : 1,
         weakTopics: interview.evaluation.weakTopics,
         interviewSession: true,
         sections: {

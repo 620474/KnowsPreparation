@@ -534,10 +534,13 @@ export const interviewSessionQuestionSchema = z.object({
   secondFollowUpAnswer: z.string().optional(),
   completed: z.boolean().optional(),
   assessment: z.object({
-    score: z.number().int().min(0).max(100),
+    score: z.number().int().min(0).max(100).nullable(),
     confidence: z.enum(["low", "medium", "high"]),
     strengths: z.array(z.string()),
     gaps: z.array(z.string()),
+    assessed: z.boolean().default(true),
+    assessmentSource: z.enum(["ai", "unassessed"]).default("ai"),
+    unavailableReason: z.string().nullable().optional(),
     evaluatedAt: z.string(),
   }).nullable().optional(),
 });
@@ -569,13 +572,15 @@ export const interviewSessionMessageSchema = z.object({
 });
 
 export const interviewSectionEvaluationSchema = z.object({
-  score: z.number(),
+  score: z.number().nullable(),
   feedback: z.string(),
-  assessed: z.boolean().optional(),
+  assessed: z.boolean().default(true),
+  source: z.enum(["ai", "deterministic", "mixed", "unassessed"]).default("ai"),
 });
 
 export const interviewSessionEvaluationSchema = z.object({
   overallScore: z.number(),
+  assessmentSource: z.enum(["ai", "mixed", "deterministic"]).default("ai"),
   readinessConfidence: interviewReadinessConfidenceSchema,
   summary: z.string(),
   strengths: z.array(z.string()),
@@ -1114,6 +1119,23 @@ export const EMPTY_RESEARCH_AGENT_DRAFT = {
   unresolvedGaps: [],
   stopReason: "",
 };
+export const researchModelCostClassSchema = z.enum(["standard", "sol"]);
+export const researchPipelineConfigurationSchema = z.object({
+  pipelineVersion: z.string(),
+  promptVersion: z.string(),
+  schemaVersion: z.string(),
+  toolPolicyVersion: z.string(),
+  modelCostClass: researchModelCostClassSchema,
+  reviewModelCostClass: researchModelCostClassSchema,
+});
+export const LEGACY_RESEARCH_PIPELINE_CONFIGURATION = {
+  pipelineVersion: "legacy",
+  promptVersion: "legacy",
+  schemaVersion: "legacy",
+  toolPolicyVersion: "legacy",
+  modelCostClass: "sol",
+  reviewModelCostClass: "standard",
+} as const;
 export const researchAgentRunSchema = z.object({
   runId: z.string(),
   projectId: z.string(),
@@ -1125,6 +1147,9 @@ export const researchAgentRunSchema = z.object({
   progress: z.number().int().min(0).max(100),
   model: z.string(),
   reviewModel: z.string(),
+  configuration: researchPipelineConfigurationSchema.default(
+    LEGACY_RESEARCH_PIPELINE_CONFIGURATION,
+  ),
   budget: z.object({
     maximumModelCalls: z.number().int().min(1).max(30),
     maximumSolCalls: z.number().int().min(0).max(10),
@@ -1525,6 +1550,10 @@ export type ResearchAgentCitationAudit = z.infer<typeof researchAgentCitationAud
 export type ResearchAgentContradiction = z.infer<typeof researchAgentContradictionSchema>;
 export type ResearchAgentActionDraft = z.infer<typeof researchAgentActionDraftSchema>;
 export type ResearchAgentDraft = z.infer<typeof researchAgentDraftSchema>;
+export type ResearchModelCostClass = z.infer<typeof researchModelCostClassSchema>;
+export type ResearchPipelineConfiguration = z.infer<
+  typeof researchPipelineConfigurationSchema
+>;
 export type ResearchAgentRun = z.infer<typeof researchAgentRunSchema>;
 export type StartResearchAgentRun = z.infer<typeof startResearchAgentRunSchema>;
 export type ApplyResearchAgentRun = z.infer<typeof applyResearchAgentRunSchema>;

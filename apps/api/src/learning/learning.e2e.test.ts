@@ -615,6 +615,14 @@ describe("Learning API", () => {
         ).body;
       }
       expect(run.status).toBe("review_ready");
+      expect(run.configuration).toEqual({
+        pipelineVersion: "research-pipeline-v2",
+        promptVersion: "research-prompts-v2",
+        schemaVersion: "research-schema-v2",
+        toolPolicyVersion: "untrusted-sources-v1",
+        modelCostClass: "sol",
+        reviewModelCostClass: "standard",
+      });
       expect(run.draft.evidence).toHaveLength(1);
       expect(run.draft.claims).toHaveLength(1);
       expect(run.draft.citationAudits[0]).toMatchObject({ verified: true });
@@ -624,6 +632,34 @@ describe("Learning API", () => {
       expect(run.logs).toContainEqual(expect.objectContaining({
         message: "Временная ошибка AI; повторяю текущий шаг один раз",
       }));
+
+      const projectCollection = connection.db?.collection("researchprojects");
+      const storedProject = await projectCollection?.findOne({ projectId });
+      const originalUpdatedAt = storedProject?.updatedAt;
+      if (!(originalUpdatedAt instanceof Date)) {
+        throw new Error("Research project updatedAt is missing");
+      }
+      await projectCollection?.updateOne(
+        { projectId },
+        { $set: { updatedAt: new Date(originalUpdatedAt.getTime() + 1_000) } },
+      );
+      await request(app.getHttpServer())
+        .post(`/api/v1/learning/research/projects/${projectId}/agent-runs/${run.runId}/apply`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          data: {
+            operationId: "research-stale-apply-operation",
+            includeProtocol: true,
+            evidenceCandidateIds: ["source-1"],
+            claimCandidateIds: ["claim-1"],
+            actionCandidateIds: ["action-1"],
+          },
+        })
+        .expect(409);
+      await projectCollection?.updateOne(
+        { projectId },
+        { $set: { updatedAt: originalUpdatedAt } },
+      );
 
       const applied = await request(app.getHttpServer())
         .post(`/api/v1/learning/research/projects/${projectId}/agent-runs/${run.runId}/apply`)
@@ -708,6 +744,60 @@ describe("Learning API", () => {
     const started = results.find((result) => result.status === "fulfilled");
     if (started?.status === "fulfilled") {
       await service.cancelRun(project.body.projectId, started.value.runId);
+    }
+  });
+
+  it("does not write later phases after an autonomous run is cancelled", async () => {
+    const project = await request(app.getHttpServer())
+      .post("/api/v1/learning/research/projects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          title: "Отмена запуска",
+          decisionStatement: "Проверить отмену",
+          primaryQuestion: "Остановится ли агент?",
+          scope: "Один запуск",
+          design: "computational",
+          status: "active",
+          startDate: "2026-09-02",
+          targetDate: null,
+          nextAction: "Запустить и отменить",
+        },
+      })
+      .expect(201);
+    const service = app.get(ResearchAgentService);
+    const agents = app.get(AiAgentService);
+    let markPlanStarted: () => void = () => {};
+    const planStarted = new Promise<void>((resolve) => {
+      markPlanStarted = resolve;
+    });
+    const planSpy = vi.spyOn(agents, "planResearch").mockImplementation(
+      (_input, signal) => new Promise((_, reject) => {
+        markPlanStarted();
+        signal?.addEventListener("abort", () => reject(new Error("cancelled")), { once: true });
+      }),
+    );
+
+    try {
+      const run = await service.startRun(project.body.projectId, {
+        operationId: "cancel-research-operation",
+        type: "technical_topic",
+        mode: "quick",
+      });
+      await planStarted;
+      const cancelled = await service.cancelRun(project.body.projectId, run.runId);
+      expect(cancelled.status).toBe("cancelled");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      const stored = await service.getRun(project.body.projectId, run.runId);
+      expect(stored).toMatchObject({
+        status: "cancelled",
+        phase: "complete",
+        progress: 0,
+      });
+      expect(stored.draft.evidence).toHaveLength(0);
+      expect(stored.draft.claims).toHaveLength(0);
+    } finally {
+      planSpy.mockRestore();
     }
   });
 
@@ -1697,18 +1787,7 @@ describe("Learning API", () => {
     const aiContent = app.get(AiContentService);
     const evaluationSpy = vi
       .spyOn(aiContent, "evaluateInterviewSession")
-      .mockResolvedValue({
-        platformScore: 20,
-        aiScore: 0,
-        communicationScore: 20,
-        summary: "Экзамен завершён по таймеру.",
-        strengths: [],
-        weakTopics: ["JavaScript"],
-        recommendations: ["Повтори платформу"],
-        platformFeedback: "Ответ не завершён.",
-        aiFeedback: "AI был отключён.",
-        communicationFeedback: "Ответ не завершён.",
-      });
+      .mockRejectedValue(new Error("evaluation unavailable"));
     try {
       const started = await request(app.getHttpServer())
         .post("/api/v1/learning/interview-sessions")
@@ -1751,6 +1830,17 @@ describe("Learning API", () => {
         status: "completed",
         currentStage: "completed",
         expiredAt: expect.any(String),
+        evaluation: {
+          overallScore: 0,
+          assessmentSource: "deterministic",
+          readinessConfidence: "low",
+          sections: {
+            platform: { score: null, assessed: false, source: "unassessed" },
+            coding: { score: 0, assessed: true, source: "deterministic" },
+            ai: { score: null, assessed: false, source: "unassessed" },
+            communication: { score: null, assessed: false, source: "unassessed" },
+          },
+        },
       });
     } finally {
       evaluationSpy.mockRestore();

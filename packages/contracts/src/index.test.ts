@@ -310,6 +310,14 @@ describe("shared API contracts", () => {
     });
 
     expect(run.status).toBe("review_ready");
+    expect(run.configuration).toEqual({
+      pipelineVersion: "legacy",
+      promptVersion: "legacy",
+      schemaVersion: "legacy",
+      toolPolicyVersion: "legacy",
+      modelCostClass: "sol",
+      reviewModelCostClass: "standard",
+    });
   });
 
   it("validates the career pipeline and weekly activity", () => {

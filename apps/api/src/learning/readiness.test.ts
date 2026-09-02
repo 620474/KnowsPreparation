@@ -66,6 +66,19 @@ describe("readiness evidence", () => {
     expect(readiness.skills.get("javascript")?.signalCount).toBe(5);
   });
 
+  it("uses only deterministic sections when interview AI is unavailable", () => {
+    expect(readinessScoresForSignal(signal("mock_completed", {
+      score: 100,
+      assessmentSource: "deterministic",
+      sections: {
+        platform: null,
+        coding: 75,
+        ai: 100,
+        communication: null,
+      },
+    }))).toEqual({ code: 75 });
+  });
+
   it("uses the latest result for repeated evidence from one item", () => {
     const readiness = buildReadiness([
       signal("quiz_submitted", { score: 2, maxScore: 10 }, ["javascript"], {

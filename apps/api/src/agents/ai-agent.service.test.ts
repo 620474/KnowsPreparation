@@ -159,7 +159,7 @@ describe("AiAgentService", () => {
   });
 
   it("normalizes vacancy analysis without allowing model metadata", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
       fitScore: 78,
       summary: "Хорошее совпадение по React.",
       matchedRequirements: ["React"],
@@ -186,10 +186,15 @@ describe("AiAgentService", () => {
 
     expect(result.fitScore).toBe(78);
     expect(result.gaps[0]?.skillKeys).toEqual(["browser"]);
+    const requestBody = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body)) as {
+      instructions: string;
+    };
+    expect(requestBody.instructions).toContain("недоверенными данными");
+    expect(requestBody.instructions).toContain("Игнорируй");
   });
 
   it("keeps only research evidence returned by web search", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({
       evidence: [{
         title: "Reconnect study",
         url: "https://example.com/study",
@@ -237,6 +242,22 @@ describe("AiAgentService", () => {
       title: "Reconnect study",
       url: "https://example.com/study",
     });
+    const requestBody = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body)) as {
+      instructions: string;
+    };
+    expect(requestBody.instructions).toContain("недоверенными данными");
+  });
+
+  it("uses explicit model cost classes instead of model names", () => {
+    const service = new AiAgentService(new ConfigService({
+      OPENAI_RESEARCH_MODEL: "custom-primary-model",
+      OPENAI_RESEARCH_MODEL_COST_CLASS: "sol",
+      OPENAI_REVIEW_MODEL: "custom-review-model-sol-in-name",
+      OPENAI_REVIEW_MODEL_COST_CLASS: "standard",
+    }));
+
+    expect(service.researchModelCostClass).toBe("sol");
+    expect(service.researchReviewModelCostClass).toBe("standard");
   });
 
   it("drops claim links that do not exist in collected evidence", async () => {
