@@ -1,3 +1,5 @@
+## [5.3.0](https://github.com/620474/KnowsPreparation/compare/v5.2.0...v5.3.0) (2026-09-02)
+
 ## [5.2.0](https://github.com/620474/KnowsPreparation/compare/v5.1.0...v5.2.0) (2026-09-01)
 
 ## [5.1.0](https://github.com/620474/KnowsPreparation/compare/v5.0.0...v5.1.0) (2026-09-01)
