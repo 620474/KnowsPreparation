@@ -4,6 +4,7 @@ export type AppView =
   | "today"
   | "preparation"
   | "knowledge"
+  | "skills"
   | "career"
   | "yandex"
   | "ozon"
@@ -37,6 +38,7 @@ export interface AppRoute {
   dayReader?: DayRouteTarget | null;
   yandexMockDayId?: string | null;
   researchProjectId?: string | null;
+  skillId?: string | null;
 }
 
 const DEFAULT_ROUTE: AppRoute = { view: "today", lessonReader: null };
@@ -45,6 +47,7 @@ const viewPaths: Record<AppView, string> = {
   today: "today",
   preparation: "preparation",
   knowledge: "knowledge",
+  skills: "skills",
   career: "career",
   yandex: "yandex",
   ozon: "ozon",
@@ -104,6 +107,15 @@ export function parseAppPath(pathname: string): AppRoute {
     };
   }
 
+  if (view === "skills") {
+    const skillId = segments[1] ? decodeItemId(segments[1]) : "";
+    return {
+      view,
+      lessonReader: null,
+      ...(skillId ? { skillId } : {}),
+    };
+  }
+
   const track = viewTracks[view];
   if (track === "yandex" && segments[1] === "mock" && segments[2]) {
     const dayId = decodeItemId(segments[2]);
@@ -146,6 +158,12 @@ export function formatAppPath(route: AppRoute): string {
   if (route.view === "research") {
     return route.researchProjectId
       ? `/${path}/${encodeURIComponent(route.researchProjectId)}`
+      : `/${path}`;
+  }
+
+  if (route.view === "skills") {
+    return route.skillId
+      ? `/${path}/${encodeURIComponent(route.skillId)}`
       : `/${path}`;
   }
 

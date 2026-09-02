@@ -14,6 +14,8 @@ import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
+import { EvidenceService } from "./evidence/evidence.service";
+import { MasteryService } from "./mastery/mastery.service";
 import { InterviewSessionService } from "./interview-session.service";
 import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
@@ -59,6 +61,14 @@ import {
   LearningSignal,
   LearningSignalSchema,
 } from "./schemas/learning-signal.schema";
+import {
+  EvidenceEvent,
+  EvidenceEventSchema,
+} from "./schemas/evidence-event.schema";
+import {
+  MasterySnapshot,
+  MasterySnapshotSchema,
+} from "./schemas/mastery-snapshot.schema";
 import { Settings, SettingsSchema } from "./schemas/settings.schema";
 import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema";
 import {
@@ -89,6 +99,8 @@ import {
       { name: AiPracticeProgress.name, schema: AiPracticeProgressSchema },
       { name: PracticeAttempt.name, schema: PracticeAttemptSchema },
       { name: LearningSignal.name, schema: LearningSignalSchema },
+      { name: EvidenceEvent.name, schema: EvidenceEventSchema },
+      { name: MasterySnapshot.name, schema: MasterySnapshotSchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
@@ -107,6 +119,8 @@ import {
     LearningBootstrapService,
     LearningCleanupService,
     LearningService,
+    EvidenceService,
+    MasteryService,
     LearningSignalService,
     InterviewSessionService,
     YandexPlatformMockService,

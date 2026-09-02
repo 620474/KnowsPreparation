@@ -644,6 +644,8 @@ export class InterviewSessionService {
         reliability: interview.evaluation.assessmentSource === "deterministic" ? 0.6 : 1,
         weakTopics: interview.evaluation.weakTopics,
         interviewSession: true,
+        itemFamilyId: `interview:${String(interview._id)}`,
+        transferLevel: "far_transfer",
         sections: {
           platform: interview.evaluation.sections.platform.score,
           coding: interview.evaluation.sections.coding.score,

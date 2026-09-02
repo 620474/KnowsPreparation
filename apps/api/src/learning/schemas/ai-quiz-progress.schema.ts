@@ -20,6 +20,16 @@ export class AiQuizAnswer {
 
   @Prop({ required: true })
   topic!: string;
+
+  @Prop({ type: String, required: false })
+  capability?:
+    | "recall"
+    | "comprehension"
+    | "prediction"
+    | "debugging"
+    | "application"
+    | "transfer"
+    | "tradeoff";
 }
 
 export const AiQuizAnswerSchema = SchemaFactory.createForClass(AiQuizAnswer);

@@ -4,7 +4,7 @@ import {
   CircleUserRound,
   Gauge,
   GraduationCap,
-  LibraryBig,
+  BrainCircuit,
   Moon,
   FlaskConical,
   Settings,
@@ -29,7 +29,7 @@ const navigation: Array<{
 }> = [
   { id: "today", label: "Сегодня", shortLabel: "Сегодня", icon: Gauge },
   { id: "preparation", label: "Подготовка", shortLabel: "Подготовка", icon: GraduationCap },
-  { id: "knowledge", label: "Знания", shortLabel: "Знания", icon: LibraryBig },
+  { id: "skills", label: "Навыки", shortLabel: "Навыки", icon: BrainCircuit },
   { id: "research", label: "Исследования", shortLabel: "Исслед.", icon: FlaskConical },
   { id: "settings", label: "Ещё", shortLabel: "Ещё", icon: Settings },
 ];
@@ -45,6 +45,7 @@ const preparationViews: AppView[] = [
 ];
 
 const knowledgeViews: AppView[] = [
+  "skills",
   "knowledge",
   "ai-course",
   "resources",
@@ -57,7 +58,7 @@ const knowledgeViews: AppView[] = [
 const isNavigationActive = (navigationId: AppView, activeView: AppView) =>
   navigationId === activeView ||
   (navigationId === "preparation" && preparationViews.includes(activeView)) ||
-  (navigationId === "knowledge" && knowledgeViews.includes(activeView));
+  (navigationId === "skills" && knowledgeViews.includes(activeView));
 
 function ThemeToggle() {
   const { setColorScheme } = useMantineColorScheme();

@@ -6,11 +6,14 @@ import {
   careerSettingsSchema,
   careerWorkspaceSchema,
   interviewSessionSchema,
+  knowledgeOverviewSchema,
   learningAnalyticsSchema,
   practiceAttemptHistorySchema,
   practiceAttemptSchema,
   practiceSolutionSaveResultSchema,
   questionAttemptResultSchema,
+  skillDetailSchema,
+  skillGraphSchema,
   researchClaimSchema,
   researchEvidenceSchema,
   researchProjectSchema,
@@ -37,6 +40,9 @@ import type {
   Difficulty,
   LessonQuizProgress,
   LearningAnalytics,
+  KnowledgeOverview,
+  SkillDetail,
+  SkillGraph,
   LearningBackup,
   InterviewSession,
   InterviewSessionCompany,
@@ -256,6 +262,18 @@ export const learningApi = {
   getLearningAnalytics: (days: 7 | 30) =>
     request<LearningAnalytics>(`/learning/analytics?days=${days}`).then((result) =>
       learningAnalyticsSchema.parse(result),
+    ),
+  getSkillGraph: () =>
+    request<SkillGraph>("/learning/knowledge/skills").then((result) =>
+      skillGraphSchema.parse(result),
+    ),
+  getKnowledgeOverview: (target = "general") =>
+    request<KnowledgeOverview>(`/learning/knowledge/overview?target=${encodeURIComponent(target)}`).then(
+      (result) => knowledgeOverviewSchema.parse(result),
+    ),
+  getSkillDetail: (skillId: string) =>
+    request<SkillDetail>(`/learning/knowledge/skills/${encodeURIComponent(skillId)}`).then(
+      (result) => skillDetailSchema.parse(result),
     ),
   listResearchProjects: () =>
     request<ResearchProject[]>("/learning/research/projects").then((projects) =>

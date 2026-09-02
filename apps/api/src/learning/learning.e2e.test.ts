@@ -19,6 +19,7 @@ import { LearningModule } from "./learning.module";
 import { ResearchAgentService } from "../research/research-agent.service";
 import { AiLesson, type AiQuizQuestion } from "./schemas/ai-course.schema";
 import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
+import { EvidenceEvent } from "./schemas/evidence-event.schema";
 import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
 
@@ -93,6 +94,7 @@ describe("Learning API", () => {
   let mongo: MongoMemoryServer;
   let lessonModel: Model<AiLesson>;
   let yandexMockAttemptModel: Model<YandexPlatformMockAttempt>;
+  let evidenceEventModel: Model<EvidenceEvent>;
   let token: string;
 
   beforeAll(async () => {
@@ -134,6 +136,7 @@ describe("Learning API", () => {
     yandexMockAttemptModel = app.get<Model<YandexPlatformMockAttempt>>(
       getModelToken(YandexPlatformMockAttempt.name),
     );
+    evidenceEventModel = app.get<Model<EvidenceEvent>>(getModelToken(EvidenceEvent.name));
 
     const loginResponse = await request(app.getHttpServer())
       .post("/api/v1/auth/login")
@@ -1021,6 +1024,27 @@ describe("Learning API", () => {
       reviewCount: 1,
       lastRating: "easy",
     });
+    expect(await evidenceEventModel.countDocuments()).toBe(1);
+
+    const overview = await request(app.getHttpServer())
+      .get("/api/v1/learning/knowledge/overview?target=yandex")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(overview.body).toMatchObject({
+      ontologyVersion: "frontend-v1",
+      masteryModelVersion: "evidence-decay-v1",
+      readiness: { targetId: "yandex" },
+    });
+    const measuredSkill = overview.body.skills.find(
+      (skill: { evidenceCount: number }) => skill.evidenceCount > 0,
+    );
+    expect(measuredSkill).toBeTruthy();
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/learning/knowledge/skills/${encodeURIComponent(measuredSkill.skillId)}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(detail.body.evidence).toHaveLength(1);
   });
 
   it("objectively checks and deduplicates an evidence question attempt", async () => {

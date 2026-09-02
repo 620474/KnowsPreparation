@@ -34,6 +34,7 @@ interface TodayViewProps {
   onOpenReview: () => void;
   onOpenAdaptiveItem: (item: AdaptivePlanItem) => void;
   onOpenResearch: () => void;
+  onOpenSkills: () => void;
 }
 
 const kindLabels = {
@@ -65,6 +66,7 @@ export function TodayView({
   onOpenReview,
   onOpenAdaptiveItem,
   onOpenResearch,
+  onOpenSkills,
 }: TodayViewProps) {
   const researchProjects = useQuery({
     queryKey: RESEARCH_PROJECTS_QUERY_KEY,
@@ -80,6 +82,13 @@ export function TodayView({
     energy: "normal",
     focus: "mixed",
     note: "",
+  });
+  const knowledgeTarget = checkIn.focus === "yandex" || checkIn.focus === "ozon"
+    ? checkIn.focus
+    : "general";
+  const knowledge = useQuery({
+    queryKey: ["knowledge-overview", knowledgeTarget],
+    queryFn: () => learningApi.getKnowledgeOverview(knowledgeTarget),
   });
   const position = getStudyPosition(data.settings.startDate);
   const day = getDayForOffset(data.curriculum, position.rawOffset);
@@ -190,6 +199,24 @@ export function TodayView({
         </div>
       </section>
 
+      {knowledge.data ? (
+        <button className="today-readiness-card" type="button" onClick={onOpenSkills}>
+          <Target size={26} />
+          <div>
+            <span>Готовность · {knowledge.data.readiness.targetLabel}</span>
+            <strong>
+              {knowledge.data.readiness.estimate ?? "—"}
+              {knowledge.data.readiness.estimate === null ? "" : "%"}
+            </strong>
+            <small>
+              диапазон {knowledge.data.readiness.lower ?? "—"}–{knowledge.data.readiness.upper ?? "—"}% ·
+              покрытие {knowledge.data.readiness.coverage}%
+            </small>
+          </div>
+          <ArrowRight size={20} />
+        </button>
+      ) : null}
+
       {data.settings.adaptiveTodayEnabled ? (
         <section className="adaptive-today-panel">
           <div className="section-heading">
@@ -276,6 +303,11 @@ export function TodayView({
                     </div>
                     <h3>{item.title}</h3>
                     <p>{item.reason}</p>
+                    {item.v6?.reasonCodes.length ? (
+                      <div className="adaptive-reason-codes">
+                        {item.v6.reasonCodes.map((reason) => <span key={reason}>{reason}</span>)}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="adaptive-today-actions">
                     <Button

@@ -1,11 +1,14 @@
 import { createHash } from "node:crypto";
 
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
   AdaptivePlan,
   AdaptivePlanItem,
   AdaptivePlanCheckIn,
+  AdaptiveReasonCode,
+  KnowledgeOverview,
   SkillKey,
   TrackKey,
 } from "@prep/contracts";
@@ -17,6 +20,7 @@ import { CURRICULUM, QUESTION_BANK } from "./curriculum";
 import { inferSkillKeys } from "./skills";
 import { LearningSignalService } from "./learning-signal.service";
 import { buildReadiness } from "./readiness";
+import { MasteryService } from "./mastery/mastery.service";
 import { AiCourse, AiLesson } from "./schemas/ai-course.schema";
 import { AdaptiveDayPlan } from "./schemas/adaptive-day-plan.schema";
 import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
@@ -101,6 +105,45 @@ export function applyReadinessPriority(
   });
 }
 
+export function applyMasteryPriority(
+  candidates: AdaptivePlanItem[],
+  overview: KnowledgeOverview,
+) {
+  const masteryById = new Map(overview.skills.map((skill) => [skill.skillId, skill]));
+  return candidates.map((candidate) => {
+    const targetedSkillIds = candidate.skillKeys.filter((skillId) => masteryById.has(skillId));
+    const mastery = targetedSkillIds
+      .map((skillId) => masteryById.get(skillId)!)
+      .filter((skill) => skill.estimate !== null);
+    const deficit = mastery.length
+      ? mastery.reduce((sum, skill) => sum + (100 - (skill.estimate ?? 0)), 0) / mastery.length
+      : targetedSkillIds.length ? 50 : 0;
+    const reasonCodes: AdaptiveReasonCode[] = [];
+    if (!mastery.length && targetedSkillIds.length) reasonCodes.push("INSUFFICIENT_EVIDENCE");
+    if (mastery.some((skill) => skill.transferEvidenceCount === 0)) reasonCodes.push("TRANSFER_MISSING");
+    if (mastery.some((skill) => {
+      if (!skill.latestEvidenceAt) return true;
+      return Date.now() - new Date(skill.latestEvidenceAt).getTime() > 30 * DAY_MS;
+    })) reasonCodes.push("STALE_EVIDENCE");
+    if (candidate.kind === "review") reasonCodes.push("REVIEW_DUE");
+    if (candidate.kind === "practice") reasonCodes.push("FAILED_PRACTICE");
+    if (candidate.kind === "career" || candidate.kind === "mock") reasonCodes.push("UPCOMING_INTERVIEW");
+    if (candidate.kind === "lesson") reasonCodes.push("NEXT_CURRICULUM_STEP");
+    const expectedInformationGain = !mastery.length ? 80 : Math.min(80, Math.round(deficit));
+    const expectedLearningGain = Math.min(80, Math.round(deficit * 0.65));
+    return {
+      ...candidate,
+      score: candidate.score + Math.round(deficit * 0.15) + Math.round(expectedInformationGain * 0.05),
+      v6: {
+        targetedSkillIds,
+        reasonCodes: [...new Set(reasonCodes)],
+        expectedLearningGain,
+        expectedInformationGain,
+      },
+    };
+  });
+}
+
 @Injectable()
 export class AdaptivePlanService {
   constructor(
@@ -124,6 +167,8 @@ export class AdaptivePlanService {
     private readonly careerApplicationModel: Model<CareerApplicationEntry>,
     private readonly signals: LearningSignalService,
     private readonly agents: AiAgentService,
+    private readonly masteryService: MasteryService,
+    private readonly config: ConfigService,
   ) {}
 
   async skipRecommendation(recommendationId: string, operationId: string) {
@@ -373,11 +418,22 @@ export class AdaptivePlanService {
       note: "",
     };
     const readiness = buildReadiness(readinessSignals);
-    const availableCandidates = applyReadinessPriority(
+    const readinessCandidates = applyReadinessPriority(
       candidates.filter((candidate) => !skippedIds.has(candidate.id)),
       readiness.skills,
       effectiveCheckIn.focus,
     );
+    const v6PlannerEnabled = this.config.get<string>("PLANNER_V6_ENABLED") !== "false";
+    const availableCandidates = v6PlannerEnabled
+      ? applyMasteryPriority(
+          readinessCandidates,
+          await this.masteryService.getOverview(
+            effectiveCheckIn.focus === "yandex" || effectiveCheckIn.focus === "ozon"
+              ? effectiveCheckIn.focus
+              : "general",
+          ),
+        )
+      : readinessCandidates;
     let items = selectAdaptivePlanItems(
       availableCandidates,
       effectiveCheckIn.availableMinutes,

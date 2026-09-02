@@ -146,6 +146,12 @@ export function useAppNavigation() {
     [navigateToRoute],
   );
 
+  const navigateToSkill = useCallback(
+    (skillId: string | null) =>
+      navigateToRoute({ view: "skills", lessonReader: null, skillId }),
+    [navigateToRoute],
+  );
+
   const closeLessonReader = useCallback(() => {
     const marker = route.lessonReader
       ? `${route.lessonReader.track}:${route.lessonReader.itemId}`
@@ -221,6 +227,7 @@ export function useAppNavigation() {
     dayReader: route.dayReader ?? null,
     yandexMockDayId: route.yandexMockDayId ?? null,
     researchProjectId: route.researchProjectId ?? null,
+    skillId: route.skillId ?? null,
     chatOpen,
     chatItemId,
     chatDraftRequest,
@@ -230,6 +237,7 @@ export function useAppNavigation() {
     navigateToTrackDay,
     navigateToYandexMock,
     navigateToResearchProject,
+    navigateToSkill,
     openLessonReader: navigateToLesson,
     closeLessonReader,
     openChat,

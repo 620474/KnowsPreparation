@@ -1043,6 +1043,10 @@ export class LearningService {
         calibrationGap: dto.confidence - score,
         responseTimeMs: dto.responseTimeMs,
         reliability: evaluator.mode === "ai" ? 0.6 : 1,
+        itemFamilyId: `question:${questionId}`,
+        transferLevel: training.exercise.type === "live_coding" || training.exercise.type === "bug_fix"
+          ? "near_transfer"
+          : "familiar",
       },
       operationId: `question-attempt:${dto.operationId}`,
     });
@@ -1081,7 +1085,17 @@ export class LearningService {
         track: trackKey,
         itemId: `${itemId}:${latest.tier}`,
         skillKeys: inferSkillKeys(...latest.answers.map((answer) => answer.topic)),
-        payload: { score: latest.score, maxScore: latest.answers.length },
+        payload: {
+          score: latest.score,
+          maxScore: latest.answers.length,
+          capabilities: [...new Set(latest.answers.flatMap((answer) =>
+            answer.capability ? [answer.capability] : []))],
+          transferLevel: latest.answers.some((answer) => answer.capability === "transfer")
+            ? "near_transfer"
+            : "familiar",
+          itemFamilyId: `quiz:${itemId}`,
+          itemVersion: String(progress.lessonVersion),
+        },
         operationId: `quiz:${dto.operationId ?? randomUUID()}`,
         occurredAt: new Date(latest.completedAt),
       });
@@ -1289,6 +1303,9 @@ export class LearningService {
         confidence: attempt.confidence,
         attemptNumber: attempt.attemptNumber,
         firstAttemptPassed: attempt.firstAttemptPassed,
+        itemVersion: attempt.exerciseVersion,
+        itemFamilyId: `practice:${attempt.itemId}`,
+        transferLevel: attempt.source === "task" ? "near_transfer" : "familiar",
       },
       operationId: `practice:${attempt.operationId}`,
       occurredAt: attempt.createdAt,
@@ -1301,7 +1318,11 @@ export class LearningService {
       type: "question_reviewed",
       itemId: questionId,
       skillKeys: inferSkillKeys(question?.category, question?.prompt),
-      payload: { rating: dto.rating },
+      payload: {
+        rating: dto.rating,
+        itemFamilyId: `question:${questionId}`,
+        transferLevel: "familiar",
+      },
       operationId: `review:${dto.operationId ?? randomUUID()}`,
     });
   }
@@ -1460,6 +1481,7 @@ export class LearningService {
         correctOptionIndex: question.correctOptionIndex,
         explanation: question.explanation,
         topic: question.topic,
+        capability: question.capability,
       };
     });
     const requestHash = createHash("sha256")
@@ -1644,7 +1666,11 @@ export class LearningService {
     await this.signals.record({
       type: "mock_completed",
       skillKeys: inferSkillKeys(...interview.evaluation.weakTopics),
-      payload: { score: interview.evaluation.overallScore },
+      payload: {
+        score: interview.evaluation.overallScore,
+        itemFamilyId: `mock:${String(interview._id)}`,
+        transferLevel: "near_transfer",
+      },
       operationId: `mock:${String(interview._id)}`,
       occurredAt: interview.completedAt ?? new Date(),
     });

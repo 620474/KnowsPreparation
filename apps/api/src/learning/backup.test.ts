@@ -24,6 +24,8 @@ const createBackup = (): LearningBackupV1 => ({
     aiPracticeProgresses: [],
     practiceAttempts: [],
     learningSignals: [],
+    evidenceEvents: [],
+    masterySnapshots: [],
     aiQuizProgresses: [],
     mockInterviews: [],
     interviewSessions: [],

@@ -1,7 +1,12 @@
-import type { AdaptivePlanItem } from "@prep/contracts";
+import {
+  SKILL_ONTOLOGY_VERSION,
+  type AdaptivePlanItem,
+  type KnowledgeOverview,
+} from "@prep/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
+  applyMasteryPriority,
   applyReadinessPriority,
   selectAdaptivePlanItems,
 } from "./adaptive-plan.service";
@@ -61,5 +66,44 @@ describe("selectAdaptivePlanItems", () => {
 
     expect(ranked[0]!.score).toBeGreaterThan(ranked[1]!.score);
     expect(ranked[0]!.reason).toContain("дефицит 70%");
+  });
+
+  it("adds explainable v6 metadata for missing evidence", () => {
+    const overview = {
+      ontologyVersion: SKILL_ONTOLOGY_VERSION,
+      masteryModelVersion: "test",
+      generatedAt: new Date().toISOString(),
+      readiness: {
+        targetId: "general",
+        targetLabel: "Frontend",
+        estimate: null,
+        lower: null,
+        upper: null,
+        coverage: 0,
+        integrityCoverage: 0,
+        evidenceCount: 0,
+        confidence: "low",
+      },
+      skills: [{
+        skillId: "javascript",
+        label: "JavaScript",
+        category: "JavaScript",
+        estimate: null,
+        lower: null,
+        upper: null,
+        evidenceCount: 0,
+        independentFamilyCount: 0,
+        transferEvidenceCount: 0,
+        noAiEvidenceCount: 0,
+        latestEvidenceAt: null,
+        confidence: "low",
+        capabilities: [],
+      }],
+    } satisfies KnowledgeOverview;
+    const [ranked] = applyMasteryPriority([candidate("diagnostic", 50, 20)], overview);
+
+    expect(ranked?.v6?.targetedSkillIds).toEqual(["javascript"]);
+    expect(ranked?.v6?.reasonCodes).toContain("INSUFFICIENT_EVIDENCE");
+    expect(ranked?.v6?.expectedInformationGain).toBe(80);
   });
 });

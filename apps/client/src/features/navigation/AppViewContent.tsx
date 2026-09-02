@@ -18,6 +18,9 @@ const KnowledgeHub = lazy(() =>
     default: module.KnowledgeHub,
   })),
 );
+const SkillsView = lazy(() =>
+  import("../../views/SkillsView").then((module) => ({ default: module.SkillsView })),
+);
 const ResearchView = lazy(() =>
   import("../research").then((module) => ({ default: module.ResearchView })),
 );
@@ -96,10 +99,12 @@ export function AppViewContent({
     dayReader,
     yandexMockDayId,
     researchProjectId,
+    skillId,
     navigateToView,
     navigateToTrackDay,
     navigateToYandexMock,
     navigateToResearchProject,
+    navigateToSkill,
     openLessonReader,
     openChat,
     openChatWithDraft,
@@ -130,6 +135,7 @@ export function AppViewContent({
         onOpenMock={() => navigateToView("interview")}
         onOpenReview={() => navigateToView("review")}
         onOpenResearch={() => navigateToResearchProject(null)}
+        onOpenSkills={() => navigateToSkill(null)}
         onOpenAdaptiveItem={(item) => {
           if (item.kind === "review") navigateToView("review");
           else if (item.kind === "mock") navigateToView("interview");
@@ -141,6 +147,17 @@ export function AppViewContent({
           ) openLessonReader(item.track, item.itemId);
           else if (item.track) navigateToView(viewForTrack(item.track));
         }}
+      />
+    );
+  }
+
+  if (activeView === "skills") {
+    return (
+      <SkillsView
+        skillId={skillId}
+        onBack={() => navigateToView("today")}
+        onOpenKnowledge={() => navigateToView("knowledge")}
+        onOpenSkill={navigateToSkill}
       />
     );
   }

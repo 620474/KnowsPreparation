@@ -223,6 +223,7 @@ export function serializeQuizProgress(progress: AiQuizProgress) {
           : { correctOptionIndex: answer.correctOptionIndex }),
         ...(answer.explanation ? { explanation: answer.explanation } : {}),
         topic: answer.topic,
+        ...(answer.capability ? { capability: answer.capability } : {}),
       })),
       completedAt: attempt.completedAt.toISOString(),
     })),

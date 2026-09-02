@@ -110,7 +110,9 @@ export function subscribeToQueryCache(queryClient: QueryClient) {
               rootKey === "ai-chat" ||
               rootKey === "practice-attempts" ||
               rootKey === "adaptive-today" ||
-              rootKey === "learning-analytics");
+              rootKey === "learning-analytics" ||
+              rootKey === "knowledge-overview" ||
+              rootKey === "skill-detail");
         },
       });
       void writeCache({ version: CACHE_VERSION, timestamp: Date.now(), state }).catch(

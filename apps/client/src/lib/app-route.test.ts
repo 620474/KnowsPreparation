@@ -13,6 +13,7 @@ describe("app routes", () => {
     ["today", "#/today"],
     ["preparation", "#/preparation"],
     ["knowledge", "#/knowledge"],
+    ["skills", "#/skills"],
     ["career", "#/career"],
     ["yandex", "#/yandex"],
     ["ozon", "#/ozon"],
@@ -108,5 +109,15 @@ describe("app routes", () => {
       lessonReader: null,
       researchProjectId: null,
     });
+  });
+
+  it("round-trips a skill detail route", () => {
+    const route = {
+      view: "skills" as const,
+      lessonReader: null,
+      skillId: "async.event-loop",
+    };
+    expect(formatAppRoute(route)).toBe("#/skills/async.event-loop");
+    expect(parseAppRoute(formatAppRoute(route))).toEqual(route);
   });
 });

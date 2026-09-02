@@ -1,4 +1,10 @@
 import { z } from "zod";
+import { v6PlanningMetadataSchema } from "./planning";
+
+export * from "./evidence";
+export * from "./mastery";
+export * from "./planning";
+export * from "./skills";
 
 export const questionStatusSchema = z.enum(["new", "learning", "review", "mastered"]);
 export const reviewRatingSchema = z.enum(["again", "hard", "good", "easy"]);
@@ -363,6 +369,7 @@ export const lessonQuizAnswerSchema = z.object({
   correctOptionIndex: z.number().int().min(0).max(3).optional(),
   explanation: z.string().optional(),
   topic: z.string(),
+  capability: aiQuizCapabilitySchema.optional(),
 });
 
 export const lessonQuizAttemptSchema = z.object({
@@ -664,6 +671,7 @@ export const adaptivePlanItemSchema = z.object({
   track: trackKeySchema.nullable(),
   itemId: z.string().nullable(),
   source: practiceAttemptSourceSchema.nullable(),
+  v6: v6PlanningMetadataSchema.optional(),
 });
 
 export const adaptivePlanSchema = z.object({
