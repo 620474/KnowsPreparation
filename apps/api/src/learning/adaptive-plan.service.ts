@@ -177,7 +177,7 @@ export class AdaptivePlanService {
         .exec(),
       this.signalModel
         .find({
-          type: { $in: ["question_reviewed", "quiz_submitted", "practice_attempted", "mock_completed"] },
+          type: { $in: ["question_reviewed", "question_attempted", "quiz_submitted", "practice_attempted", "mock_completed"] },
           occurredAt: { $gte: new Date(now.getTime() - 90 * DAY_MS) },
         })
         .sort({ occurredAt: -1 })

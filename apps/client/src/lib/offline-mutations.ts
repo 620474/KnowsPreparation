@@ -12,6 +12,7 @@ import type {
   MockAnswerMutationVariables,
   PracticeAttemptMutationVariables,
   QuestionMutationVariables,
+  QuestionAttemptMutationVariables,
   QuizMutationVariables,
   ReviewMutationVariables,
   SettingsMutationVariables,
@@ -45,6 +46,10 @@ const executeOutboxEntry = (entry: MutationOutboxEntry) => {
     case "review": {
       const { questionId, rating, note, operationId } = entry.variables as ReviewMutationVariables;
       return learningApi.reviewQuestion(questionId, rating, note, operationId);
+    }
+    case "questionAttempt": {
+      const { questionId, ...input } = entry.variables as QuestionAttemptMutationVariables;
+      return learningApi.submitQuestionAttempt(questionId, input);
     }
     case "quiz": {
       const { track, itemId, answers, operationId } = entry.variables as QuizMutationVariables;
@@ -122,6 +127,12 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
     ...offlineOptions,
     mutationFn: createDurableMutationFn("review", ({ questionId, rating, note, operationId }: ReviewMutationVariables) =>
       learningApi.reviewQuestion(questionId, rating, note, operationId)),
+    onSettled: refreshLearning,
+  });
+  queryClient.setMutationDefaults(offlineMutationKeys.questionAttempt, {
+    ...offlineOptions,
+    mutationFn: createDurableMutationFn("questionAttempt", ({ questionId, ...input }: QuestionAttemptMutationVariables) =>
+      learningApi.submitQuestionAttempt(questionId, input)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.quiz, {

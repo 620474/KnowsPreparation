@@ -111,7 +111,7 @@ export function AppViewContent({
     generatingLesson,
     generationProgress,
   } = aiActions;
-  const { updateTask, updateQuestion, reviewQuestion, updateSettings } = progressActions;
+  const { updateTask, updateQuestion, submitQuestionAttempt, updateSettings } = progressActions;
   const {
     startMockInterview,
     saveMockAnswer,
@@ -296,7 +296,7 @@ export function AppViewContent({
     );
   }
   if (activeView === "review") {
-    return <ReviewView data={data} onBack={() => navigateToView("knowledge")} onReview={reviewQuestion} />;
+    return <ReviewView data={data} onBack={() => navigateToView("knowledge")} onSubmitAttempt={submitQuestionAttempt} />;
   }
   if (activeView === "mock-interview") {
     return (

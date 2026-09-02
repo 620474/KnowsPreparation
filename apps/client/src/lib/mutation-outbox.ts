@@ -7,6 +7,7 @@ export type DurableMutationKind =
   | "task"
   | "question"
   | "review"
+  | "questionAttempt"
   | "quiz"
   | "practiceAttempt"
   | "mockAnswer"

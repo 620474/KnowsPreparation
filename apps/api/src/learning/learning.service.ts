@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { questionAttemptResultSchema, type ReviewRating } from "@prep/contracts";
 
 import {
   BadGatewayException,
@@ -36,6 +37,7 @@ import {
   GenerateAiCourseDto,
   ListPracticeAttemptsDto,
   ReviewQuestionDto,
+  SubmitQuestionAttemptDto,
   SendAiChatMessageDto,
   SubmitLessonQuizDto,
   SubmitPracticeAttemptDto,
@@ -71,10 +73,12 @@ import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
 import { PracticeAttempt } from "./schemas/practice-attempt.schema";
+import { QuestionAttempt } from "./schemas/question-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
 import { inferSkillKeys } from "./skills";
 import { scheduleQuestionReview } from "./spaced-repetition";
+import { getQuestionTraining } from "./question-training";
 import { buildTaskProgressUpdate } from "./task-progress";
 import {
   getStaticTrackItem,
@@ -127,6 +131,30 @@ interface ReviewedRunnableLesson {
   sourceVerifiedAt: string;
 }
 
+const normalizeExpectedAnswer = (value: string) =>
+  value
+    .normalize("NFKC")
+    .toLocaleLowerCase("ru-RU")
+    .replace(/[`'"“”«»]/g, "")
+    .replace(/\s*(?:→|->|,|;|\n)\s*/g, ",")
+    .replace(/\s+/g, "")
+    .replace(/,+/g, ",")
+    .replace(/^,|,$/g, "");
+
+const automaticRating = (
+  passed: boolean,
+  score: number,
+  confidence: number,
+  responseTimeMs: number,
+  expectedSeconds: number,
+): ReviewRating => {
+  if (!passed) return score >= 40 ? "hard" : "again";
+  const calibrated = Math.abs(confidence - score) <= 20;
+  return score >= 90 && calibrated && responseTimeMs <= expectedSeconds * 1_000
+    ? "easy"
+    : "good";
+};
+
 @Injectable()
 export class LearningService {
   private readonly logger = new Logger(LearningService.name);
@@ -136,6 +164,8 @@ export class LearningService {
     @InjectModel(TaskProgress.name) private readonly taskModel: Model<TaskProgress>,
     @InjectModel(QuestionProgress.name)
     private readonly questionModel: Model<QuestionProgress>,
+    @InjectModel(QuestionAttempt.name)
+    private readonly questionAttemptModel: Model<QuestionAttempt>,
     @InjectModel(AlgorithmEntry.name)
     private readonly algorithmModel: Model<AlgorithmEntry>,
     @InjectModel(AiCourse.name) private readonly aiCourseModel: Model<AiCourse>,
@@ -825,6 +855,182 @@ export class LearningService {
       questionId: question.questionId,
       ...serializeQuestionProgress(question),
     };
+  }
+
+  async submitQuestionAttempt(questionId: string, dto: SubmitQuestionAttemptDto) {
+    const question = QUESTION_BANK.find((item) => item.id === questionId);
+    const training = getQuestionTraining(questionId);
+    if (!question || !training) {
+      throw new NotFoundException("Проверяемое задание пока не подготовлено");
+    }
+
+    const previousAttempt = await this.questionAttemptModel
+      .findOne({ operationId: dto.operationId })
+      .lean()
+      .exec();
+    if (previousAttempt) {
+      const progress = await this.questionModel.findOne({ questionId }).lean().exec();
+      if (!progress) throw new InternalServerErrorException("Не найден прогресс попытки");
+      return questionAttemptResultSchema.parse({
+        id: String(previousAttempt._id),
+        questionId,
+        exerciseType: previousAttempt.exerciseType,
+        passed: previousAttempt.passed,
+        score: previousAttempt.score,
+        feedback: previousAttempt.feedback,
+        expectedAnswer: previousAttempt.expectedAnswer,
+        confidence: previousAttempt.confidence,
+        calibrationGap: previousAttempt.confidence - previousAttempt.score,
+        progress: serializeQuestionProgress(progress),
+        createdAt: previousAttempt.createdAt.toISOString(),
+      });
+    }
+
+    let passed = false;
+    let score = 0;
+    let expectedAnswer: string | null = null;
+    let feedback: string[] = [];
+    const evaluator = training.evaluator;
+    if (
+      training.exercise.requiresExplanation &&
+      evaluator.mode !== "ai" &&
+      !dto.explanation?.trim()
+    ) {
+      throw new BadRequestException("Добавь объяснение ответа");
+    }
+
+    if (evaluator.mode === "exact") {
+      passed = normalizeExpectedAnswer(dto.answer) === normalizeExpectedAnswer(evaluator.expected);
+      score = passed ? 100 : 0;
+      expectedAnswer = evaluator.expected;
+      feedback = [evaluator.explanation];
+    } else if (evaluator.mode === "choice") {
+      passed = dto.selectedOptionIndex === evaluator.correctIndex;
+      score = passed ? 100 : 0;
+      expectedAnswer = training.exercise.choices?.[evaluator.correctIndex] ?? null;
+      feedback = [evaluator.explanation];
+    } else if (evaluator.mode === "runner") {
+      const result = await runPracticeSolution(evaluator.runner, dto.answer);
+      passed = result.passed;
+      score = result.totalCount
+        ? Math.round((result.passedCount / result.totalCount) * 100)
+        : 0;
+      feedback = [
+        ...result.tests
+          .filter((test) => !test.passed)
+          .map((test) => test.error ? `${test.title}: ${test.error}` : `Не пройдено: ${test.title}`),
+        ...(result.error ? [result.error] : []),
+        evaluator.explanation,
+      ];
+    } else {
+      const assessment = await this.agents.assessInterviewAnswer({
+        company: "Frontend Sprint",
+        question: {
+          ...question,
+          prompt: `${training.exercise.instructions}\nКритерии ответа: ${evaluator.referencePoints.join("; ")}`,
+        },
+        answer: dto.answer,
+        followUps: [],
+        followUpCount: 2,
+        candidateQuestions: [],
+      });
+      score = assessment.score;
+      passed = score >= 70 && assessment.confidence !== "low";
+      feedback = [...assessment.gaps, ...assessment.strengths.map((item) => `Сильная сторона: ${item}`)];
+    }
+
+    const rating = automaticRating(
+      passed,
+      score,
+      dto.confidence,
+      dto.responseTimeMs,
+      training.exercise.expectedSeconds,
+    );
+    const verifiedCapabilities = evaluator.mode === "ai"
+      ? training.capabilities
+      : training.capabilities.filter(
+          (capability) => capability !== "explain" && capability !== "defend",
+        );
+    const attempt = await this.questionAttemptModel
+      .findOneAndUpdate(
+        { operationId: dto.operationId },
+        {
+          $setOnInsert: {
+            questionId,
+            exerciseType: training.exercise.type,
+            skillKeys: training.skillKeys,
+            capabilities: verifiedCapabilities,
+            answer: dto.answer,
+            explanation: dto.explanation ?? "",
+            passed,
+            score,
+            feedback,
+            expectedAnswer,
+            confidence: dto.confidence,
+            responseTimeMs: dto.responseTimeMs,
+            automaticRating: rating,
+            operationId: dto.operationId,
+          },
+        },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
+      )
+      .exec();
+    if (!attempt) throw new InternalServerErrorException("Не удалось сохранить попытку");
+
+    await this.questionModel
+      .updateOne(
+        { questionId },
+        { $setOnInsert: { questionId } },
+        { upsert: true, setDefaultsOnInsert: true },
+      )
+      .exec();
+    const current = await this.questionModel.findOne({ questionId }).lean().exec();
+    const schedule = scheduleQuestionReview(current ?? {}, rating);
+    const progress = await this.questionModel
+      .findOneAndUpdate(
+        { questionId, lastReviewOperationId: { $ne: dto.operationId } },
+        {
+          $set: {
+            ...schedule,
+            note: dto.explanation ?? current?.note ?? "",
+            lastReviewOperationId: dto.operationId,
+          },
+        },
+        { returnDocument: "after", lean: true },
+      )
+      .exec() ?? await this.questionModel.findOne({ questionId }).lean().exec();
+    if (!progress) throw new InternalServerErrorException("Не удалось обновить прогресс");
+
+    await this.signals.record({
+      type: "question_attempted",
+      itemId: questionId,
+      skillKeys: training.skillKeys,
+      payload: {
+        exerciseType: training.exercise.type,
+        capabilities: verifiedCapabilities,
+        passed,
+        score,
+        confidence: dto.confidence,
+        calibrationGap: dto.confidence - score,
+        responseTimeMs: dto.responseTimeMs,
+        reliability: evaluator.mode === "ai" ? 0.6 : 1,
+      },
+      operationId: `question-attempt:${dto.operationId}`,
+    });
+
+    return questionAttemptResultSchema.parse({
+      id: String(attempt._id),
+      questionId,
+      exerciseType: training.exercise.type,
+      passed,
+      score,
+      feedback,
+      expectedAnswer,
+      confidence: dto.confidence,
+      calibrationGap: dto.confidence - score,
+      progress: serializeQuestionProgress(progress),
+      createdAt: attempt.createdAt.toISOString(),
+    });
   }
 
   async submitTrackQuiz(

@@ -15,7 +15,8 @@ const createBackup = (): LearningBackupV1 => ({
   data: {
     settings: [],
     tasks: [],
-    questions: [],
+  questions: [],
+  questionAttempts: [],
     algorithms: [],
     aiCourses: [],
     aiLessons: [],

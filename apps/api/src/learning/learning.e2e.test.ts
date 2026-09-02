@@ -899,6 +899,52 @@ describe("Learning API", () => {
     });
   });
 
+  it("objectively checks and deduplicates an evidence question attempt", async () => {
+    const operationId = "question-attempt-operation-1";
+    const payload = {
+      answer: "A, G, C, F, D, E, B",
+      explanation: "Сначала sync, затем очередь microtask полностью, потом timer task.",
+      confidence: 80,
+      responseTimeMs: 60_000,
+      operationId,
+    };
+
+    const firstResponse = await request(app.getHttpServer())
+      .post("/api/v1/learning/questions/q-01/attempts")
+      .set("Authorization", `Bearer ${token}`)
+      .send(payload)
+      .expect(201);
+
+    const duplicateResponse = await request(app.getHttpServer())
+      .post("/api/v1/learning/questions/q-01/attempts")
+      .set("Authorization", `Bearer ${token}`)
+      .send(payload)
+      .expect(201);
+
+    expect(firstResponse.body).toMatchObject({
+      questionId: "q-01",
+      exerciseType: "predict_output",
+      passed: true,
+      score: 100,
+      confidence: 80,
+      calibrationGap: -20,
+      progress: { reviewCount: 1, lastRating: "easy" },
+    });
+    expect(duplicateResponse.body).toEqual(firstResponse.body);
+
+    const failedResponse = await request(app.getHttpServer())
+      .post("/api/v1/learning/questions/q-01/attempts")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...payload, answer: "A, B, C", operationId: "question-attempt-operation-2" })
+      .expect(201);
+
+    expect(failedResponse.body).toMatchObject({
+      passed: false,
+      score: 0,
+      progress: { reviewCount: 2, lastRating: "again" },
+    });
+  });
+
   it("stores a repeated quiz submission as one attempt", async () => {
     const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;
     if (!blockId) throw new Error("Yandex sprint must contain a quiz-capable block");

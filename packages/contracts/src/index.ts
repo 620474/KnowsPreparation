@@ -130,11 +130,42 @@ export const studyWeekSchema = z.object({
   days: z.array(studyDaySchema),
 });
 
+export const questionExerciseTypeSchema = z.enum([
+  "predict_output",
+  "multiple_choice",
+  "bug_fix",
+  "live_coding",
+  "explain",
+]);
+
+export const questionCapabilitySchema = z.enum([
+  "recall",
+  "apply",
+  "debug",
+  "code",
+  "explain",
+  "defend",
+]);
+
+export const questionExerciseSchema = z.object({
+  type: questionExerciseTypeSchema,
+  instructions: z.string(),
+  code: z.string().optional(),
+  choices: z.array(z.string()).optional(),
+  starterCode: z.string().optional(),
+  answerPlaceholder: z.string(),
+  expectedSeconds: z.number().int().positive(),
+  requiresExplanation: z.boolean(),
+});
+
 export const interviewQuestionSchema = z.object({
   id: z.string(),
   number: z.number(),
   category: z.string(),
   prompt: z.string(),
+  skillKeys: z.array(skillKeySchema).optional(),
+  capabilities: z.array(questionCapabilitySchema).optional(),
+  exercise: questionExerciseSchema.optional(),
 });
 
 export const taskProgressSchema = z.object({
@@ -155,6 +186,20 @@ export const questionProgressSchema = z.object({
   reviewCount: z.number(),
   lapseCount: z.number(),
   lastRating: reviewRatingSchema.nullable(),
+});
+
+export const questionAttemptResultSchema = z.object({
+  id: z.string(),
+  questionId: z.string(),
+  exerciseType: questionExerciseTypeSchema,
+  passed: z.boolean(),
+  score: z.number().int().min(0).max(100),
+  feedback: z.array(z.string()),
+  expectedAnswer: z.string().nullable(),
+  confidence: z.number().int().min(0).max(100),
+  calibrationGap: z.number().int().min(-100).max(100),
+  progress: questionProgressSchema,
+  createdAt: z.string(),
 });
 
 export const algorithmEntrySchema = z.object({
@@ -1323,6 +1368,9 @@ export type StudyExercise = z.infer<typeof studyExerciseSchema>;
 export type StudyBlock = z.infer<typeof studyBlockSchema>;
 export type StudyDay = z.infer<typeof studyDaySchema>;
 export type StudyWeek = z.infer<typeof studyWeekSchema>;
+export type QuestionExerciseType = z.infer<typeof questionExerciseTypeSchema>;
+export type QuestionCapability = z.infer<typeof questionCapabilitySchema>;
+export type QuestionExercise = z.infer<typeof questionExerciseSchema>;
 export type InterviewQuestion = z.infer<typeof interviewQuestionSchema>;
 export type TaskProgress = z.infer<typeof taskProgressSchema>;
 export type TaskProgressPatch = Partial<TaskProgress>;
@@ -1331,6 +1379,7 @@ export type TaskUpdateHandler = (
   progress: TaskProgressPatch,
 ) => Promise<boolean>;
 export type QuestionProgress = z.infer<typeof questionProgressSchema>;
+export type QuestionAttemptResult = z.infer<typeof questionAttemptResultSchema>;
 export type AlgorithmEntry = z.infer<typeof algorithmEntrySchema>;
 export type AiCourseProfile = z.infer<typeof aiCourseProfileSchema>;
 export type AiCourseItem = z.infer<typeof aiCourseItemSchema>;

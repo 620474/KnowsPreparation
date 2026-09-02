@@ -181,6 +181,41 @@ export class ReviewQuestionDto {
   operationId?: string;
 }
 
+export class SubmitQuestionAttemptDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50_000)
+  answer!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8_000)
+  explanation?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  selectedOptionIndex?: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  confidence!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(3_600_000)
+  responseTimeMs!: number;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  operationId!: string;
+}
+
 export class LessonQuizAnswerDto {
   @IsString()
   @MinLength(1)

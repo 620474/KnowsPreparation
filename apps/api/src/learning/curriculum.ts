@@ -1,4 +1,7 @@
 import type {
+  QuestionCapability,
+  QuestionExercise,
+  SkillKey,
   StudyBlock,
   StudyBlockKind,
   StudyDay,
@@ -11,6 +14,7 @@ import type {
 
 import { getResourceIdsForBlock } from "./resources";
 import { getExerciseRunner } from "./exercise-runners";
+import { getQuestionTraining } from "./question-training";
 
 export type {
   StudyBlock,
@@ -592,6 +596,9 @@ export interface InterviewQuestion {
   number: number;
   category: string;
   prompt: string;
+  skillKeys?: SkillKey[];
+  capabilities?: QuestionCapability[];
+  exercise?: QuestionExercise;
 }
 
 const questionGroups: Array<[string, string[]]> = [
@@ -795,11 +802,20 @@ export const QUESTION_BANK: InterviewQuestion[] = questionGroups.flatMap(
       .reduce((sum, [, previousPrompts]) => sum + previousPrompts.length, 0);
     return prompts.map((prompt, promptIndex) => {
       const number = offset + promptIndex + 1;
+      const id = `q-${String(number).padStart(2, "0")}`;
+      const training = getQuestionTraining(id);
       return {
-        id: `q-${String(number).padStart(2, "0")}`,
+        id,
         number,
         category,
         prompt,
+        ...(training
+          ? {
+              skillKeys: training.skillKeys,
+              capabilities: training.capabilities,
+              exercise: training.exercise,
+            }
+          : {}),
       };
     });
   },

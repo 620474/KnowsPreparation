@@ -33,6 +33,7 @@ import {
   ListInterviewSessionsDto,
   ListPracticeAttemptsDto,
   ReviewQuestionDto,
+  SubmitQuestionAttemptDto,
   SendAiChatMessageDto,
   SkipAdaptiveRecommendationDto,
   StartInterviewSessionDto,
@@ -258,6 +259,15 @@ export class LearningController {
     @Body() dto: ReviewQuestionDto,
   ) {
     return this.learningService.reviewQuestion(questionId, dto);
+  }
+
+  @Post("questions/:questionId/attempts")
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  submitQuestionAttempt(
+    @Param("questionId") questionId: string,
+    @Body() dto: SubmitQuestionAttemptDto,
+  ) {
+    return this.learningService.submitQuestionAttempt(questionId, dto);
   }
 
   @Get("mock-interviews/current")

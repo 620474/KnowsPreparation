@@ -12,6 +12,7 @@ interface ReadinessEvidence {
   key: string;
   occurredAt: Date;
   score: number;
+  reliability: number;
 }
 
 export interface ReadinessMetric {
@@ -40,8 +41,8 @@ const signalDate = (signal: LearningSignal) => {
 const evidenceKey = (signal: LearningSignal, dimension: ReadinessDimension) =>
   `${dimension}:${signal.type}:${signal.track ?? "global"}:${signal.itemId ?? signal.operationId}`;
 
-const confidenceForCount = (count: number): ReadinessMetric["confidence"] =>
-  count >= 8 ? "high" : count >= 3 ? "medium" : "low";
+const confidenceForWeight = (weight: number): ReadinessMetric["confidence"] =>
+  weight >= 8 ? "high" : weight >= 3 ? "medium" : "low";
 
 const aggregateEvidence = (
   evidence: ReadinessEvidence[],
@@ -64,11 +65,13 @@ const aggregateEvidence = (
   }
   let weightedScore = 0;
   let totalWeight = 0;
+  let evidenceWeight = 0;
   for (const item of independent) {
     const ageDays = Math.max(0, now.getTime() - item.occurredAt.getTime()) / DAY_MS;
-    const weight = 0.5 ** (ageDays / READINESS_HALF_LIFE_DAYS);
+    const weight = (0.5 ** (ageDays / READINESS_HALF_LIFE_DAYS)) * item.reliability;
     weightedScore += item.score * weight;
     totalWeight += weight;
+    evidenceWeight += item.reliability;
   }
   const latestEvidenceAt = independent.reduce(
     (latest, item) => item.occurredAt > latest ? item.occurredAt : latest,
@@ -79,7 +82,7 @@ const aggregateEvidence = (
     signalCount: evidence.length,
     independentItemCount: independent.length,
     latestEvidenceAt: latestEvidenceAt.toISOString(),
-    confidence: confidenceForCount(independent.length),
+    confidence: confidenceForWeight(evidenceWeight),
   };
 };
 
@@ -88,6 +91,21 @@ export function readinessScoresForSignal(signal: LearningSignal) {
   if (signal.type === "question_reviewed") {
     const rating = signal.payload.rating;
     scores.recall = rating === "again" ? 0 : rating === "hard" ? 40 : rating === "good" ? 75 : 100;
+  } else if (signal.type === "question_attempted") {
+    const score = numberValue(signal.payload.score);
+    const capabilities = Array.isArray(signal.payload.capabilities)
+      ? signal.payload.capabilities
+      : [];
+    if (score !== null) {
+      if (capabilities.includes("recall") || capabilities.includes("apply")) {
+        scores.recall = clampScore(score);
+      }
+      if (capabilities.includes("debug") || capabilities.includes("code")) {
+        scores.code = clampScore(score);
+      }
+      if (capabilities.includes("explain")) scores.explain = clampScore(score);
+      if (capabilities.includes("defend")) scores.defend = clampScore(score);
+    }
   } else if (signal.type === "quiz_submitted") {
     const score = numberValue(signal.payload.score);
     const maxScore = numberValue(signal.payload.maxScore);
@@ -142,10 +160,13 @@ export function buildReadiness(signals: LearningSignal[], now = new Date()) {
   for (const signal of signals) {
     const scores = readinessScoresForSignal(signal);
     const occurredAt = signalDate(signal);
+    const reliability = signal.type === "question_reviewed"
+      ? 0.2
+      : Math.max(0.1, Math.min(1, numberValue(signal.payload.reliability) ?? 1));
     for (const dimension of READINESS_DIMENSIONS) {
       const score = scores[dimension];
       if (score === undefined) continue;
-      const evidence = { key: evidenceKey(signal, dimension), occurredAt, score };
+      const evidence = { key: evidenceKey(signal, dimension), occurredAt, score, reliability };
       dimensionEvidence[dimension].push(evidence);
       for (const skill of signal.skillKeys) {
         const current = skillEvidence.get(skill) ?? [];

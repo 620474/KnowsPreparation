@@ -22,6 +22,7 @@ import { LearningSignal } from "./schemas/learning-signal.schema";
 import { InterviewSession } from "./schemas/interview-session.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
+import { QuestionAttempt } from "./schemas/question-attempt.schema";
 import { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
@@ -39,6 +40,8 @@ export class LearningBackupService {
     @InjectModel(TaskProgress.name) private readonly taskModel: Model<TaskProgress>,
     @InjectModel(QuestionProgress.name)
     private readonly questionModel: Model<QuestionProgress>,
+    @InjectModel(QuestionAttempt.name)
+    private readonly questionAttemptModel: Model<QuestionAttempt>,
     @InjectModel(AlgorithmEntry.name)
     private readonly algorithmModel: Model<AlgorithmEntry>,
     @InjectModel(AiCourse.name) private readonly aiCourseModel: Model<AiCourse>,
@@ -84,6 +87,7 @@ export class LearningBackupService {
       settings,
       tasks,
       questions,
+      questionAttempts,
       algorithms,
       aiCourses,
       aiLessons,
@@ -108,6 +112,7 @@ export class LearningBackupService {
       this.settingsModel.find().lean().exec(),
       this.taskModel.find().lean().exec(),
       this.questionModel.find().lean().exec(),
+      this.questionAttemptModel.find().lean().exec(),
       this.algorithmModel.find().lean().exec(),
       this.aiCourseModel.find().lean().exec(),
       this.aiLessonModel.find().lean().exec(),
@@ -138,6 +143,7 @@ export class LearningBackupService {
         settings,
         tasks,
         questions,
+        questionAttempts,
         algorithms,
         aiCourses,
         aiLessons,
@@ -168,6 +174,10 @@ export class LearningBackupService {
       settings: await this.validateRecords(this.settingsModel, backup.data.settings),
       tasks: await this.validateRecords(this.taskModel, backup.data.tasks),
       questions: await this.validateRecords(this.questionModel, backup.data.questions),
+      questionAttempts: await this.validateRecords(
+        this.questionAttemptModel,
+        backup.data.questionAttempts,
+      ),
       algorithms: await this.validateRecords(
         this.algorithmModel,
         backup.data.algorithms,
@@ -260,6 +270,11 @@ export class LearningBackupService {
       this.mergeRecords(this.questionModel, prepared.questions, (record) => ({
         questionId: record.questionId,
       })),
+      this.mergeRecords(
+        this.questionAttemptModel,
+        prepared.questionAttempts,
+        (record) => ({ operationId: record.operationId }),
+      ),
       this.mergeRecords(this.algorithmModel, prepared.algorithms, (record) => ({
         _id: record._id,
       })),

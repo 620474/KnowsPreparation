@@ -7,6 +7,7 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "settings",
   "tasks",
   "questions",
+  "questionAttempts",
   "algorithms",
   "aiCourses",
   "aiLessons",
@@ -70,6 +71,7 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
   for (const collection of LEARNING_BACKUP_COLLECTIONS) {
     const records = value.data[collection] ??
       (collection === "aiPracticeProgresses" ||
+      collection === "questionAttempts" ||
       collection === "practiceAttempts" ||
       collection === "learningSignals" ||
       collection === "interviewSessions" ||

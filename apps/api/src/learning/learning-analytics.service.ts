@@ -27,6 +27,9 @@ const signalScore = (signal: LearningSignal): number | null => {
     const rating = signal.payload.rating;
     return rating === "again" ? 0 : rating === "hard" ? 40 : rating === "good" ? 75 : 100;
   }
+  if (signal.type === "question_attempted") {
+    return numberValue(signal.payload.score);
+  }
   if (signal.type === "mock_completed") {
     return numberValue(signal.payload.score);
   }
@@ -91,7 +94,7 @@ export class LearningAnalyticsService {
         day.quizAttempts += 1;
         const score = signalScore(signal);
         if (score !== null) day.quizScores.push(score);
-      } else if (signal.type === "question_reviewed") {
+      } else if (signal.type === "question_reviewed" || signal.type === "question_attempted") {
         day.reviews += 1;
       } else if (signal.type === "mock_completed") {
         day.mocks += 1;

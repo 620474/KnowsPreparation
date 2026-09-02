@@ -18,6 +18,27 @@ const signal = (
 } as LearningSignal);
 
 describe("readiness evidence", () => {
+  it("uses objective question attempts across their measured capabilities", () => {
+    expect(readinessScoresForSignal(signal("question_attempted", {
+      score: 84,
+      capabilities: ["recall", "debug", "explain"],
+      reliability: 1,
+    }))).toEqual({ recall: 84, code: 84, explain: 84 });
+  });
+
+  it("keeps legacy self-ratings as low-confidence evidence", () => {
+    const readiness = buildReadiness(
+      Array.from({ length: 8 }, (_, index) => signal(
+        "question_reviewed",
+        { rating: "easy" },
+        ["javascript"],
+        { itemId: `legacy-${index}` },
+      )),
+    );
+    expect(readiness.dimensions.recall.score).toBe(100);
+    expect(readiness.dimensions.recall.confidence).toBe("low");
+  });
+
   it("penalizes repeated and AI-assisted coding attempts", () => {
     expect(readinessScoresForSignal(signal("practice_attempted", {
       passedCount: 4,

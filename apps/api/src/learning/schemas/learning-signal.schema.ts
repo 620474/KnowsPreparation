@@ -4,6 +4,7 @@ import { Schema as MongooseSchema, type HydratedDocument } from "mongoose";
 
 export const LEARNING_SIGNAL_TYPES = [
   "question_reviewed",
+  "question_attempted",
   "quiz_submitted",
   "practice_attempted",
   "mock_completed",

@@ -10,6 +10,7 @@ import {
   practiceAttemptHistorySchema,
   practiceAttemptSchema,
   practiceSolutionSaveResultSchema,
+  questionAttemptResultSchema,
   researchClaimSchema,
   researchEvidenceSchema,
   researchProjectSchema,
@@ -48,6 +49,7 @@ import type {
   PracticeAttemptSource,
   PracticeAttemptTelemetry,
   QuestionProgress,
+  QuestionAttemptResult,
   ReviewRating,
   TaskProgress,
   TaskProgressPatch,
@@ -484,6 +486,21 @@ export const learningApi = {
       `/learning/questions/${questionId}/review`,
       { method: "POST", body: JSON.stringify({ rating, note, operationId }) },
     ),
+  submitQuestionAttempt: (
+    questionId: string,
+    input: {
+      answer: string;
+      explanation?: string;
+      selectedOptionIndex?: number;
+      confidence: number;
+      responseTimeMs: number;
+      operationId: string;
+    },
+  ) =>
+    request<QuestionAttemptResult>(`/learning/questions/${questionId}/attempts`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }).then((result) => questionAttemptResultSchema.parse(result)),
   submitLessonQuiz: (
     track: TrackKey,
     itemId: string,

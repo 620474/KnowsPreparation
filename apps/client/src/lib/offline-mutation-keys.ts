@@ -3,6 +3,7 @@ import type {
   PracticeAttemptSource,
   PracticeAttemptTelemetry,
   QuestionProgress,
+  QuestionAttemptResult,
   ReviewRating,
   SettingsPatch,
   TaskProgressPatch,
@@ -13,6 +14,7 @@ export const offlineMutationKeys = {
   task: [...OFFLINE_MUTATION_ROOT, "task"] as const,
   question: [...OFFLINE_MUTATION_ROOT, "question"] as const,
   review: [...OFFLINE_MUTATION_ROOT, "review"] as const,
+  questionAttempt: [...OFFLINE_MUTATION_ROOT, "question-attempt"] as const,
   quiz: [...OFFLINE_MUTATION_ROOT, "quiz"] as const,
   practiceAttempt: [...OFFLINE_MUTATION_ROOT, "practice-attempt"] as const,
   mockAnswer: [...OFFLINE_MUTATION_ROOT, "mock-answer"] as const,
@@ -29,6 +31,16 @@ export type ReviewMutationVariables = {
   note: string;
   operationId: string;
 };
+export type QuestionAttemptMutationVariables = {
+  questionId: string;
+  answer: string;
+  explanation?: string;
+  selectedOptionIndex?: number;
+  confidence: number;
+  responseTimeMs: number;
+  operationId: string;
+};
+export type QuestionAttemptMutationResult = QuestionAttemptResult;
 export type QuizMutationVariables = {
   track: TrackKey;
   itemId: string;

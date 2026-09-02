@@ -48,6 +48,10 @@ import {
   QuestionProgressSchema,
 } from "./schemas/question-progress.schema";
 import {
+  QuestionAttempt,
+  QuestionAttemptSchema,
+} from "./schemas/question-attempt.schema";
+import {
   PracticeAttempt,
   PracticeAttemptSchema,
 } from "./schemas/practice-attempt.schema";
@@ -77,6 +81,7 @@ import {
       { name: AdaptiveDayPlan.name, schema: AdaptiveDayPlanSchema },
       { name: TaskProgress.name, schema: TaskProgressSchema },
       { name: QuestionProgress.name, schema: QuestionProgressSchema },
+      { name: QuestionAttempt.name, schema: QuestionAttemptSchema },
       { name: AlgorithmEntry.name, schema: AlgorithmEntrySchema },
       { name: AiCourse.name, schema: AiCourseSchema },
       { name: AiLesson.name, schema: AiLessonSchema },

@@ -14,6 +14,7 @@ import {
   createOperationId,
   offlineMutationKeys,
   type QuestionMutationVariables,
+  type QuestionAttemptMutationVariables,
   type QuizMutationVariables,
   type ReviewMutationVariables,
   type SettingsMutationVariables,
@@ -34,6 +35,7 @@ import type {
   BootstrapData,
   LessonQuizProgress,
   QuestionProgress,
+  QuestionAttemptResult,
   ReviewRating,
   SettingsPatch,
   TaskProgress,
@@ -176,6 +178,41 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }
       setError(error.message);
+    },
+  });
+
+  const questionAttemptMutation = useMutation<
+    QuestionAttemptResult,
+    Error,
+    QuestionAttemptMutationVariables
+  >({
+    mutationKey: offlineMutationKeys.questionAttempt,
+    mutationFn: createDurableMutationFn("questionAttempt", ({ questionId, ...input }: QuestionAttemptMutationVariables) =>
+      learningApi.submitQuestionAttempt(questionId, input)),
+    onSuccess: (result) => {
+      queryClient.setQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY, (current) =>
+        current
+          ? {
+              ...current,
+              progress: {
+                ...current.progress,
+                questions: {
+                  ...current.progress.questions,
+                  [result.questionId]: result.progress,
+                },
+              },
+            }
+          : current,
+      );
+      void queryClient.invalidateQueries({ queryKey: ["learning-analytics"] });
+      void queryClient.invalidateQueries({ queryKey: ["adaptive-today"] });
+    },
+    onError: (error) => {
+      if (!navigator.onLine) {
+        setError("Ответ сохранён на устройстве и будет проверен после подключения к сети");
+        return;
+      }
+      setError(error.message || "Не удалось проверить ответ");
     },
   });
 
@@ -338,6 +375,22 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     }
   };
 
+  const submitQuestionAttempt = async (
+    variables: Omit<QuestionAttemptMutationVariables, "operationId">,
+  ) => {
+    setError("");
+    const input = { ...variables, operationId: createOperationId() };
+    if (!online) {
+      questionAttemptMutation.mutate(input);
+      return null;
+    }
+    try {
+      return await questionAttemptMutation.mutateAsync(input);
+    } catch {
+      return null;
+    }
+  };
+
   const submitLessonQuiz = async (
     track: TrackKey,
     itemId: string,
@@ -401,6 +454,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     updateTask,
     updateQuestion,
     reviewQuestion,
+    submitQuestionAttempt,
     submitLessonQuiz,
     savePracticeDraft,
     updateSettings,
