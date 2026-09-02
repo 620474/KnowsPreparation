@@ -79,8 +79,8 @@ export class InterviewSessionService {
     const interview = await this.interviewModel
       .findOne({ status: { $in: ["in_progress", "evaluating"] } })
       .sort({ updatedAt: -1 })
-      .lean()
       .exec();
+    if (interview) await this.markExpiredIfNeeded(interview);
     return interview ? serializeInterviewSession(interview) : null;
   }
 
@@ -119,6 +119,8 @@ export class InterviewSessionService {
       dto.company,
       completedCount,
     );
+    const startedAt = new Date();
+    const durationMinutes = interviewDurationMinutes(dto.mode, dto.kind);
     const interview = await this.interviewModel.create({
       status: "in_progress",
       mode: dto.mode,
@@ -127,8 +129,10 @@ export class InterviewSessionService {
       applicationId: application?.applicationId ?? null,
       vacancyContext,
       currentStage: "platform",
-      durationMinutes: interviewDurationMinutes(dto.mode, dto.kind),
-      startedAt: new Date(),
+      durationMinutes,
+      startedAt,
+      deadlineAt: new Date(startedAt.getTime() + durationMinutes * 60_000),
+      expiredAt: null,
       completedAt: null,
       platformQuestionTarget: questions.length,
       platformItems: questions.slice(0, 1).map((question) => ({
@@ -157,7 +161,7 @@ export class InterviewSessionService {
     dto: UpdateInterviewPlatformAnswerDto,
   ) {
     const interview = await this.getDocument(interviewId);
-    this.assertStage(interview, "platform");
+    await this.assertStage(interview, "platform");
     const item = interview.platformItems.find(
       (candidate) => candidate.question.id === questionId,
     );
@@ -246,7 +250,7 @@ export class InterviewSessionService {
     dto: SubmitInterviewExerciseDto,
   ) {
     const interview = await this.getDocument(interviewId);
-    this.assertStage(interview, "coding");
+    await this.assertStage(interview, "coding");
     interview.codingExercise = await this.runExercise(
       interview.codingExercise,
       dto.solution,
@@ -258,7 +262,7 @@ export class InterviewSessionService {
 
   async completeCoding(interviewId: string) {
     const interview = await this.getDocument(interviewId);
-    this.assertStage(interview, "coding");
+    await this.assertStage(interview, "coding");
     if (interview.codingExercise.attempts < 1) {
       throw new BadRequestException("Сначала запусти решение по тестам");
     }
@@ -285,7 +289,7 @@ export class InterviewSessionService {
     if (interview.kind === "exam") {
       throw new BadRequestException("AI недоступен до завершения экзамена");
     }
-    this.assertStage(interview, "ai");
+    await this.assertStage(interview, "ai");
     if (dto.solution !== undefined) {
       interview.aiExercise.solution = dto.solution;
       interview.markModified("aiExercise");
@@ -329,7 +333,7 @@ export class InterviewSessionService {
     dto: SubmitInterviewExerciseDto,
   ) {
     const interview = await this.getDocument(interviewId);
-    this.assertStage(interview, "ai");
+    await this.assertStage(interview, "ai");
     interview.aiExercise = await this.runExercise(interview.aiExercise, dto.solution);
     interview.markModified("aiExercise");
     await interview.save();
@@ -338,7 +342,7 @@ export class InterviewSessionService {
 
   async completeAi(interviewId: string) {
     const interview = await this.getDocument(interviewId);
-    this.assertStage(interview, "ai");
+    await this.assertStage(interview, "ai");
     if (interview.aiExercise.attempts < 1) {
       throw new BadRequestException("Сначала запусти решение по тестам");
     }
@@ -360,7 +364,7 @@ export class InterviewSessionService {
     dto: UpdateInterviewDefenseAnswerDto,
   ) {
     const interview = await this.getDocument(interviewId);
-    this.assertStage(interview, "defense");
+    await this.assertStage(interview, "defense");
     if (!Number.isInteger(index) || index < 0 || index >= interview.defenseQuestions.length) {
       throw new NotFoundException("Вопрос защиты не найден");
     }
@@ -376,8 +380,9 @@ export class InterviewSessionService {
       await this.recordSignal(interview);
       return serializeInterviewSession(interview);
     }
-    this.assertStage(interview, "defense");
-    if (interview.defenseAnswers.some((answer) => !answer.trim())) {
+    const expired = await this.markExpiredIfNeeded(interview);
+    if (!expired) await this.assertStage(interview, "defense");
+    if (!expired && interview.defenseAnswers.some((answer) => !answer.trim())) {
       throw new BadRequestException("Ответь на все вопросы защиты");
     }
     interview.status = "evaluating";
@@ -456,6 +461,9 @@ export class InterviewSessionService {
     const interview = await this.getDocument(interviewId);
     if (interview.status === "completed") {
       throw new BadRequestException("Интервью уже завершено");
+    }
+    if (await this.markExpiredIfNeeded(interview)) {
+      throw new BadRequestException("Время экзамена истекло");
     }
     const text = await this.aiContent.transcribeAudio(
       audio.buffer,
@@ -579,13 +587,30 @@ export class InterviewSessionService {
     });
   }
 
-  private assertStage(
+  private async assertStage(
     interview: InterviewSessionDocument,
     stage: InterviewSessionStage,
   ) {
+    if (await this.markExpiredIfNeeded(interview)) {
+      throw new BadRequestException("Время экзамена истекло. Получи итоговую оценку");
+    }
     if (interview.status !== "in_progress" || interview.currentStage !== stage) {
       throw new BadRequestException("Этот этап интервью уже завершён");
     }
+  }
+
+  private async markExpiredIfNeeded(interview: InterviewSessionDocument) {
+    if (interview.kind !== "exam" || interview.status === "completed") return false;
+    const deadlineAt = interview.deadlineAt ?? new Date(
+      interview.startedAt.getTime() + interview.durationMinutes * 60_000,
+    );
+    if (deadlineAt.getTime() > Date.now()) return false;
+    if (!interview.expiredAt) {
+      interview.deadlineAt = deadlineAt;
+      interview.expiredAt = new Date();
+      await interview.save();
+    }
+    return true;
   }
 
   private async getDocument(interviewId: string) {

@@ -1,6 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import { learningApi } from "../api";
+import {
+  replayMutationOutbox,
+  runDurableMutation,
+  type DurableMutationKind,
+  type MutationOutboxEntry,
+} from "./mutation-outbox";
 import { offlineMutationKeys } from "./offline-mutation-keys";
 import type {
   MockAnswerMutationVariables,
@@ -15,10 +21,82 @@ import type {
 
 const OFFLINE_WRITE_SCOPE = { id: "offline-write-queue" } as const;
 const offlineOptions = {
-  networkMode: "online" as const,
-  retry: 3,
+  networkMode: "always" as const,
+  retry: 0,
   scope: OFFLINE_WRITE_SCOPE,
 };
+
+export const createDurableMutationFn = <TVariables, TResult>(
+  kind: DurableMutationKind,
+  execute: (variables: TVariables) => Promise<TResult>,
+) => (variables: TVariables) =>
+  runDurableMutation(kind, variables, () => execute(variables));
+
+const executeOutboxEntry = (entry: MutationOutboxEntry) => {
+  switch (entry.kind) {
+    case "task": {
+      const { taskId, progress } = entry.variables as TaskMutationVariables;
+      return learningApi.updateTask(taskId, progress);
+    }
+    case "question": {
+      const { questionId, progress } = entry.variables as QuestionMutationVariables;
+      return learningApi.updateQuestion(questionId, progress);
+    }
+    case "review": {
+      const { questionId, rating, note, operationId } = entry.variables as ReviewMutationVariables;
+      return learningApi.reviewQuestion(questionId, rating, note, operationId);
+    }
+    case "quiz": {
+      const { track, itemId, answers, operationId } = entry.variables as QuizMutationVariables;
+      return learningApi.submitLessonQuiz(track, itemId, answers, operationId);
+    }
+    case "practiceAttempt": {
+      const variables = entry.variables as PracticeAttemptMutationVariables;
+      return learningApi.submitPracticeAttempt(
+        variables.track,
+        variables.itemId,
+        variables.source,
+        variables.lessonVersion,
+        variables.solution,
+        variables.operationId,
+        variables.telemetry,
+      );
+    }
+    case "mockAnswer": {
+      const { interviewId, questionId, content } = entry.variables as MockAnswerMutationVariables;
+      return learningApi.updateMockAnswer(interviewId, questionId, content);
+    }
+    case "settings":
+      return learningApi.updateSettings(entry.variables as SettingsMutationVariables);
+    case "deleteAlgorithm":
+      return learningApi.deleteAlgorithm(entry.variables as string);
+    case "skipRecommendation": {
+      const { recommendationId, operationId } = entry.variables as SkipRecommendationMutationVariables;
+      return learningApi.skipAdaptiveRecommendation(recommendationId, operationId);
+    }
+  }
+};
+
+let replayInFlight: Promise<number> | null = null;
+
+export function replayOfflineMutationOutbox(queryClient: QueryClient) {
+  if (replayInFlight) return replayInFlight;
+  replayInFlight = replayMutationOutbox(executeOutboxEntry)
+    .then(async (completed) => {
+      if (completed > 0) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["bootstrap"] }),
+          queryClient.invalidateQueries({ queryKey: ["adaptive-today"] }),
+          queryClient.invalidateQueries({ queryKey: ["learning-analytics"] }),
+        ]);
+      }
+      return completed;
+    })
+    .finally(() => {
+      replayInFlight = null;
+    });
+  return replayInFlight;
+}
 
 export function registerOfflineMutationDefaults(queryClient: QueryClient) {
   const refreshLearning = () =>
@@ -30,31 +108,33 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
 
   queryClient.setMutationDefaults(offlineMutationKeys.task, {
     ...offlineOptions,
-    mutationFn: ({ taskId, progress }: TaskMutationVariables) =>
-      learningApi.updateTask(taskId, progress),
+    mutationFn: createDurableMutationFn("task", ({ taskId, progress }: TaskMutationVariables) =>
+      learningApi.updateTask(taskId, progress)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.question, {
     ...offlineOptions,
-    mutationFn: ({ questionId, progress }: QuestionMutationVariables) =>
-      learningApi.updateQuestion(questionId, progress),
+    mutationFn: createDurableMutationFn("question", ({ questionId, progress }: QuestionMutationVariables) =>
+      learningApi.updateQuestion(questionId, progress)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.review, {
     ...offlineOptions,
-    mutationFn: ({ questionId, rating, note, operationId }: ReviewMutationVariables) =>
-      learningApi.reviewQuestion(questionId, rating, note, operationId),
+    mutationFn: createDurableMutationFn("review", ({ questionId, rating, note, operationId }: ReviewMutationVariables) =>
+      learningApi.reviewQuestion(questionId, rating, note, operationId)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.quiz, {
     ...offlineOptions,
-    mutationFn: ({ track, itemId, answers, operationId }: QuizMutationVariables) =>
-      learningApi.submitLessonQuiz(track, itemId, answers, operationId),
+    mutationFn: createDurableMutationFn("quiz", ({ track, itemId, answers, operationId }: QuizMutationVariables) =>
+      learningApi.submitLessonQuiz(track, itemId, answers, operationId)),
     onSettled: refreshLearning,
   });
-  queryClient.setMutationDefaults(offlineMutationKeys.practiceAttempt, {
+  queryClient.setMutationDefaults<unknown, Error, PracticeAttemptMutationVariables>(
+    offlineMutationKeys.practiceAttempt,
+    {
     ...offlineOptions,
-    mutationFn: ({
+    mutationFn: createDurableMutationFn("practiceAttempt", ({
       track,
       itemId,
       source,
@@ -71,7 +151,7 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
         solution,
         operationId,
         telemetry,
-      ),
+      )),
     onSuccess: (_attempt, variables) => {
       void queryClient.invalidateQueries({
         queryKey: [
@@ -85,30 +165,31 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
       void queryClient.invalidateQueries({ queryKey: ["adaptive-today"] });
       void queryClient.invalidateQueries({ queryKey: ["learning-analytics"] });
     },
-  });
+    },
+  );
   queryClient.setMutationDefaults(offlineMutationKeys.mockAnswer, {
     ...offlineOptions,
-    mutationFn: ({ interviewId, questionId, content }: MockAnswerMutationVariables) =>
-      learningApi.updateMockAnswer(interviewId, questionId, content),
+    mutationFn: createDurableMutationFn("mockAnswer", ({ interviewId, questionId, content }: MockAnswerMutationVariables) =>
+      learningApi.updateMockAnswer(interviewId, questionId, content)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.settings, {
     ...offlineOptions,
-    mutationFn: (settings: SettingsMutationVariables) => learningApi.updateSettings(settings),
+    mutationFn: createDurableMutationFn("settings", (settings: SettingsMutationVariables) => learningApi.updateSettings(settings)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.deleteAlgorithm, {
     ...offlineOptions,
-    mutationFn: (id: string) => learningApi.deleteAlgorithm(id),
+    mutationFn: createDurableMutationFn("deleteAlgorithm", (id: string) => learningApi.deleteAlgorithm(id)),
     onSettled: refreshLearning,
   });
   queryClient.setMutationDefaults(offlineMutationKeys.skipRecommendation, {
     ...offlineOptions,
-    mutationFn: ({
+    mutationFn: createDurableMutationFn("skipRecommendation", ({
       recommendationId,
       operationId,
     }: SkipRecommendationMutationVariables) =>
-      learningApi.skipAdaptiveRecommendation(recommendationId, operationId),
+      learningApi.skipAdaptiveRecommendation(recommendationId, operationId)),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["adaptive-today"] }),
   });

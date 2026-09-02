@@ -11,13 +11,17 @@ import {
 } from "@nestjs/common";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ExamAiLockService } from "../agents/exam-ai-lock.service";
 import { CareerService } from "./career.service";
 import { CareerPayloadDto } from "./dto/career-payload.dto";
 
 @UseGuards(JwtAuthGuard)
 @Controller("career")
 export class CareerController {
-  constructor(private readonly careerService: CareerService) {}
+  constructor(
+    private readonly careerService: CareerService,
+    private readonly examAiLock: ExamAiLockService,
+  ) {}
 
   @Get()
   @Header("Cache-Control", "private, no-store")
@@ -44,7 +48,8 @@ export class CareerController {
   }
 
   @Post("applications/:applicationId/analyze")
-  analyzeApplication(@Param("applicationId") applicationId: string) {
+  async analyzeApplication(@Param("applicationId") applicationId: string) {
+    await this.examAiLock.assertAvailable();
     return this.careerService.analyzeApplication(applicationId);
   }
 

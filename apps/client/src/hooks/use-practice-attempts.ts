@@ -6,6 +6,7 @@ import {
   offlineMutationKeys,
   type PracticeAttemptMutationVariables,
 } from "../lib/offline-mutation-keys";
+import { createDurableMutationFn } from "../lib/offline-mutations";
 import type {
   PracticeAttempt,
   PracticeAttemptHistory,
@@ -50,7 +51,7 @@ export function usePracticeAttempts(target: PracticeAttemptTarget | undefined) {
     PracticeAttemptMutationVariables
   >({
     mutationKey: offlineMutationKeys.practiceAttempt,
-    mutationFn: ({
+    mutationFn: createDurableMutationFn("practiceAttempt", ({
       track,
       itemId,
       source,
@@ -58,7 +59,7 @@ export function usePracticeAttempts(target: PracticeAttemptTarget | undefined) {
       solution,
       telemetry,
       operationId,
-    }) =>
+    }: PracticeAttemptMutationVariables) =>
       learningApi.submitPracticeAttempt(
         track,
         itemId,
@@ -67,7 +68,7 @@ export function usePracticeAttempts(target: PracticeAttemptTarget | undefined) {
         solution,
         operationId,
         telemetry,
-      ),
+      )),
     onSuccess: (attempt) => {
       queryClient.setQueryData<PracticeAttemptHistory>(queryKey, (current) => ({
         attempts: [

@@ -7,7 +7,10 @@ import { RouterProvider } from "react-router-dom";
 import { getToken } from "./api";
 import { appRouter } from "./app-router";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
-import { registerOfflineMutationDefaults } from "./lib/offline-mutations";
+import {
+  registerOfflineMutationDefaults,
+  replayOfflineMutationOutbox,
+} from "./lib/offline-mutations";
 import { restoreQueryCache, subscribeToQueryCache } from "./lib/query-cache";
 import { appTheme } from "./theme";
 import "@mantine/core/styles.css";
@@ -39,7 +42,10 @@ async function startApplication() {
     </StrictMode>,
   );
   const resumeOfflineMutations = () => {
-    if (getToken()) void queryClient.resumePausedMutations();
+    if (getToken()) {
+      void replayOfflineMutationOutbox(queryClient);
+      void queryClient.resumePausedMutations();
+    }
   };
   window.addEventListener("online", resumeOfflineMutations);
   resumeOfflineMutations();

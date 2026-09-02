@@ -20,6 +20,7 @@ import {
   type TaskMutationVariables,
 } from "../lib/offline-mutation-keys";
 import { normalizeQuestionProgress } from "../lib/question-progress";
+import { createDurableMutationFn } from "../lib/offline-mutations";
 import { scheduleQuestionReview } from "../lib/spaced-repetition";
 import {
   applyPracticeSaveResult,
@@ -54,7 +55,8 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.task,
-    mutationFn: ({ taskId, progress }) => learningApi.updateTask(taskId, progress),
+    mutationFn: createDurableMutationFn("task", ({ taskId, progress }: TaskMutationVariables) =>
+      learningApi.updateTask(taskId, progress)),
     onMutate: async ({ taskId, progress }) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -82,6 +84,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
       return { previous };
     },
     onError: (error, _variables, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }
@@ -96,8 +99,8 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.question,
-    mutationFn: ({ questionId, progress }) =>
-      learningApi.updateQuestion(questionId, progress),
+    mutationFn: createDurableMutationFn("question", ({ questionId, progress }: QuestionMutationVariables) =>
+      learningApi.updateQuestion(questionId, progress)),
     onMutate: async ({ questionId, progress }) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -115,6 +118,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
       return { previous };
     },
     onError: (error, _variables, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }
@@ -129,8 +133,8 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.review,
-    mutationFn: ({ questionId, rating, note, operationId }) =>
-      learningApi.reviewQuestion(questionId, rating, note, operationId),
+    mutationFn: createDurableMutationFn("review", ({ questionId, rating, note, operationId }: ReviewMutationVariables) =>
+      learningApi.reviewQuestion(questionId, rating, note, operationId)),
     onMutate: async ({ questionId, rating, note }) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -167,6 +171,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
       );
     },
     onError: (error, _variables, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }
@@ -181,8 +186,8 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.quiz,
-    mutationFn: ({ track, itemId, answers, operationId }) =>
-      learningApi.submitLessonQuiz(track, itemId, answers, operationId),
+    mutationFn: createDurableMutationFn("quiz", ({ track, itemId, answers, operationId }: QuizMutationVariables) =>
+      learningApi.submitLessonQuiz(track, itemId, answers, operationId)),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -201,6 +206,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
       );
     },
     onError: (error, _variables, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }
@@ -215,7 +221,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.settings,
-    mutationFn: learningApi.updateSettings,
+    mutationFn: createDurableMutationFn("settings", learningApi.updateSettings),
     onMutate: async (settings) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -232,6 +238,7 @@ export function useProgressActions({ online, setError }: UseProgressActionsOptio
       );
     },
     onError: (error, _settings, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }

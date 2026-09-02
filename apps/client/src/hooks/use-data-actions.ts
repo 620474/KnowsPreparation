@@ -7,6 +7,7 @@ import {
 } from "../lib/bootstrap-cache";
 import { saveBackupFile, type PortableBackup } from "../lib/backup";
 import { offlineMutationKeys } from "../lib/offline-mutation-keys";
+import { createDurableMutationFn } from "../lib/offline-mutations";
 import { restorePracticeDrafts } from "../lib/practice-drafts";
 import type { AlgorithmEntry, BootstrapData } from "../types";
 
@@ -38,7 +39,7 @@ export function useDataActions({ setError }: UseDataActionsOptions) {
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.deleteAlgorithm,
-    mutationFn: learningApi.deleteAlgorithm,
+    mutationFn: createDurableMutationFn("deleteAlgorithm", learningApi.deleteAlgorithm),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -63,6 +64,7 @@ export function useDataActions({ setError }: UseDataActionsOptions) {
       );
     },
     onError: (error, _id, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }

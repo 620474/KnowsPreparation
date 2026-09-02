@@ -6,6 +6,7 @@ import {
   offlineMutationKeys,
   type SkipRecommendationMutationVariables,
 } from "../lib/offline-mutation-keys";
+import { createDurableMutationFn } from "../lib/offline-mutations";
 import type { AdaptivePlan, AdaptivePlanCheckIn } from "../types";
 
 export const ADAPTIVE_TODAY_QUERY_KEY = ["adaptive-today"] as const;
@@ -24,8 +25,8 @@ export function useAdaptivePlan(enabled: boolean) {
     { previous?: AdaptivePlan }
   >({
     mutationKey: offlineMutationKeys.skipRecommendation,
-    mutationFn: ({ recommendationId, operationId }) =>
-      learningApi.skipAdaptiveRecommendation(recommendationId, operationId),
+    mutationFn: createDurableMutationFn("skipRecommendation", ({ recommendationId, operationId }: SkipRecommendationMutationVariables) =>
+      learningApi.skipAdaptiveRecommendation(recommendationId, operationId)),
     onMutate: async ({ recommendationId }) => {
       await queryClient.cancelQueries({ queryKey: ADAPTIVE_TODAY_QUERY_KEY });
       const previous = queryClient.getQueryData<AdaptivePlan>(
@@ -43,6 +44,7 @@ export function useAdaptivePlan(enabled: boolean) {
       return { previous };
     },
     onError: (_error, _variables, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(ADAPTIVE_TODAY_QUERY_KEY, context.previous);
       }

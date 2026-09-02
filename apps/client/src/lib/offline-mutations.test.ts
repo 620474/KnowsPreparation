@@ -1,8 +1,5 @@
 import {
-  dehydrate,
-  hydrate,
   MutationObserver,
-  onlineManager,
   QueryClient,
 } from "@tanstack/query-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,7 +17,7 @@ const api = vi.hoisted(() => ({
 
 vi.mock("../api", () => ({ learningApi: api }));
 
-import { isOfflineMutationKey, offlineMutationKeys } from "./offline-mutation-keys";
+import { offlineMutationKeys } from "./offline-mutation-keys";
 import type {
   PracticeAttemptMutationVariables,
   TaskMutationVariables,
@@ -28,69 +25,40 @@ import type {
 import { registerOfflineMutationDefaults } from "./offline-mutations";
 
 afterEach(() => {
-  onlineManager.setOnline(true);
   vi.clearAllMocks();
 });
 
 describe("offline mutations", () => {
-  it("hydrates a paused task update and resumes it online", async () => {
-    onlineManager.setOnline(false);
-    const source = new QueryClient();
-    registerOfflineMutationDefaults(source);
-    const observer = new MutationObserver<unknown, Error, TaskMutationVariables>(source, {
+  it("executes a task update through the durable mutation transport", async () => {
+    const queryClient = new QueryClient();
+    registerOfflineMutationDefaults(queryClient);
+    const observer = new MutationObserver<unknown, Error, TaskMutationVariables>(queryClient, {
       mutationKey: offlineMutationKeys.task,
     });
-    void observer.mutate({ taskId: "task-1", progress: { completed: true } });
-    await Promise.resolve();
-
-    expect(api.updateTask).not.toHaveBeenCalled();
-    const state = dehydrate(source, {
-      shouldDehydrateMutation: (mutation) =>
-        mutation.state.isPaused && isOfflineMutationKey(mutation.options.mutationKey),
-    });
-    expect(state.mutations).toHaveLength(1);
-
-    const restored = new QueryClient();
-    registerOfflineMutationDefaults(restored);
-    hydrate(restored, state);
-    onlineManager.setOnline(true);
-    await restored.resumePausedMutations();
+    await observer.mutate({ taskId: "task-1", progress: { completed: true } });
 
     expect(api.updateTask).toHaveBeenCalledTimes(1);
     expect(api.updateTask).toHaveBeenCalledWith("task-1", { completed: true });
-    source.clear();
-    restored.clear();
+    queryClient.clear();
   });
 
-  it("hydrates a paused practice attempt and verifies it online", async () => {
-    onlineManager.setOnline(false);
-    const source = new QueryClient();
-    registerOfflineMutationDefaults(source);
+  it("preserves the operation id of a durable practice attempt", async () => {
+    const queryClient = new QueryClient();
+    registerOfflineMutationDefaults(queryClient);
     const observer = new MutationObserver<
       unknown,
       Error,
       PracticeAttemptMutationVariables
-    >(source, {
+    >(queryClient, {
       mutationKey: offlineMutationKeys.practiceAttempt,
     });
-    void observer.mutate({
+    await observer.mutate({
       track: "yandex",
       itemId: "yandex-d01-algorithms",
       source: "task",
       solution: "function solve() {}",
       operationId: "attempt-operation-1",
     });
-    await Promise.resolve();
-
-    const state = dehydrate(source, {
-      shouldDehydrateMutation: (mutation) =>
-        mutation.state.isPaused && isOfflineMutationKey(mutation.options.mutationKey),
-    });
-    const restored = new QueryClient();
-    registerOfflineMutationDefaults(restored);
-    hydrate(restored, state);
-    onlineManager.setOnline(true);
-    await restored.resumePausedMutations();
 
     expect(api.submitPracticeAttempt).toHaveBeenCalledWith(
       "yandex",
@@ -101,7 +69,6 @@ describe("offline mutations", () => {
       "attempt-operation-1",
       undefined,
     );
-    source.clear();
-    restored.clear();
+    queryClient.clear();
   });
 });

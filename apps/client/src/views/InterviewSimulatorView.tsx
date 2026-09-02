@@ -129,19 +129,24 @@ export function InterviewSimulatorView() {
   const aiSolution = session && aiCodeDraft?.sessionId === session.id
     ? aiCodeDraft.value
     : session?.aiExercise.solution ?? "";
+  const refetchCurrent = currentQuery.refetch;
 
   useEffect(() => {
     if (!session || session.status === "completed") return;
     const update = () => {
-      const elapsed = Math.floor(
-        (Date.now() - new Date(session.startedAt).getTime()) / 1_000,
+      const seconds = Math.max(
+        0,
+        Math.ceil((new Date(session.deadlineAt).getTime() - Date.now()) / 1_000),
       );
-      setRemaining(Math.max(0, session.durationMinutes * 60 - elapsed));
+      setRemaining(seconds);
+      if (seconds === 0 && session.kind === "exam" && !session.expiredAt) {
+        void refetchCurrent();
+      }
     };
     update();
     const interval = window.setInterval(update, 1_000);
     return () => window.clearInterval(interval);
-  }, [session]);
+  }, [refetchCurrent, session]);
 
   const applySession = (next: InterviewSession) => {
     setSelectedSession(next);
@@ -309,6 +314,28 @@ export function InterviewSimulatorView() {
   const stageIndex = stages.indexOf(
     session.currentStage,
   );
+
+  if (session.expiredAt) {
+    return (
+      <div className="page-stack interview-page">
+        <header className="interview-session-header">
+          <div><p className="eyebrow">Экзамен завершён по таймеру</p><h1>Время истекло</h1></div>
+          <span><Clock3 size={17} /> 00:00</span>
+        </header>
+        <Alert color="yellow" icon={<AlertTriangle size={16} />}>
+          Ответы заморожены. Получи оценку по тому, что успел выполнить.
+        </Alert>
+        {error ? <Alert color="red" icon={<AlertTriangle size={16} />}>{error}</Alert> : null}
+        <Button
+          className="primary-button"
+          loading={busy === "complete"}
+          onClick={() => void run("complete", () => learningApi.completeInterviewSession(session.id))}
+        >
+          Получить итоговую оценку
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack interview-page">

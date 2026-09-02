@@ -22,6 +22,7 @@ import { Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ExamAiLockService } from "../agents/exam-ai-lock.service";
 import {
   CreateAlgorithmDto,
   GenerateAiCourseDto,
@@ -70,6 +71,7 @@ export class LearningController {
     private readonly bootstrapService: LearningBootstrapService,
     private readonly backupService: LearningBackupService,
     private readonly interviewSessionService: InterviewSessionService,
+    private readonly examAiLock: ExamAiLockService,
     private readonly yandexPlatformMockService: YandexPlatformMockService,
   ) {}
 
@@ -81,7 +83,8 @@ export class LearningController {
 
   @Post("adaptive/today/generate")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  generateAdaptiveToday(@Body() dto: GenerateAdaptivePlanDto) {
+  async generateAdaptiveToday(@Body() dto: GenerateAdaptivePlanDto) {
+    await this.examAiLock.assertAvailable();
     return this.adaptivePlanService.generateToday(dto);
   }
 
@@ -126,26 +129,29 @@ export class LearningController {
 
   @Post("ai-course/generate")
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  generateAiCourse(@Body() dto: GenerateAiCourseDto) {
+  async generateAiCourse(@Body() dto: GenerateAiCourseDto) {
+    await this.examAiLock.assertAvailable();
     return this.learningService.generateAiCourse(dto);
   }
 
   @Post("tracks/:trackKey/items/:itemId/lesson")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  generateTrackLesson(
+  async generateTrackLesson(
     @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
   ) {
+    await this.examAiLock.assertAvailable();
     return this.learningService.generateTrackLesson(trackKey, itemId);
   }
 
   @Post("tracks/:trackKey/items/:itemId/lesson/stream")
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  streamTrackLesson(
+  async streamTrackLesson(
     @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
     @Res() response: Response,
   ) {
+    await this.examAiLock.assertAvailable();
     return this.streamResponse(response, (onDelta, signal) =>
       this.learningService.generateTrackLesson(trackKey, itemId, onDelta, signal),
     );
@@ -197,22 +203,24 @@ export class LearningController {
 
   @Post("tracks/:trackKey/items/:itemId/chat")
   @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  sendTrackChatMessage(
+  async sendTrackChatMessage(
     @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
     @Body() dto: SendAiChatMessageDto,
   ) {
+    await this.examAiLock.assertAvailable();
     return this.learningService.sendTrackChatMessage(trackKey, itemId, dto);
   }
 
   @Post("tracks/:trackKey/items/:itemId/chat/stream")
   @Throttle({ default: { limit: 12, ttl: 60_000 } })
-  streamTrackChatMessage(
+  async streamTrackChatMessage(
     @Param("trackKey", ParseTrackKeyPipe) trackKey: TrackKey,
     @Param("itemId") itemId: string,
     @Body() dto: SendAiChatMessageDto,
     @Res() response: Response,
   ) {
+    await this.examAiLock.assertAvailable();
     return this.streamResponse(response, (onDelta, signal) =>
       this.learningService.sendTrackChatMessage(trackKey, itemId, dto, onDelta, signal),
     );
@@ -274,7 +282,8 @@ export class LearningController {
 
   @Post("mock-interviews/:interviewId/complete")
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  completeMockInterview(@Param("interviewId") interviewId: string) {
+  async completeMockInterview(@Param("interviewId") interviewId: string) {
+    await this.examAiLock.assertAvailable();
     return this.learningService.completeMockInterview(interviewId);
   }
 
@@ -287,11 +296,12 @@ export class LearningController {
         callback(null, file.mimetype.startsWith("audio/")),
     }),
   )
-  transcribeMockAnswer(
+  async transcribeMockAnswer(
     @Param("interviewId") interviewId: string,
     @UploadedFile() audio?: Express.Multer.File,
   ) {
     if (!audio) throw new BadRequestException("Добавь аудиозапись ответа");
+    await this.examAiLock.assertAvailable();
     return this.learningService.transcribeMockAnswer(interviewId, audio);
   }
 

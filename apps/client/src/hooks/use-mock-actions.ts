@@ -10,6 +10,7 @@ import {
   offlineMutationKeys,
   type MockAnswerMutationVariables,
 } from "../lib/offline-mutation-keys";
+import { createDurableMutationFn } from "../lib/offline-mutations";
 import type { BootstrapData, MockInterview } from "../types";
 
 interface UseMockActionsOptions {
@@ -39,8 +40,8 @@ export function useMockActions({ online, setError }: UseMockActionsOptions) {
     BootstrapMutationContext
   >({
     mutationKey: offlineMutationKeys.mockAnswer,
-    mutationFn: ({ interviewId, questionId, content }) =>
-      learningApi.updateMockAnswer(interviewId, questionId, content),
+    mutationFn: createDurableMutationFn("mockAnswer", ({ interviewId, questionId, content }: MockAnswerMutationVariables) =>
+      learningApi.updateMockAnswer(interviewId, questionId, content)),
     onMutate: async ({ interviewId, questionId, content }) => {
       await queryClient.cancelQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
       const previous = queryClient.getQueryData<BootstrapData>(BOOTSTRAP_QUERY_KEY);
@@ -66,6 +67,7 @@ export function useMockActions({ online, setError }: UseMockActionsOptions) {
       void queryClient.invalidateQueries({ queryKey: ["learning-analytics"] });
     },
     onError: (error, _variables, context) => {
+      if (!navigator.onLine) return;
       if (context?.previous) {
         queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, context.previous);
       }

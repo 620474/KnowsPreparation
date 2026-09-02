@@ -19,6 +19,11 @@ import { getStudyPosition } from "./lib/date";
 import { useOnlineStatus } from "./lib/network";
 import { synchronizeDailyReminder } from "./lib/notifications";
 import { OFFLINE_MUTATION_ROOT } from "./lib/offline-mutation-keys";
+import { replayOfflineMutationOutbox } from "./lib/offline-mutations";
+import {
+  getMutationOutboxCount,
+  MUTATION_OUTBOX_CHANGED_EVENT,
+} from "./lib/mutation-outbox";
 import { clearPersistedQueryCache } from "./lib/query-cache";
 
 const AiLessonReader = lazy(() =>
@@ -30,13 +35,14 @@ const AiLessonReader = lazy(() =>
 export default function App() {
   const queryClient = useQueryClient();
   const online = useOnlineStatus();
-  const queuedOfflineMutationCount = useMutationState({
+  const pausedMutationCount = useMutationState({
     filters: {
       mutationKey: OFFLINE_MUTATION_ROOT,
       status: "pending",
       predicate: (mutation) => mutation.state.isPaused,
     },
   }).length;
+  const [outboxCount, setOutboxCount] = useState(0);
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
   const [syncError, setSyncError] = useState("");
   const navigation = useAppNavigation();
@@ -62,6 +68,13 @@ export default function App() {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
 
+  useEffect(() => {
+    const refresh = () => void getMutationOutboxCount().then(setOutboxCount);
+    refresh();
+    window.addEventListener(MUTATION_OUTBOX_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(MUTATION_OUTBOX_CHANGED_EVENT, refresh);
+  }, []);
+
   const bootstrapQuery = useQuery({
     queryKey: BOOTSTRAP_QUERY_KEY,
     queryFn: learningApi.bootstrap,
@@ -69,6 +82,18 @@ export default function App() {
     refetchInterval: online ? 60_000 : false,
     refetchOnWindowFocus: true,
   });
+  const currentInterviewQuery = useQuery({
+    queryKey: ["interview-sessions", "current"],
+    queryFn: learningApi.getCurrentInterviewSession,
+    enabled: authenticated,
+    refetchOnWindowFocus: true,
+  });
+  const examLocked = currentInterviewQuery.data?.kind === "exam" &&
+    currentInterviewQuery.data.status !== "completed";
+
+  useEffect(() => {
+    if (examLocked && activeView !== "interview") navigateToView("interview");
+  }, [activeView, examLocked, navigateToView]);
   const reminderEnabled = bootstrapQuery.data?.settings.reminderEnabled;
   const reminderTime = bootstrapQuery.data?.settings.reminderTime;
 
@@ -101,6 +126,7 @@ export default function App() {
       <LoginScreen
         onSuccess={() => {
           setAuthenticated(true);
+          void replayOfflineMutationOutbox(queryClient);
           void queryClient.resumePausedMutations();
           void queryClient.invalidateQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
         }}
@@ -162,9 +188,15 @@ export default function App() {
   const position = getStudyPosition(data.settings.startDate);
   const safeWeek = Math.min(Math.max(position.weekNumber, 1), data.curriculum.length);
   const weekLabel = `Неделя ${safeWeek} из ${data.curriculum.length}`;
+  const queuedOfflineMutationCount = pausedMutationCount + outboxCount;
 
   return (
-    <AppShell activeView={activeView} onViewChange={navigateToView} weekLabel={weekLabel}>
+    <AppShell
+      activeView={activeView}
+      navigationLocked={examLocked}
+      onViewChange={navigateToView}
+      weekLabel={weekLabel}
+    >
       {!online || bootstrapQuery.isError || queuedOfflineMutationCount > 0 ? (
         <Alert
           className="offline-alert"
@@ -241,7 +273,7 @@ export default function App() {
           />
         ) : null}
       </Suspense>
-      {activeView !== "interview" ? <AiChatWidget
+      {activeView !== "interview" && !examLocked ? <AiChatWidget
         key={`ai-chat-${chatDraftRequest?.id ?? 0}`}
         enabled={data.ai.enabled}
         track={chatTrack}

@@ -7,7 +7,15 @@ const signal = (
   type: LearningSignal["type"],
   payload: Record<string, unknown>,
   skillKeys: LearningSignal["skillKeys"] = ["javascript"],
-) => ({ type, payload, skillKeys } as LearningSignal);
+  options: Partial<LearningSignal> = {},
+) => ({
+  type,
+  payload,
+  skillKeys,
+  operationId: `${type}-${Math.random()}`,
+  occurredAt: new Date("2026-09-01T12:00:00.000Z"),
+  ...options,
+} as LearningSignal);
 
 describe("readiness evidence", () => {
   it("penalizes repeated and AI-assisted coding attempts", () => {
@@ -27,12 +35,57 @@ describe("readiness evidence", () => {
         score: 70,
         sections: { platform: 80, coding: 60, communication: 50 },
       }),
-    ]);
+    ], new Date("2026-09-01T12:00:00.000Z"));
 
     expect(readiness.dimensions.recall.score).toBe(80);
     expect(readiness.dimensions.code.score).toBe(68);
     expect(readiness.dimensions.explain.score).toBe(65);
     expect(readiness.dimensions.defend.score).toBe(50);
     expect(readiness.skills.get("javascript")?.signalCount).toBe(5);
+  });
+
+  it("uses the latest result for repeated evidence from one item", () => {
+    const readiness = buildReadiness([
+      signal("quiz_submitted", { score: 2, maxScore: 10 }, ["javascript"], {
+        itemId: "lesson-1",
+        occurredAt: new Date("2026-08-01T12:00:00.000Z"),
+      }),
+      signal("quiz_submitted", { score: 9, maxScore: 10 }, ["javascript"], {
+        itemId: "lesson-1",
+        occurredAt: new Date("2026-09-01T12:00:00.000Z"),
+      }),
+    ], new Date("2026-09-01T12:00:00.000Z"));
+
+    expect(readiness.dimensions.recall.score).toBe(90);
+    expect(readiness.dimensions.recall.signalCount).toBe(2);
+    expect(readiness.dimensions.recall.independentItemCount).toBe(1);
+  });
+
+  it("decays old independent evidence", () => {
+    const readiness = buildReadiness([
+      signal("quiz_submitted", { score: 100, maxScore: 100 }, ["javascript"], {
+        itemId: "old",
+        occurredAt: new Date("2026-06-03T12:00:00.000Z"),
+      }),
+      signal("quiz_submitted", { score: 40, maxScore: 100 }, ["javascript"], {
+        itemId: "recent",
+        occurredAt: new Date("2026-09-01T12:00:00.000Z"),
+      }),
+    ], new Date("2026-09-01T12:00:00.000Z"));
+
+    expect(readiness.dimensions.recall.score).toBe(52);
+    expect(readiness.dimensions.recall.confidence).toBe("low");
+  });
+
+  it("penalizes hints, later attempts and overconfidence", () => {
+    expect(readinessScoresForSignal(signal("practice_attempted", {
+      passedCount: 2,
+      totalCount: 4,
+      runCount: 2,
+      attemptNumber: 2,
+      hintCount: 2,
+      firstAttemptPassed: false,
+      confidence: 5,
+    }))).toEqual({ code: 15 });
   });
 });

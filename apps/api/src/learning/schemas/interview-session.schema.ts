@@ -59,6 +59,12 @@ export class InterviewSession {
   startedAt!: Date;
 
   @Prop({ type: Date, default: null })
+  deadlineAt!: Date | null;
+
+  @Prop({ type: Date, default: null })
+  expiredAt!: Date | null;
+
+  @Prop({ type: Date, default: null })
   completedAt!: Date | null;
 
   @Prop({ type: [MongooseSchema.Types.Mixed], required: true, default: [] })

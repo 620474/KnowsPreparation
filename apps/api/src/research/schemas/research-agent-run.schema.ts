@@ -19,6 +19,9 @@ export class ResearchAgentRunEntry {
   @Prop({ required: true, index: true })
   projectId!: string;
 
+  @Prop({ type: String, default: null })
+  activeProjectId!: string | null;
+
   @Prop({ required: true })
   operationId!: string;
 
@@ -87,6 +90,9 @@ export class ResearchAgentRunEntry {
   @Prop({ type: Date, default: null })
   startedAt!: Date | null;
 
+  @Prop({ type: Date, default: null })
+  baseProjectUpdatedAt!: Date | null;
+
   createdAt!: Date;
   updatedAt!: Date;
 }
@@ -96,3 +102,10 @@ export const ResearchAgentRunEntrySchema = SchemaFactory.createForClass(
 );
 ResearchAgentRunEntrySchema.index({ projectId: 1, operationId: 1 }, { unique: true });
 ResearchAgentRunEntrySchema.index({ projectId: 1, createdAt: -1 });
+ResearchAgentRunEntrySchema.index(
+  { activeProjectId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { activeProjectId: { $type: "string" } },
+  },
+);

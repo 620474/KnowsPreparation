@@ -60,6 +60,9 @@ const MODE_BUDGETS = {
 class ResearchBudgetExceededError extends Error {}
 class ResearchLeaseLostError extends Error {}
 
+const isDuplicateKeyError = (error: unknown) =>
+  Boolean(error && typeof error === "object" && "code" in error && error.code === 11_000);
+
 interface ResearchRunLease {
   owner: string;
   epoch: number;
@@ -149,43 +152,50 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
     if (!project) throw new NotFoundException("Исследование не найдено");
     const existing = await this.runModel.findOne({ projectId, operationId: input.operationId }).exec();
     if (existing) return serializeRun(existing);
-    const active = await this.runModel.findOne({
-      projectId,
-      status: { $in: ["queued", "running"] },
-    }).exec();
-    if (active) throw new ConflictException("Исследовательский агент уже работает");
-
     const now = new Date().toISOString();
     const budget = { ...MODE_BUDGETS[input.mode], ...input.budget };
-    const run = await this.runModel.create({
-      runId: randomUUID(),
-      projectId,
-      operationId: input.operationId,
-      type: input.type,
-      mode: input.mode,
-      status: "queued",
-      phase: "queued",
-      progress: 0,
-      model: this.aiAgent.researchModel,
-      reviewModel: this.aiAgent.researchReviewModel,
-      budget,
-      usage: {
-        modelCalls: 0,
-        solCalls: 0,
-        sourcesDiscovered: 0,
-        sourcesAccepted: 0,
-        validatedClaims: 0,
-      },
-      draft: cloneEmptyDraft(),
-      logs: [{ phase: "queued", message: "Исследование поставлено в очередь", at: now }],
-      error: null,
-      leaseUntil: null,
-      leaseOwner: null,
-      leaseEpoch: 0,
-      applyOperationId: null,
-      appliedAt: null,
-      startedAt: new Date(),
-    });
+    let run: ResearchAgentRunEntry;
+    try {
+      run = await this.runModel.create({
+        runId: randomUUID(),
+        projectId,
+        activeProjectId: projectId,
+        operationId: input.operationId,
+        type: input.type,
+        mode: input.mode,
+        status: "queued",
+        phase: "queued",
+        progress: 0,
+        model: this.aiAgent.researchModel,
+        reviewModel: this.aiAgent.researchReviewModel,
+        budget,
+        usage: {
+          modelCalls: 0,
+          solCalls: 0,
+          sourcesDiscovered: 0,
+          sourcesAccepted: 0,
+          validatedClaims: 0,
+        },
+        draft: cloneEmptyDraft(),
+        logs: [{ phase: "queued", message: "Исследование поставлено в очередь", at: now }],
+        error: null,
+        leaseUntil: null,
+        leaseOwner: null,
+        leaseEpoch: 0,
+        applyOperationId: null,
+        appliedAt: null,
+        startedAt: new Date(),
+        baseProjectUpdatedAt: project.updatedAt,
+      });
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) throw error;
+      const duplicate = await this.runModel.findOne({
+        projectId,
+        operationId: input.operationId,
+      }).exec();
+      if (duplicate) return serializeRun(duplicate);
+      throw new ConflictException("Исследовательский агент уже работает");
+    }
     setImmediate(() => void this.executeRun(run.runId));
     return serializeRun(run);
   }
@@ -210,6 +220,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           leaseUntil: null,
           leaseOwner: null,
         },
+        $unset: { activeProjectId: 1 },
         $push: {
           logs: {
             phase: "complete",
@@ -236,6 +247,16 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
     }
     if (run.status !== "review_ready" && run.status !== "partially_completed") {
       throw new ConflictException("Результат исследования ещё не готов к применению");
+    }
+    const currentProject = await this.projectModel.findOne({ projectId }).lean().exec();
+    if (!currentProject) throw new NotFoundException("Исследование не найдено");
+    if (
+      run.baseProjectUpdatedAt &&
+      currentProject.updatedAt.getTime() !== run.baseProjectUpdatedAt.getTime()
+    ) {
+      throw new ConflictException(
+        "Проект изменился после запуска агента. Запусти исследование заново",
+      );
     }
 
     const selectedClaimIds = new Set(input.claimCandidateIds);
@@ -367,6 +388,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           appliedAt: new Date(),
           leaseUntil: null,
         },
+        $unset: { activeProjectId: 1 },
         $push: {
           logs: {
             phase: "complete",
@@ -635,6 +657,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
               stopReason: synthesis.stopReason,
             },
           },
+          $unset: { activeProjectId: 1 },
           $push: {
             logs: {
               phase: "review",
@@ -661,6 +684,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
               leaseOwner: null,
               error: error instanceof Error ? error.message : "Неизвестная ошибка агента",
             },
+            $unset: { activeProjectId: 1 },
             $push: {
               logs: {
                 phase: "complete",

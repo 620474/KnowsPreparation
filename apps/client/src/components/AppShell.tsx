@@ -18,6 +18,7 @@ interface AppShellProps {
   onViewChange: (view: AppView) => void;
   children: ReactNode;
   weekLabel: string;
+  navigationLocked?: boolean;
 }
 
 const navigation: Array<{
@@ -84,7 +85,7 @@ function ThemeToggle() {
   );
 }
 
-export function AppShell({ activeView, onViewChange, children, weekLabel }: AppShellProps) {
+export function AppShell({ activeView, onViewChange, children, weekLabel, navigationLocked = false }: AppShellProps) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -103,6 +104,8 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
               key={id}
               className={isNavigationActive(id, activeView) ? "nav-button active" : "nav-button"}
               type="button"
+              disabled={navigationLocked}
+              title={navigationLocked ? "Навигация заблокирована до завершения экзамена" : undefined}
               onClick={() => onViewChange(id)}
               aria-current={isNavigationActive(id, activeView) ? "page" : undefined}
             >
@@ -139,6 +142,8 @@ export function AppShell({ activeView, onViewChange, children, weekLabel }: AppS
             key={id}
             className={isNavigationActive(id, activeView) ? "active" : ""}
             type="button"
+            disabled={navigationLocked}
+            title={navigationLocked ? "Заверши экзамен, чтобы перейти в другой раздел" : undefined}
             onClick={() => onViewChange(id)}
             aria-current={isNavigationActive(id, activeView) ? "page" : undefined}
           >

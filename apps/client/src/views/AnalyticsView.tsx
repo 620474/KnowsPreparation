@@ -85,7 +85,10 @@ export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: Analyt
                 <article key={key}>
                   <div>
                     <strong>{label}</strong>
-                    <span>{description} · {dimension.signalCount} сигналов</span>
+                    <span>
+                      {description} · {dimension.independentItemCount} независимых заданий ·
+                      {dimension.confidence === "high" ? " высокая" : dimension.confidence === "medium" ? " средняя" : " низкая"} уверенность
+                    </span>
                   </div>
                   <Progress
                     color={dimension.score === null ? "gray" : "mint"}

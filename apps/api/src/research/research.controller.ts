@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ExamAiLockService } from "../agents/exam-ai-lock.service";
 import { ResearchService } from "../learning/research.service";
 import { ResearchPayloadDto } from "./dto/research-payload.dto";
 import { ResearchAgentService } from "./research-agent.service";
@@ -21,6 +22,7 @@ export class ResearchController {
   constructor(
     private readonly researchService: ResearchService,
     private readonly researchAgentService: ResearchAgentService,
+    private readonly examAiLock: ExamAiLockService,
   ) {}
 
   @Get("projects")
@@ -113,10 +115,11 @@ export class ResearchController {
   }
 
   @Post("projects/:projectId/agent-runs")
-  startAgentRun(
+  async startAgentRun(
     @Param("projectId") projectId: string,
     @Body() dto: ResearchPayloadDto,
   ) {
+    await this.examAiLock.assertAvailable();
     return this.researchAgentService.startRun(projectId, dto.data);
   }
 

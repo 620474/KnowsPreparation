@@ -3,6 +3,7 @@ import { EventEmitter } from "node:events";
 import type { Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 
+import type { ExamAiLockService } from "../agents/exam-ai-lock.service";
 import { LearningController } from "./learning.controller";
 import type { AdaptivePlanService } from "./adaptive-plan.service";
 import type { LearningAnalyticsService } from "./learning-analytics.service";
@@ -43,6 +44,7 @@ describe("LearningController SSE", () => {
       {} as LearningBootstrapService,
       {} as LearningBackupService,
       {} as InterviewSessionService,
+      {} as ExamAiLockService,
       {} as YandexPlatformMockService,
     );
     const streamResponse = Reflect.get(controller, "streamResponse") as StreamResponse;

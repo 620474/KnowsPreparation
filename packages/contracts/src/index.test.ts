@@ -141,6 +141,8 @@ describe("shared API contracts", () => {
       currentStage: "platform",
       durationMinutes: 35,
       startedAt: "2026-08-18T10:00:00.000Z",
+      deadlineAt: "2026-08-18T10:35:00.000Z",
+      expiredAt: null,
       completedAt: null,
       platformItems: [{
         question: { id: "q1", number: 1, category: "JS", prompt: "Что такое JS?" },

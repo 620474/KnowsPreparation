@@ -4,7 +4,7 @@ import { ConfigModule } from "@nestjs/config";
 import { getConnectionToken, getModelToken, MongooseModule } from "@nestjs/mongoose";
 import { Test } from "@nestjs/testing";
 import { MongoMemoryServer } from "mongodb-memory-server";
-import type { Connection, Model } from "mongoose";
+import { Types, type Connection, type Model } from "mongoose";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,6 +16,7 @@ import { AiContentService } from "./ai-content.service";
 import type { GeneratedLesson } from "./ai-course";
 import { getStaticRunnerValidationCases } from "./exercise-runners";
 import { LearningModule } from "./learning.module";
+import { ResearchAgentService } from "../research/research-agent.service";
 import { AiLesson } from "./schemas/ai-course.schema";
 import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
 import { getStaticTrack } from "./track-registry";
@@ -629,6 +630,50 @@ describe("Learning API", () => {
       synthesisSpy.mockRestore();
       auditSpy.mockRestore();
       actionsSpy.mockRestore();
+    }
+  });
+
+  it("allows only one active autonomous run per project under a race", async () => {
+    const project = await request(app.getHttpServer())
+      .post("/api/v1/learning/research/projects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        data: {
+          title: "Параллельный запуск",
+          decisionStatement: "Проверить блокировку",
+          primaryQuestion: "Может ли стартовать два агента?",
+          scope: "Один проект",
+          design: "computational",
+          status: "active",
+          startDate: "2026-09-02",
+          targetDate: null,
+          nextAction: "Запустить",
+        },
+      })
+      .expect(201);
+    const service = app.get(ResearchAgentService);
+    const results = await Promise.allSettled([
+      service.startRun(project.body.projectId, {
+        operationId: "race-operation-a",
+        type: "technical_topic",
+        mode: "quick",
+      }),
+      service.startRun(project.body.projectId, {
+        operationId: "race-operation-b",
+        type: "technical_topic",
+        mode: "quick",
+      }),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const rejection = results.find((result) => result.status === "rejected");
+    expect(rejection).toMatchObject({
+      status: "rejected",
+      reason: expect.objectContaining({ status: 409 }),
+    });
+    const started = results.find((result) => result.status === "fulfilled");
+    if (started?.status === "fulfilled") {
+      await service.cancelRun(project.body.projectId, started.value.runId);
     }
   });
 
@@ -1480,6 +1525,70 @@ describe("Learning API", () => {
       evaluationSpy.mockRestore();
     }
   }, 30_000);
+
+  it("freezes an expired exam and only allows final evaluation", async () => {
+    const aiContent = app.get(AiContentService);
+    const evaluationSpy = vi
+      .spyOn(aiContent, "evaluateInterviewSession")
+      .mockResolvedValue({
+        platformScore: 20,
+        aiScore: 0,
+        communicationScore: 20,
+        summary: "Экзамен завершён по таймеру.",
+        strengths: [],
+        weakTopics: ["JavaScript"],
+        recommendations: ["Повтори платформу"],
+        platformFeedback: "Ответ не завершён.",
+        aiFeedback: "AI был отключён.",
+        communicationFeedback: "Ответ не завершён.",
+      });
+    try {
+      const started = await request(app.getHttpServer())
+        .post("/api/v1/learning/interview-sessions")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ mode: "express", company: "yandex", kind: "exam" })
+        .expect(201);
+      expect(started.body.deadlineAt).toEqual(expect.any(String));
+
+      const lessonBlockId = YANDEX_SPRINT[0]?.blocks.find(
+        (block) => block.kind !== "review",
+      )?.id;
+      if (!lessonBlockId) throw new Error("Yandex lesson block is missing");
+      await request(app.getHttpServer())
+        .post(`/api/v1/learning/tracks/yandex/items/${lessonBlockId}/lesson`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400);
+
+      await connection.db?.collection("interviewsessions").updateOne(
+        { _id: new Types.ObjectId(started.body.id) },
+        { $set: { deadlineAt: new Date(Date.now() - 1_000) } },
+      );
+
+      const expired = await request(app.getHttpServer())
+        .get("/api/v1/learning/interview-sessions/current")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+      expect(expired.body.expiredAt).toEqual(expect.any(String));
+
+      await request(app.getHttpServer())
+        .put(`/api/v1/learning/interview-sessions/${started.body.id}/platform/${started.body.platformItems[0].question.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ answer: "Попытка изменить ответ после дедлайна" })
+        .expect(400);
+
+      const completed = await request(app.getHttpServer())
+        .post(`/api/v1/learning/interview-sessions/${started.body.id}/complete`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201);
+      expect(completed.body).toMatchObject({
+        status: "completed",
+        currentStage: "completed",
+        expiredAt: expect.any(String),
+      });
+    } finally {
+      evaluationSpy.mockRestore();
+    }
+  });
 
   it("saves an empty practice solution instead of failing validation", async () => {
     const blockId = YANDEX_SPRINT[0]?.blocks.find((block) => block.kind !== "review")?.id;

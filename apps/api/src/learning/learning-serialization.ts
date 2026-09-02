@@ -257,6 +257,10 @@ export function serializeInterviewSession(
     currentStage: interview.currentStage,
     durationMinutes: interview.durationMinutes,
     startedAt: interview.startedAt.toISOString(),
+    deadlineAt: (interview.deadlineAt ?? new Date(
+      interview.startedAt.getTime() + interview.durationMinutes * 60_000,
+    )).toISOString(),
+    expiredAt: interview.expiredAt?.toISOString() ?? null,
     completedAt: interview.completedAt?.toISOString() ?? null,
     platformItems: interview.platformItems.map((item) => ({
       ...item,

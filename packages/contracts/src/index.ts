@@ -539,6 +539,8 @@ export const interviewSessionSchema = z.object({
   currentStage: interviewSessionStageSchema,
   durationMinutes: z.number(),
   startedAt: z.string(),
+  deadlineAt: z.string(),
+  expiredAt: z.string().nullable(),
   completedAt: z.string().nullable(),
   platformItems: z.array(interviewSessionQuestionSchema),
   platformQuestionTarget: z.number().int().min(1).max(10).optional(),
@@ -631,6 +633,9 @@ export const learningAnalyticsSkillSchema = z.object({
 export const readinessDimensionSchema = z.object({
   score: z.number().nullable(),
   signalCount: z.number().int().min(0),
+  independentItemCount: z.number().int().min(0).default(0),
+  latestEvidenceAt: z.string().nullable().default(null),
+  confidence: z.enum(["low", "medium", "high"]).default("low"),
 });
 
 export const learningAnalyticsSchema = z.object({
@@ -654,10 +659,10 @@ export const learningAnalyticsSchema = z.object({
     explain: readinessDimensionSchema,
     defend: readinessDimensionSchema,
   }).default({
-    recall: { score: null, signalCount: 0 },
-    code: { score: null, signalCount: 0 },
-    explain: { score: null, signalCount: 0 },
-    defend: { score: null, signalCount: 0 },
+    recall: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
+    code: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
+    explain: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
+    defend: { score: null, signalCount: 0, independentItemCount: 0, latestEvidenceAt: null, confidence: "low" },
   }),
 });
 

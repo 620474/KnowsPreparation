@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
 import { AuthModule } from "../auth/auth.module";
+import { AgentModule } from "../agents/agent.module";
 import { ResearchService } from "../learning/research.service";
 import {
   ResearchClaimEntry,
@@ -29,6 +30,7 @@ import {
 @Module({
   imports: [
     AuthModule,
+    AgentModule,
     MongooseModule.forFeature([
       { name: ResearchProject.name, schema: ResearchProjectSchema },
       { name: ResearchEvidenceEntry.name, schema: ResearchEvidenceEntrySchema },
