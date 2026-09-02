@@ -204,6 +204,8 @@ export const questionAttemptResultSchema = z.object({
   id: z.string(),
   questionId: z.string(),
   exerciseType: questionExerciseTypeSchema,
+  submittedAnswer: z.string(),
+  submittedExplanation: z.string().nullable(),
   passed: z.boolean(),
   score: z.number().int().min(0).max(100),
   feedback: z.array(z.string()),

@@ -3958,13 +3958,47 @@ p {
   margin: 0;
 }
 
-.evidence-result code {
+.evidence-answer-comparison {
+  display: grid;
+  gap: 12px;
+}
+
+.evidence-answer-block {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-input);
+}
+
+.evidence-answer-block.submitted {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.evidence-answer-block.expected {
+  border-color: rgba(107, 245, 176, 0.35);
+}
+
+.evidence-answer-block pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+
+.evidence-answer-block code {
   display: block;
-  margin-top: 8px;
   padding: 12px;
   overflow-wrap: anywhere;
   border-radius: 12px;
-  background: var(--surface-input);
+  background: var(--surface-overlay);
+}
+
+.evidence-answer-explanation {
+  margin-top: 14px;
+}
+
+.evidence-answer-explanation p {
+  margin-top: 6px;
+  white-space: pre-wrap;
 }
 
 .analytics-stat-grid {

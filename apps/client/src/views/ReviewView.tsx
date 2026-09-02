@@ -239,7 +239,24 @@ export function ReviewView({ data, onBack, onSubmitAttempt }: ReviewViewProps) {
             <p className="eyebrow">{result.passed ? "Проверка пройдена" : "Нужно повторить"}</p>
             <h2>{result.score}/100</h2>
             <p>Калибровка: уверенность {result.confidence}%, отклонение {Math.abs(result.calibrationGap)} п.п.</p>
-            {result.expectedAnswer ? <div><strong>Эталон:</strong><code>{result.expectedAnswer}</code></div> : null}
+            <div className="evidence-answer-comparison">
+              <div className="evidence-answer-block submitted">
+                <strong>Твой ответ:</strong>
+                <pre><code>{result.submittedAnswer}</code></pre>
+                {result.submittedExplanation ? (
+                  <div className="evidence-answer-explanation">
+                    <strong>Твоё объяснение:</strong>
+                    <p>{result.submittedExplanation}</p>
+                  </div>
+                ) : null}
+              </div>
+              {result.expectedAnswer ? (
+                <div className="evidence-answer-block expected">
+                  <strong>Эталон:</strong>
+                  <pre><code>{result.expectedAnswer}</code></pre>
+                </div>
+              ) : null}
+            </div>
             <ul>{result.feedback.map((message) => <li key={message}>{message}</li>)}</ul>
             <Button className="primary-button" type="button" onClick={advance}>
               Следующая задача

@@ -21,9 +21,42 @@ import {
   assessmentResultV2Schema,
   knowledgeOverviewV2Schema,
   learningMissionSchema,
+  questionAttemptResultSchema,
 } from "./index";
 
 describe("shared API contracts", () => {
+  it("keeps the submitted answer in question attempt results", () => {
+    const result = questionAttemptResultSchema.parse({
+      id: "attempt-1",
+      questionId: "q-01",
+      exerciseType: "predict_output",
+      submittedAnswer: "A, B, C",
+      submittedExplanation: "Сначала синхронный код.",
+      passed: false,
+      score: 0,
+      feedback: ["Проверь порядок микрозадач."],
+      expectedAnswer: "A, C, B",
+      confidence: 70,
+      calibrationGap: 70,
+      progress: {
+        status: "learning",
+        note: "",
+        easeFactor: 2.3,
+        intervalDays: 1,
+        repetitions: 0,
+        nextReviewAt: "2026-09-04T00:00:00.000Z",
+        lastReviewedAt: "2026-09-03T00:00:00.000Z",
+        reviewCount: 1,
+        lapseCount: 1,
+        lastRating: "again",
+      },
+      createdAt: "2026-09-03T00:00:00.000Z",
+    });
+
+    expect(result.submittedAnswer).toBe("A, B, C");
+    expect(result.submittedExplanation).toBe("Сначала синхронный код.");
+  });
+
   it("validates runnable exercises", () => {
     expect(studyExerciseRunnerSchema.parse({
       starterCode: "function solve() {}",

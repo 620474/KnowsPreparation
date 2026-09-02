@@ -1160,6 +1160,8 @@ describe("Learning API", () => {
     expect(firstResponse.body).toMatchObject({
       questionId: "q-01",
       exerciseType: "predict_output",
+      submittedAnswer: payload.answer,
+      submittedExplanation: payload.explanation,
       passed: true,
       score: 100,
       confidence: 80,
