@@ -33,6 +33,9 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "careerApplications",
   "careerSettings",
   "adaptiveDayPlans",
+  "learningMissions",
+  "learningMissionEvents",
+  "transferAssessmentAttempts",
 ] as const;
 
 export type LearningBackupCollection = (typeof LEARNING_BACKUP_COLLECTIONS)[number];
@@ -95,6 +98,9 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
       collection === "careerApplications" ||
       collection === "careerSettings"
       || collection === "adaptiveDayPlans"
+      || collection === "learningMissions"
+      || collection === "learningMissionEvents"
+      || collection === "transferAssessmentAttempts"
         ? []
         : undefined);
     if (!Array.isArray(records)) {

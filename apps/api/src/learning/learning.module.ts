@@ -14,6 +14,7 @@ import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
+import { LearningMissionService } from "./learning-mission.service";
 import { EvidenceService } from "./evidence/evidence.service";
 import { EvidenceV2Service } from "./evidence/evidence-v2.service";
 import { MasteryService } from "./mastery/mastery.service";
@@ -93,6 +94,15 @@ import {
   YandexPlatformMockAttempt,
   YandexPlatformMockAttemptSchema,
 } from "./schemas/yandex-platform-mock.schema";
+import { LearningMission, LearningMissionSchema } from "./schemas/learning-mission.schema";
+import {
+  LearningMissionEventEntry,
+  LearningMissionEventEntrySchema,
+} from "./schemas/learning-mission-event.schema";
+import {
+  TransferAssessmentAttempt,
+  TransferAssessmentAttemptSchema,
+} from "./schemas/transfer-assessment-attempt.schema";
 
 @Module({
   imports: [
@@ -103,6 +113,9 @@ import {
     MongooseModule.forFeature([
       { name: Settings.name, schema: SettingsSchema },
       { name: AdaptiveDayPlan.name, schema: AdaptiveDayPlanSchema },
+      { name: LearningMission.name, schema: LearningMissionSchema },
+      { name: LearningMissionEventEntry.name, schema: LearningMissionEventEntrySchema },
+      { name: TransferAssessmentAttempt.name, schema: TransferAssessmentAttemptSchema },
       { name: TaskProgress.name, schema: TaskProgressSchema },
       { name: QuestionProgress.name, schema: QuestionProgressSchema },
       { name: QuestionAttempt.name, schema: QuestionAttemptSchema },
@@ -141,6 +154,7 @@ import {
     MasteryService,
     MasteryV2Service,
     LearningSignalService,
+    LearningMissionService,
     InterviewSessionService,
     YandexPlatformMockService,
   ],

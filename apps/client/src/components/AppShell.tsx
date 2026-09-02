@@ -42,6 +42,7 @@ const preparationViews: AppView[] = [
   "plan",
   "interview",
   "mock-interview",
+  "mission",
 ];
 
 const knowledgeViews: AppView[] = [

@@ -13,7 +13,9 @@ export type DurableMutationKind =
   | "mockAnswer"
   | "settings"
   | "deleteAlgorithm"
-  | "skipRecommendation";
+  | "skipRecommendation"
+  | "missionAction"
+  | "transferAssessment";
 
 export interface MutationOutboxEntry {
   id: string;

@@ -13,6 +13,7 @@ export const evidenceSourceKindSchema = z.enum([
   "practice_attempt",
   "mock_interview",
   "interview_session",
+  "transfer_assessment",
 ]);
 
 export const evidenceAssistanceModeSchema = z.enum([

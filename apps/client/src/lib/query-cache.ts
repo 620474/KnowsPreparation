@@ -12,6 +12,16 @@ import { openClientDatabase, QUERY_CACHE_STORE } from "./client-database";
 const CACHE_KEY = "main";
 const CACHE_VERSION = 2;
 const MAX_AGE = 7 * 24 * 60 * 60 * 1_000;
+const PERSISTED_QUERY_ROOTS = new Set([
+  "bootstrap",
+  "ai-chat",
+  "practice-attempts",
+  "adaptive-today",
+  "learning-analytics",
+  "knowledge-overview",
+  "skill-detail",
+  "learning-missions",
+]);
 
 export interface PersistedQueryCache {
   version?: number;
@@ -21,6 +31,9 @@ export interface PersistedQueryCache {
 
 export const isFreshQueryCache = (timestamp: number, now = Date.now()) =>
   now - timestamp <= MAX_AGE;
+
+export const isPersistedQueryRoot = (rootKey: unknown) =>
+  typeof rootKey === "string" && PERSISTED_QUERY_ROOTS.has(rootKey);
 
 const readCache = async () => {
   const database = await openClientDatabase();
@@ -105,14 +118,7 @@ export function subscribeToQueryCache(queryClient: QueryClient) {
           mutation.state.isPaused && isOfflineMutationKey(mutation.options.mutationKey),
         shouldDehydrateQuery: (query) => {
           const rootKey = query.queryKey[0];
-          return Boolean(query.state.data) &&
-            (rootKey === "bootstrap" ||
-              rootKey === "ai-chat" ||
-              rootKey === "practice-attempts" ||
-              rootKey === "adaptive-today" ||
-              rootKey === "learning-analytics" ||
-              rootKey === "knowledge-overview" ||
-              rootKey === "skill-detail");
+          return Boolean(query.state.data) && isPersistedQueryRoot(rootKey);
         },
       });
       void writeCache({ version: CACHE_VERSION, timestamp: Date.now(), state }).catch(

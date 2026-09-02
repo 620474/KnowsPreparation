@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { v6PlanningMetadataSchema } from "./planning";
+import { skillCapabilitySchema } from "./skills";
 
 export * from "./evidence";
 export * from "./evidence-v2";
@@ -685,6 +686,116 @@ export const adaptivePlanSchema = z.object({
   rationale: z.string().optional(),
   checkIn: adaptivePlanCheckInSchema.optional(),
   items: z.array(adaptivePlanItemSchema),
+});
+
+export const learningMissionStatusSchema = z.enum([
+  "diagnosed",
+  "intervention",
+  "immediate_verify",
+  "consolidation",
+  "delayed_verify",
+  "closed",
+  "reopened",
+  "skipped",
+]);
+
+export const learningMissionActionSchema = z.enum([
+  "start",
+  "complete_intervention",
+  "defer",
+  "skip",
+]);
+
+export const transferAssessmentFormatSchema = z.enum([
+  "prediction",
+  "bug_triage",
+  "constraint_flip",
+]);
+
+export const transferAssessmentItemSchema = z.object({
+  id: z.string().min(1),
+  familyId: z.string().min(1),
+  format: transferAssessmentFormatSchema,
+  title: z.string().min(1),
+  prompt: z.string().min(1),
+  code: z.string().optional(),
+  constraints: z.array(z.string()).default([]),
+  answerPlaceholder: z.string().min(1),
+  expectedSeconds: z.number().int().positive(),
+});
+
+export const transferAssessmentResultSchema = z.object({
+  attemptId: z.string().min(1),
+  missionId: z.string().min(1),
+  itemId: z.string().min(1),
+  score: z.number().min(0).max(100),
+  passed: z.boolean(),
+  feedback: z.array(z.string()),
+  evidenceEventId: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const learningMissionSchema = z.object({
+  missionId: z.string().min(1),
+  targetId: z.string().min(1),
+  title: z.string().min(1),
+  reason: z.string().min(1),
+  skillId: z.string().min(1),
+  skillLabel: z.string().min(1),
+  capability: skillCapabilitySchema,
+  status: learningMissionStatusSchema,
+  baseline: z.object({
+    estimate: z.number().min(0).max(100).nullable(),
+    lower: z.number().min(0).max(100),
+    upper: z.number().min(0).max(100),
+    evidenceCount: z.number().int().min(0),
+    capturedAt: z.string(),
+  }),
+  objective: z.object({
+    minimumScore: z.number().min(0).max(100),
+    minimumReliability: z.number().min(0).max(1),
+    maximumVerificationAttempts: z.number().int().positive(),
+  }),
+  intervention: adaptivePlanItemSchema,
+  verification: transferAssessmentItemSchema,
+  delayedVerification: transferAssessmentItemSchema,
+  verificationAttempts: z.number().int().min(0),
+  verificationEvidenceIds: z.array(z.string()),
+  dueAt: z.string().nullable(),
+  deferredUntil: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  closedAt: z.string().nullable(),
+});
+
+export const learningMissionEventTypeSchema = z.enum([
+  "created",
+  "started",
+  "intervention_completed",
+  "deferred",
+  "verification_passed",
+  "verification_failed",
+  "delayed_verification_due",
+  "reopened",
+  "closed",
+  "skipped",
+]);
+
+export const learningMissionEventSchema = z.object({
+  eventId: z.string().min(1),
+  operationId: z.string().min(1),
+  missionId: z.string().min(1),
+  type: learningMissionEventTypeSchema,
+  fromStatus: learningMissionStatusSchema.nullable(),
+  toStatus: learningMissionStatusSchema,
+  note: z.string(),
+  occurredAt: z.string(),
+});
+
+export const learningMissionsTodaySchema = z.object({
+  enabled: z.boolean(),
+  generatedAt: z.string(),
+  missions: z.array(learningMissionSchema).max(3),
 });
 
 export const learningAnalyticsDaySchema = z.object({
@@ -1505,6 +1616,15 @@ export type AdaptivePlan = z.infer<typeof adaptivePlanSchema>;
 export type AdaptivePlanCheckIn = z.infer<typeof adaptivePlanCheckInSchema>;
 export type AdaptivePlanEnergy = z.infer<typeof adaptivePlanEnergySchema>;
 export type AdaptivePlanFocus = z.infer<typeof adaptivePlanFocusSchema>;
+export type LearningMissionStatus = z.infer<typeof learningMissionStatusSchema>;
+export type LearningMissionAction = z.infer<typeof learningMissionActionSchema>;
+export type TransferAssessmentFormat = z.infer<typeof transferAssessmentFormatSchema>;
+export type TransferAssessmentItem = z.infer<typeof transferAssessmentItemSchema>;
+export type TransferAssessmentResult = z.infer<typeof transferAssessmentResultSchema>;
+export type LearningMission = z.infer<typeof learningMissionSchema>;
+export type LearningMissionEventType = z.infer<typeof learningMissionEventTypeSchema>;
+export type LearningMissionEvent = z.infer<typeof learningMissionEventSchema>;
+export type LearningMissionsToday = z.infer<typeof learningMissionsTodaySchema>;
 export type LearningAnalyticsDay = z.infer<typeof learningAnalyticsDaySchema>;
 export type LearningAnalyticsSkill = z.infer<typeof learningAnalyticsSkillSchema>;
 export type LearningAnalytics = z.infer<typeof learningAnalyticsSchema>;

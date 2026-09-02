@@ -10,6 +10,7 @@ import {
 import { offlineMutationKeys } from "./offline-mutation-keys";
 import type {
   MockAnswerMutationVariables,
+  MissionActionMutationVariables,
   PracticeAttemptMutationVariables,
   QuestionMutationVariables,
   QuestionAttemptMutationVariables,
@@ -18,6 +19,7 @@ import type {
   SettingsMutationVariables,
   SkipRecommendationMutationVariables,
   TaskMutationVariables,
+  TransferAssessmentMutationVariables,
 } from "./offline-mutation-keys";
 
 const OFFLINE_WRITE_SCOPE = { id: "offline-write-queue" } as const;
@@ -79,6 +81,14 @@ const executeOutboxEntry = (entry: MutationOutboxEntry) => {
       const { recommendationId, operationId } = entry.variables as SkipRecommendationMutationVariables;
       return learningApi.skipAdaptiveRecommendation(recommendationId, operationId);
     }
+    case "missionAction": {
+      const { missionId, ...input } = entry.variables as MissionActionMutationVariables;
+      return learningApi.updateMission(missionId, input);
+    }
+    case "transferAssessment": {
+      const { missionId, ...input } = entry.variables as TransferAssessmentMutationVariables;
+      return learningApi.submitTransferAssessment(missionId, input);
+    }
   }
 };
 
@@ -93,6 +103,7 @@ export function replayOfflineMutationOutbox(queryClient: QueryClient) {
           queryClient.invalidateQueries({ queryKey: ["bootstrap"] }),
           queryClient.invalidateQueries({ queryKey: ["adaptive-today"] }),
           queryClient.invalidateQueries({ queryKey: ["learning-analytics"] }),
+          queryClient.invalidateQueries({ queryKey: ["learning-missions"] }),
         ]);
       }
       return completed;
@@ -109,6 +120,7 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
       queryClient.invalidateQueries({ queryKey: ["bootstrap"] }),
       queryClient.invalidateQueries({ queryKey: ["adaptive-today"] }),
       queryClient.invalidateQueries({ queryKey: ["learning-analytics"] }),
+      queryClient.invalidateQueries({ queryKey: ["learning-missions"] }),
     ]);
 
   queryClient.setMutationDefaults(offlineMutationKeys.task, {
@@ -203,5 +215,17 @@ export function registerOfflineMutationDefaults(queryClient: QueryClient) {
       learningApi.skipAdaptiveRecommendation(recommendationId, operationId)),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["adaptive-today"] }),
+  });
+  queryClient.setMutationDefaults(offlineMutationKeys.missionAction, {
+    ...offlineOptions,
+    mutationFn: createDurableMutationFn("missionAction", ({ missionId, ...input }: MissionActionMutationVariables) =>
+      learningApi.updateMission(missionId, input)),
+    onSettled: refreshLearning,
+  });
+  queryClient.setMutationDefaults(offlineMutationKeys.transferAssessment, {
+    ...offlineOptions,
+    mutationFn: createDurableMutationFn("transferAssessment", ({ missionId, ...input }: TransferAssessmentMutationVariables) =>
+      learningApi.submitTransferAssessment(missionId, input)),
+    onSettled: refreshLearning,
   });
 }

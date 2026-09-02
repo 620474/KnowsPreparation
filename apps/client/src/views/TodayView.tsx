@@ -15,11 +15,13 @@ import {
   Target,
   Trophy,
   FlaskConical,
+  Route,
 } from "lucide-react";
 
 import { learningApi } from "../api";
 import { CAREER_QUERY_KEY, getDueCareerApplications, getUpcomingCareerInterviews } from "../features/career/career";
 import { useAdaptivePlan } from "../hooks/use-adaptive-plan";
+import { useTodayMissions } from "../hooks/use-learning-missions";
 import { getDateForOffset, getDayForOffset, getStudyPosition, getWeekForDay } from "../lib/date";
 import { buildReviewQueue } from "../lib/review-queue";
 import { RESEARCH_PROJECTS_QUERY_KEY } from "../lib/research";
@@ -35,6 +37,7 @@ interface TodayViewProps {
   onOpenAdaptiveItem: (item: AdaptivePlanItem) => void;
   onOpenResearch: () => void;
   onOpenSkills: () => void;
+  onOpenMission: (missionId: string) => void;
 }
 
 const kindLabels = {
@@ -67,6 +70,7 @@ export function TodayView({
   onOpenAdaptiveItem,
   onOpenResearch,
   onOpenSkills,
+  onOpenMission,
 }: TodayViewProps) {
   const researchProjects = useQuery({
     queryKey: RESEARCH_PROJECTS_QUERY_KEY,
@@ -86,6 +90,7 @@ export function TodayView({
   const knowledgeTarget = checkIn.focus === "yandex" || checkIn.focus === "ozon"
     ? checkIn.focus
     : "general";
+  const missions = useTodayMissions(knowledgeTarget);
   const knowledge = useQuery({
     queryKey: ["knowledge-overview", knowledgeTarget],
     queryFn: () => learningApi.getKnowledgeOverview(knowledgeTarget),
@@ -215,6 +220,29 @@ export function TodayView({
           </div>
           <ArrowRight size={20} />
         </button>
+      ) : null}
+
+      {missions.data?.enabled && missions.data.missions.length ? (
+        <section className="today-missions-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Decision Engine · максимум 3 цели</p>
+              <h2>Миссии, которые нужно доказать</h2>
+              <p>Каждая цель закрывается только после немедленной и отложенной проверки.</p>
+            </div>
+            <Route size={28} />
+          </div>
+          <div className="today-mission-list">
+            {missions.data.missions.map((mission) => (
+              <button key={mission.missionId} type="button" onClick={() => onOpenMission(mission.missionId)}>
+                <span className={`mission-state mission-state-${mission.status}`}>{mission.status.replaceAll("_", " ")}</span>
+                <strong>{mission.title}</strong>
+                <small>{mission.reason}</small>
+                <span className="today-mission-link">Открыть миссию <ArrowRight size={15} /></span>
+              </button>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {data.settings.adaptiveTodayEnabled ? (

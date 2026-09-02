@@ -152,6 +152,12 @@ export function useAppNavigation() {
     [navigateToRoute],
   );
 
+  const navigateToMission = useCallback(
+    (missionId: string) =>
+      navigateToRoute({ view: "mission", lessonReader: null, missionId }),
+    [navigateToRoute],
+  );
+
   const closeLessonReader = useCallback(() => {
     const marker = route.lessonReader
       ? `${route.lessonReader.track}:${route.lessonReader.itemId}`
@@ -228,6 +234,7 @@ export function useAppNavigation() {
     yandexMockDayId: route.yandexMockDayId ?? null,
     researchProjectId: route.researchProjectId ?? null,
     skillId: route.skillId ?? null,
+    missionId: route.missionId ?? null,
     chatOpen,
     chatItemId,
     chatDraftRequest,
@@ -238,6 +245,7 @@ export function useAppNavigation() {
     navigateToYandexMock,
     navigateToResearchProject,
     navigateToSkill,
+    navigateToMission,
     openLessonReader: navigateToLesson,
     closeLessonReader,
     openChat,

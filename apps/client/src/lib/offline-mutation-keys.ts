@@ -2,6 +2,7 @@ import type {
   TrackKey,
   PracticeAttemptSource,
   PracticeAttemptTelemetry,
+  LearningMissionAction,
   QuestionProgress,
   QuestionAttemptResult,
   ReviewRating,
@@ -21,6 +22,8 @@ export const offlineMutationKeys = {
   settings: [...OFFLINE_MUTATION_ROOT, "settings"] as const,
   deleteAlgorithm: [...OFFLINE_MUTATION_ROOT, "delete-algorithm"] as const,
   skipRecommendation: [...OFFLINE_MUTATION_ROOT, "skip-recommendation"] as const,
+  missionAction: [...OFFLINE_MUTATION_ROOT, "mission-action"] as const,
+  transferAssessment: [...OFFLINE_MUTATION_ROOT, "transfer-assessment"] as const,
 };
 
 export type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
@@ -65,6 +68,20 @@ export type MockAnswerMutationVariables = {
 export type SettingsMutationVariables = SettingsPatch;
 export type SkipRecommendationMutationVariables = {
   recommendationId: string;
+  operationId: string;
+};
+export type MissionActionMutationVariables = {
+  missionId: string;
+  action: LearningMissionAction;
+  operationId: string;
+  deferredUntil?: string;
+  note?: string;
+};
+export type TransferAssessmentMutationVariables = {
+  missionId: string;
+  answer: string;
+  confidence: number;
+  responseTimeMs: number;
   operationId: string;
 };
 

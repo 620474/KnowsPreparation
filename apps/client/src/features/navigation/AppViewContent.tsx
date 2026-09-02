@@ -6,7 +6,7 @@ import type { useDataActions } from "../../hooks/use-data-actions";
 import type { useMockActions } from "../../hooks/use-mock-actions";
 import type { useProgressActions } from "../../hooks/use-progress-actions";
 import { viewForTrack } from "../../lib/app-route";
-import type { BootstrapData, YandexMockDayId } from "../../types";
+import type { AdaptivePlanItem, BootstrapData, YandexMockDayId } from "../../types";
 
 const PreparationHub = lazy(() =>
   import("../preparation/PreparationHub").then((module) => ({
@@ -66,6 +66,9 @@ const SettingsView = lazy(() =>
 const TodayView = lazy(() =>
   import("../../views/TodayView").then((module) => ({ default: module.TodayView })),
 );
+const LearningMissionView = lazy(() =>
+  import("../../views/LearningMissionView").then((module) => ({ default: module.LearningMissionView })),
+);
 const YandexSprintView = lazy(() =>
   import("../../views/YandexSprintView").then((module) => ({ default: module.YandexSprintView })),
 );
@@ -100,11 +103,13 @@ export function AppViewContent({
     yandexMockDayId,
     researchProjectId,
     skillId,
+    missionId,
     navigateToView,
     navigateToTrackDay,
     navigateToYandexMock,
     navigateToResearchProject,
     navigateToSkill,
+    navigateToMission,
     openLessonReader,
     openChat,
     openChatWithDraft,
@@ -125,6 +130,18 @@ export function AppViewContent({
   } = mockActions;
   const { addAlgorithm, deleteAlgorithm, exportBackup, importBackup } = dataActions;
 
+  const openAdaptiveItem = (item: AdaptivePlanItem) => {
+    if (item.kind === "review") navigateToView("review");
+    else if (item.kind === "mock") navigateToView("interview");
+    else if (item.kind === "career") navigateToView("career");
+    else if (
+      item.track &&
+      item.itemId &&
+      (item.kind === "lesson" || item.source === "lesson")
+    ) openLessonReader(item.track, item.itemId);
+    else if (item.track) navigateToView(viewForTrack(item.track));
+  };
+
   if (activeView === "today") {
     return (
       <TodayView
@@ -136,17 +153,18 @@ export function AppViewContent({
         onOpenReview={() => navigateToView("review")}
         onOpenResearch={() => navigateToResearchProject(null)}
         onOpenSkills={() => navigateToSkill(null)}
-        onOpenAdaptiveItem={(item) => {
-          if (item.kind === "review") navigateToView("review");
-          else if (item.kind === "mock") navigateToView("interview");
-          else if (item.kind === "career") navigateToView("career");
-          else if (
-            item.track &&
-            item.itemId &&
-            (item.kind === "lesson" || item.source === "lesson")
-          ) openLessonReader(item.track, item.itemId);
-          else if (item.track) navigateToView(viewForTrack(item.track));
-        }}
+        onOpenMission={navigateToMission}
+        onOpenAdaptiveItem={openAdaptiveItem}
+      />
+    );
+  }
+
+  if (activeView === "mission") {
+    return (
+      <LearningMissionView
+        missionId={missionId}
+        onBack={() => navigateToView("today")}
+        onOpenIntervention={openAdaptiveItem}
       />
     );
   }

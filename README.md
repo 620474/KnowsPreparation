@@ -97,9 +97,15 @@ Mastery считается воспроизводимо: старые резул
 
 Для аварийного rollback при деплое можно установить `PLANNER_V6_ENABLED=false`: Today вернётся к прежнему readiness-планированию, не удаляя evidence и mastery snapshots.
 
-Foundation следующей измерительной модели работает параллельно и пока не управляет интерфейсом. Quiz, practice и interview создают native `AssessmentResultV2` и `EvidenceEventV2` с criterion-level оценками; старые события проецируются с явным `legacy_projection`. Mastery v2 учитывает обязательные, но ещё не проверенные capabilities через coverage и широкую uncertainty-полосу, а каждое новое состояние сохраняется историческим snapshot.
+Quiz, practice, interview и Transfer Lab создают native `AssessmentResultV2` и `EvidenceEventV2` с criterion-level оценками; старые события проецируются с явным `legacy_projection`. Mastery v2 учитывает обязательные, но ещё не проверенные capabilities через coverage и широкую uncertainty-полосу, а каждое новое состояние сохраняется историческим snapshot.
 
-Для поэтапного отката доступны `EVIDENCE_V2_WRITE=false` и `MASTERY_V2_SHADOW=false`. Эти флаги не удаляют уже записанные события и не меняют текущую v6 readiness.
+### Learning Missions и Transfer Lab
+
+Decision Engine превращает слабые места Mastery v2 в 1–3 активные миссии на экране «Сегодня». Миссия проходит состояния «диагностика → интервенция → немедленная проверка → закрепление → отложенная проверка» и закрывается только после двух успешных заданий из разных семейств.
+
+Transfer Lab проверяет перенос знания без AI в трёх форматах: прогноз выполнения, диагностика дефекта и изменение решения при новых ограничениях. Попытки создают evidence, действия миссии идемпотентны и попадают в offline outbox, а экран миссии восстанавливается по постоянному URL после перезагрузки.
+
+Для поэтапного отката доступны `EVIDENCE_V2_WRITE=false`, `MASTERY_V2_SHADOW=false` и `MISSION_V7_ENABLED=false`. Эти флаги не удаляют уже записанные события; последний скрывает миссии и возвращает Today к обычным рекомендациям.
 
 ### Информационная архитектура
 

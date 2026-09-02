@@ -20,6 +20,7 @@ import {
   yandexPlatformMockAttemptSchema,
   assessmentResultV2Schema,
   knowledgeOverviewV2Schema,
+  learningMissionSchema,
 } from "./index";
 
 describe("shared API contracts", () => {
@@ -165,6 +166,60 @@ describe("shared API contracts", () => {
       days: [],
       skills: [],
     }).windowDays).toBe(7);
+  });
+
+  it("requires two independent checks in a learning mission", () => {
+    const intervention = {
+      id: "review-1",
+      kind: "review",
+      title: "Повторить event loop",
+      reason: "Недостаточно evidence",
+      minutes: 20,
+      score: 100,
+      skillKeys: ["async"],
+      track: null,
+      itemId: null,
+      source: null,
+    };
+    const verification = {
+      id: "transfer-1",
+      familyId: "family-1",
+      format: "prediction",
+      title: "Порядок вывода",
+      prompt: "Предскажи вывод",
+      constraints: [],
+      answerPlaceholder: "Ответ",
+      expectedSeconds: 120,
+    };
+    const mission = learningMissionSchema.parse({
+      missionId: "mission-1",
+      targetId: "yandex",
+      title: "Подтвердить event loop",
+      reason: "Мало evidence",
+      skillId: "async.event-loop",
+      skillLabel: "Event loop",
+      capability: "apply",
+      status: "diagnosed",
+      baseline: {
+        estimate: null,
+        lower: 0,
+        upper: 100,
+        evidenceCount: 0,
+        capturedAt: "2026-09-02T10:00:00.000Z",
+      },
+      objective: { minimumScore: 70, minimumReliability: 0.65, maximumVerificationAttempts: 2 },
+      intervention,
+      verification,
+      delayedVerification: { ...verification, id: "transfer-2", familyId: "family-2" },
+      verificationAttempts: 0,
+      verificationEvidenceIds: [],
+      dueAt: null,
+      deferredUntil: null,
+      createdAt: "2026-09-02T10:00:00.000Z",
+      updatedAt: "2026-09-02T10:00:00.000Z",
+      closedAt: null,
+    });
+    expect(mission.delayedVerification.familyId).not.toBe(mission.verification.familyId);
   });
 
   it("validates complete interview simulator sessions", () => {

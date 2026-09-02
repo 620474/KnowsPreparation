@@ -93,6 +93,49 @@ export class GenerateAdaptivePlanDto {
   note!: string;
 }
 
+export class LearningMissionActionDto {
+  @IsIn(["start", "complete_intervention", "defer", "skip"])
+  action!: "start" | "complete_intervention" | "defer" | "skip";
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  operationId!: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  deferredUntil?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
+}
+
+export class SubmitTransferAssessmentDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(20_000)
+  answer!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  confidence!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(3_600_000)
+  responseTimeMs!: number;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  operationId!: string;
+}
+
 export class ImportBackupDto {
   @IsObject()
   backup!: Record<string, unknown>;

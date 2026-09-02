@@ -8,12 +8,15 @@ import {
   interviewSessionSchema,
   knowledgeOverviewSchema,
   learningAnalyticsSchema,
+  learningMissionSchema,
+  learningMissionsTodaySchema,
   practiceAttemptHistorySchema,
   practiceAttemptSchema,
   practiceSolutionSaveResultSchema,
   questionAttemptResultSchema,
   skillDetailSchema,
   skillGraphSchema,
+  transferAssessmentResultSchema,
   researchClaimSchema,
   researchEvidenceSchema,
   researchProjectSchema,
@@ -40,6 +43,9 @@ import type {
   Difficulty,
   LessonQuizProgress,
   LearningAnalytics,
+  LearningMission,
+  LearningMissionAction,
+  LearningMissionsToday,
   KnowledgeOverview,
   SkillDetail,
   SkillGraph,
@@ -60,6 +66,7 @@ import type {
   TaskProgress,
   TaskProgressPatch,
   TrackKey,
+  TransferAssessmentResult,
   YandexMockDayId,
   YandexMockVerdict,
   YandexPlatformMockAttempt,
@@ -259,6 +266,33 @@ export const learningApi = {
       method: "POST",
       body: JSON.stringify({ recommendationId, operationId }),
     }),
+  getMissionsToday: (target = "general") =>
+    request<LearningMissionsToday>(`/learning/missions/today?target=${encodeURIComponent(target)}`).then(
+      (result) => learningMissionsTodaySchema.parse(result),
+    ),
+  getMission: (missionId: string) =>
+    request<LearningMission>(`/learning/missions/${encodeURIComponent(missionId)}`).then(
+      (result) => learningMissionSchema.parse(result),
+    ),
+  updateMission: (
+    missionId: string,
+    input: {
+      action: LearningMissionAction;
+      operationId: string;
+      deferredUntil?: string;
+      note?: string;
+    },
+  ) => request<LearningMission>(`/learning/missions/${encodeURIComponent(missionId)}/actions`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((result) => learningMissionSchema.parse(result)),
+  submitTransferAssessment: (
+    missionId: string,
+    input: { answer: string; confidence: number; responseTimeMs: number; operationId: string },
+  ) => request<TransferAssessmentResult>(
+    `/learning/missions/${encodeURIComponent(missionId)}/transfer-attempts`,
+    { method: "POST", body: JSON.stringify(input) },
+  ).then((result) => transferAssessmentResultSchema.parse(result)),
   getLearningAnalytics: (days: 7 | 30) =>
     request<LearningAnalytics>(`/learning/analytics?days=${days}`).then((result) =>
       learningAnalyticsSchema.parse(result),

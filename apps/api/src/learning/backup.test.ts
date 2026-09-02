@@ -42,6 +42,9 @@ const createBackup = (): LearningBackupV1 => ({
     careerApplications: [],
     careerSettings: [],
     adaptiveDayPlans: [],
+    learningMissions: [],
+    learningMissionEvents: [],
+    transferAssessmentAttempts: [],
   },
 });
 

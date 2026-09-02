@@ -14,6 +14,7 @@ import type { InterviewSessionService } from "./interview-session.service";
 import type { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import type { MasteryService } from "./mastery/mastery.service";
 import type { MasteryV2Service } from "./mastery/mastery-v2.service";
+import type { LearningMissionService } from "./learning-mission.service";
 
 type StreamResponse = (
   response: Response,
@@ -50,6 +51,7 @@ describe("LearningController SSE", () => {
       {} as YandexPlatformMockService,
       {} as MasteryService,
       {} as MasteryV2Service,
+      {} as LearningMissionService,
     );
     const streamResponse = Reflect.get(controller, "streamResponse") as StreamResponse;
     const response = createResponseMock();

@@ -5303,6 +5303,230 @@ p {
   }
 }
 
+.today-missions-panel,
+.mission-hero,
+.mission-step-card {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.today-missions-panel {
+  display: grid;
+  gap: 22px;
+  padding: clamp(22px, 4vw, 36px);
+}
+
+.today-mission-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.today-mission-list > button {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 20px;
+  background: var(--surface-soft);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.today-mission-list > button:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--mint) 55%, var(--line));
+}
+
+.today-mission-list strong {
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.today-mission-list small {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.mission-state {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--mint) 14%, var(--surface));
+  color: var(--mint-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mission-state-reopened {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+}
+
+.today-mission-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  color: var(--mint-strong);
+  font-weight: 750;
+}
+
+.mission-page {
+  width: min(1050px, 100%);
+  margin: 0 auto;
+  padding-bottom: 90px;
+}
+
+.mission-back {
+  justify-self: start;
+}
+
+.mission-hero,
+.mission-step-card {
+  padding: clamp(24px, 5vw, 48px);
+}
+
+.mission-hero {
+  display: grid;
+  gap: 17px;
+  background:
+    radial-gradient(circle at 88% 15%, color-mix(in srgb, var(--mint) 17%, transparent), transparent 32%),
+    var(--surface);
+}
+
+.mission-hero h1,
+.mission-step-card h2 {
+  margin: 0;
+}
+
+.mission-hero h1 {
+  max-width: 850px;
+  font-size: clamp(2rem, 6vw, 4.2rem);
+  line-height: 0.98;
+}
+
+.mission-hero > p:not(.eyebrow),
+.mission-step-card > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.03rem;
+  line-height: 1.65;
+}
+
+.mission-status,
+.mission-step-meta,
+.mission-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mission-status {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 8px 13px;
+  background: color-mix(in srgb, var(--mint) 15%, var(--surface));
+  color: var(--mint-strong);
+  font-weight: 800;
+}
+
+.mission-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.mission-step-card {
+  display: grid;
+  gap: 20px;
+}
+
+.mission-step-heading,
+.mission-waiting,
+.mission-complete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.mission-step-heading > div,
+.mission-waiting > div,
+.mission-complete > div {
+  display: grid;
+  gap: 10px;
+}
+
+.mission-inline-actions,
+.mission-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.transfer-lab-card {
+  border-color: color-mix(in srgb, var(--mint) 45%, var(--line));
+}
+
+.transfer-code {
+  overflow-x: auto;
+  margin: 0;
+  border-radius: 18px;
+  padding: 20px;
+  background: #071b15;
+  color: #e8fff5;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.transfer-lab-card ul {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+@media (max-width: 820px) {
+  .today-mission-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .today-missions-panel,
+  .mission-hero,
+  .mission-step-card {
+    border-radius: 20px;
+  }
+
+  .mission-inline-actions,
+  .mission-secondary-actions,
+  .mission-inline-actions > *,
+  .mission-secondary-actions > *,
+  .mission-step-card > .primary-button {
+    width: 100%;
+  }
+
+  .mission-step-heading,
+  .mission-waiting,
+  .mission-complete {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .research-page {
   padding-bottom: 110px;
 }

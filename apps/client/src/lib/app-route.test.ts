@@ -120,4 +120,14 @@ describe("app routes", () => {
     expect(formatAppRoute(route)).toBe("#/skills/async.event-loop");
     expect(parseAppRoute(formatAppRoute(route))).toEqual(route);
   });
+
+  it("round-trips a mission route after reload", () => {
+    const route = {
+      view: "mission" as const,
+      lessonReader: null,
+      missionId: "mission/async",
+    };
+    expect(formatAppRoute(route)).toBe("#/missions/mission%2Fasync");
+    expect(parseAppRoute(formatAppRoute(route))).toEqual(route);
+  });
 });

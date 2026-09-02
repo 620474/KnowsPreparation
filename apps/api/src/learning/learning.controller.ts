@@ -32,8 +32,10 @@ import {
   ImportBackupDto,
   ListInterviewSessionsDto,
   ListPracticeAttemptsDto,
+  LearningMissionActionDto,
   ReviewQuestionDto,
   SubmitQuestionAttemptDto,
+  SubmitTransferAssessmentDto,
   SendAiChatMessageDto,
   SkipAdaptiveRecommendationDto,
   StartInterviewSessionDto,
@@ -61,6 +63,7 @@ import type { TrackKey } from "./track-registry";
 import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { MasteryService } from "./mastery/mastery.service";
 import { MasteryV2Service } from "./mastery/mastery-v2.service";
+import { LearningMissionService } from "./learning-mission.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning")
@@ -78,6 +81,7 @@ export class LearningController {
     private readonly yandexPlatformMockService: YandexPlatformMockService,
     private readonly masteryService: MasteryService,
     private readonly masteryV2Service: MasteryV2Service,
+    private readonly missionService: LearningMissionService,
   ) {}
 
   @Get("knowledge/skills")
@@ -135,6 +139,34 @@ export class LearningController {
       dto.recommendationId,
       dto.operationId,
     );
+  }
+
+  @Get("missions/today")
+  @Header("Cache-Control", "private, no-store")
+  missionsToday(@Query("target") target?: string) {
+    return this.missionService.getToday(target);
+  }
+
+  @Get("missions/:missionId")
+  @Header("Cache-Control", "private, no-store")
+  mission(@Param("missionId") missionId: string) {
+    return this.missionService.getMission(missionId);
+  }
+
+  @Post("missions/:missionId/actions")
+  updateMission(
+    @Param("missionId") missionId: string,
+    @Body() dto: LearningMissionActionDto,
+  ) {
+    return this.missionService.applyAction(missionId, dto.action, dto);
+  }
+
+  @Post("missions/:missionId/transfer-attempts")
+  submitTransferAssessment(
+    @Param("missionId") missionId: string,
+    @Body() dto: SubmitTransferAssessmentDto,
+  ) {
+    return this.missionService.submitTransferAssessment(missionId, dto);
   }
 
   @Get("analytics")

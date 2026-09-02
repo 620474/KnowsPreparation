@@ -16,6 +16,7 @@ export type AppView =
   | "mock-interview"
   | "interview"
   | "analytics"
+  | "mission"
   | "research"
   | "algorithms"
   | "settings";
@@ -39,6 +40,7 @@ export interface AppRoute {
   yandexMockDayId?: string | null;
   researchProjectId?: string | null;
   skillId?: string | null;
+  missionId?: string | null;
 }
 
 const DEFAULT_ROUTE: AppRoute = { view: "today", lessonReader: null };
@@ -59,6 +61,7 @@ const viewPaths: Record<AppView, string> = {
   "mock-interview": "mock-interview",
   interview: "interview",
   analytics: "analytics",
+  mission: "missions",
   research: "research",
   algorithms: "algorithms",
   settings: "settings",
@@ -116,6 +119,15 @@ export function parseAppPath(pathname: string): AppRoute {
     };
   }
 
+  if (view === "mission") {
+    const missionId = segments[1] ? decodeItemId(segments[1]) : "";
+    return {
+      view,
+      lessonReader: null,
+      missionId: missionId || null,
+    };
+  }
+
   const track = viewTracks[view];
   if (track === "yandex" && segments[1] === "mock" && segments[2]) {
     const dayId = decodeItemId(segments[2]);
@@ -165,6 +177,13 @@ export function formatAppPath(route: AppRoute): string {
     return route.skillId
       ? `/${path}/${encodeURIComponent(route.skillId)}`
       : `/${path}`;
+  }
+
+
+  if (route.view === "mission") {
+    return route.missionId
+      ? `/${path}/${encodeURIComponent(route.missionId)}`
+      : "/today";
   }
 
   if (route.yandexMockDayId) {

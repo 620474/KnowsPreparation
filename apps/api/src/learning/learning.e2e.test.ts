@@ -1630,6 +1630,59 @@ describe("Learning API", () => {
     });
   });
 
+  it("creates a mission and records an independent Transfer Lab check", async () => {
+    const todayResponse = await request(app.getHttpServer())
+      .get("/api/v1/learning/missions/today?target=yandex")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(todayResponse.body.enabled).toBe(true);
+    expect(todayResponse.body.missions).toHaveLength(3);
+    const mission = todayResponse.body.missions[0] as {
+      missionId: string;
+      verification: { id: string; familyId: string };
+      delayedVerification: { familyId: string };
+    };
+    expect(mission.verification.familyId).not.toBe(mission.delayedVerification.familyId);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/learning/missions/${mission.missionId}/actions`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ action: "start", operationId: "mission-start-1" })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/api/v1/learning/missions/${mission.missionId}/actions`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ action: "complete_intervention", operationId: "mission-ready-1" })
+      .expect(201);
+
+    const answers: Record<string, string> = {
+      "transfer-event-loop-1": "A, F, C, E, D, B",
+      "transfer-react-effect-1": "Это race: в cleanup вызываем AbortController.abort и передаём signal в fetch.",
+      "transfer-closures-1": "[3, 3, 3], одна общая binding; исправления: let или IIFE с параметром.",
+      "transfer-algorithms-1": "Монотонная deque хранит индексы в убывающем порядке, амортизированно O(1).",
+    };
+    const answer = answers[mission.verification.id];
+    if (!answer) throw new Error(`Missing Transfer Lab answer for ${mission.verification.id}`);
+    const result = await request(app.getHttpServer())
+      .post(`/api/v1/learning/missions/${mission.missionId}/transfer-attempts`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        answer,
+        confidence: 75,
+        responseTimeMs: 45_000,
+        operationId: "mission-transfer-1",
+      })
+      .expect(201);
+    expect(result.body).toMatchObject({ missionId: mission.missionId, passed: true });
+
+    const updated = await request(app.getHttpServer())
+      .get(`/api/v1/learning/missions/${mission.missionId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(updated.body).toMatchObject({ status: "consolidation", verificationAttempts: 1 });
+    expect(updated.body.verificationEvidenceIds).toHaveLength(1);
+  });
+
   it("transcribes a mock answer without storing the audio", async () => {
     const interviewResponse = await request(app.getHttpServer())
       .post("/api/v1/learning/mock-interviews")

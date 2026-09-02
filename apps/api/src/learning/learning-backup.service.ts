@@ -32,6 +32,9 @@ import { PracticeAttempt } from "./schemas/practice-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
 import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
+import { LearningMission } from "./schemas/learning-mission.schema";
+import { LearningMissionEventEntry } from "./schemas/learning-mission-event.schema";
+import { TransferAssessmentAttempt } from "./schemas/transfer-assessment-attempt.schema";
 import { ResearchProject } from "./schemas/research-project.schema";
 import { ResearchEvidenceEntry } from "./schemas/research-evidence.schema";
 import { ResearchClaimEntry } from "./schemas/research-claim.schema";
@@ -95,6 +98,12 @@ export class LearningBackupService {
     private readonly careerSettingsModel: Model<CareerSettingsEntry>,
     @InjectModel(AdaptiveDayPlan.name)
     private readonly adaptiveDayPlanModel: Model<AdaptiveDayPlan>,
+    @InjectModel(LearningMission.name)
+    private readonly learningMissionModel: Model<LearningMission>,
+    @InjectModel(LearningMissionEventEntry.name)
+    private readonly learningMissionEventModel: Model<LearningMissionEventEntry>,
+    @InjectModel(TransferAssessmentAttempt.name)
+    private readonly transferAssessmentAttemptModel: Model<TransferAssessmentAttempt>,
   ) {}
 
   async exportBackup() {
@@ -128,6 +137,9 @@ export class LearningBackupService {
       careerApplications,
       careerSettings,
       adaptiveDayPlans,
+      learningMissions,
+      learningMissionEvents,
+      transferAssessmentAttempts,
     ] = await Promise.all([
       this.settingsModel.find().lean().exec(),
       this.taskModel.find().lean().exec(),
@@ -158,6 +170,9 @@ export class LearningBackupService {
       this.careerApplicationModel.find().lean().exec(),
       this.careerSettingsModel.find().lean().exec(),
       this.adaptiveDayPlanModel.find().lean().exec(),
+      this.learningMissionModel.find().lean().exec(),
+      this.learningMissionEventModel.find().lean().exec(),
+      this.transferAssessmentAttemptModel.find().lean().exec(),
     ]);
 
     return {
@@ -194,6 +209,9 @@ export class LearningBackupService {
         careerApplications,
         careerSettings,
         adaptiveDayPlans,
+        learningMissions,
+        learningMissionEvents,
+        transferAssessmentAttempts,
       },
     };
   }
@@ -307,6 +325,18 @@ export class LearningBackupService {
       adaptiveDayPlans: await this.validateRecords(
         this.adaptiveDayPlanModel,
         backup.data.adaptiveDayPlans,
+      ),
+      learningMissions: await this.validateRecords(
+        this.learningMissionModel,
+        backup.data.learningMissions,
+      ),
+      learningMissionEvents: await this.validateRecords(
+        this.learningMissionEventModel,
+        backup.data.learningMissionEvents,
+      ),
+      transferAssessmentAttempts: await this.validateRecords(
+        this.transferAssessmentAttemptModel,
+        backup.data.transferAssessmentAttempts,
       ),
     };
 
@@ -457,6 +487,21 @@ export class LearningBackupService {
         this.adaptiveDayPlanModel,
         prepared.adaptiveDayPlans,
         (record) => ({ date: record.date }),
+      ),
+      this.mergeRecords(
+        this.learningMissionModel,
+        prepared.learningMissions,
+        (record) => ({ missionId: record.missionId }),
+      ),
+      this.mergeRecords(
+        this.learningMissionEventModel,
+        prepared.learningMissionEvents,
+        (record) => ({ operationId: record.operationId }),
+      ),
+      this.mergeRecords(
+        this.transferAssessmentAttemptModel,
+        prepared.transferAssessmentAttempts,
+        (record) => ({ operationId: record.operationId }),
       ),
     ]);
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isFreshQueryCache,
+  isPersistedQueryRoot,
   migratePersistedQueryCache,
   type PersistedQueryCache,
 } from "./query-cache";
@@ -12,6 +13,11 @@ describe("query cache", () => {
 
     expect(isFreshQueryCache(now - 6 * 24 * 60 * 60 * 1_000, now)).toBe(true);
     expect(isFreshQueryCache(now - 8 * 24 * 60 * 60 * 1_000, now)).toBe(false);
+  });
+
+  it("persists missions for offline reading", () => {
+    expect(isPersistedQueryRoot("learning-missions")).toBe(true);
+    expect(isPersistedQueryRoot("research-agent-runs")).toBe(false);
   });
 
   it("drops an incompatible bootstrap and migrates queued track variables", () => {
