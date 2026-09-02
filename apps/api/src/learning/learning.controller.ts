@@ -60,6 +60,7 @@ import { ParseTrackKeyPipe } from "./parse-track-key.pipe";
 import type { TrackKey } from "./track-registry";
 import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { MasteryService } from "./mastery/mastery.service";
+import { MasteryV2Service } from "./mastery/mastery-v2.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller("learning")
@@ -76,6 +77,7 @@ export class LearningController {
     private readonly examAiLock: ExamAiLockService,
     private readonly yandexPlatformMockService: YandexPlatformMockService,
     private readonly masteryService: MasteryService,
+    private readonly masteryV2Service: MasteryV2Service,
   ) {}
 
   @Get("knowledge/skills")
@@ -94,6 +96,24 @@ export class LearningController {
   @Header("Cache-Control", "private, no-store")
   skillDetail(@Param("skillId") skillId: string) {
     return this.masteryService.getSkillDetail(skillId);
+  }
+
+  @Get("knowledge/v2/overview")
+  @Header("Cache-Control", "private, no-store")
+  knowledgeOverviewV2(@Query("target") target?: string) {
+    return this.masteryV2Service.getOverview(target);
+  }
+
+  @Get("knowledge/v2/comparison")
+  @Header("Cache-Control", "private, no-store")
+  masteryComparison(@Query("target") target?: string) {
+    return this.masteryService.compareWithV2(target);
+  }
+
+  @Get("knowledge/v2/skills/:skillId")
+  @Header("Cache-Control", "private, no-store")
+  skillDetailV2(@Param("skillId") skillId: string) {
+    return this.masteryV2Service.getSkillDetail(skillId);
   }
 
   @Get("adaptive/today")

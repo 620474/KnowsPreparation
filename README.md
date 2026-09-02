@@ -97,6 +97,10 @@ Mastery считается воспроизводимо: старые резул
 
 Для аварийного rollback при деплое можно установить `PLANNER_V6_ENABLED=false`: Today вернётся к прежнему readiness-планированию, не удаляя evidence и mastery snapshots.
 
+Foundation следующей измерительной модели работает параллельно и пока не управляет интерфейсом. Quiz, practice и interview создают native `AssessmentResultV2` и `EvidenceEventV2` с criterion-level оценками; старые события проецируются с явным `legacy_projection`. Mastery v2 учитывает обязательные, но ещё не проверенные capabilities через coverage и широкую uncertainty-полосу, а каждое новое состояние сохраняется историческим snapshot.
+
+Для поэтапного отката доступны `EVIDENCE_V2_WRITE=false` и `MASTERY_V2_SHADOW=false`. Эти флаги не удаляют уже записанные события и не меняют текущую v6 readiness.
+
 ### Информационная архитектура
 
 Верхний уровень состоит только из пяти устойчивых разделов:
@@ -202,6 +206,9 @@ Skill Graph и объяснимая readiness доступны через:
 GET /api/v1/learning/knowledge/skills
 GET /api/v1/learning/knowledge/overview?target=general|yandex|ozon
 GET /api/v1/learning/knowledge/skills/:skillId
+GET /api/v1/learning/knowledge/v2/overview?target=general|yandex|ozon
+GET /api/v1/learning/knowledge/v2/comparison?target=general|yandex|ozon
+GET /api/v1/learning/knowledge/v2/skills/:skillId
 ```
 
 <details>

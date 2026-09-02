@@ -15,7 +15,9 @@ import { LearningController } from "./learning.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { EvidenceService } from "./evidence/evidence.service";
+import { EvidenceV2Service } from "./evidence/evidence-v2.service";
 import { MasteryService } from "./mastery/mastery.service";
+import { MasteryV2Service } from "./mastery/mastery-v2.service";
 import { InterviewSessionService } from "./interview-session.service";
 import { YandexPlatformMockService } from "./yandex-platform-mock.service";
 import { AlgorithmEntry, AlgorithmEntrySchema } from "./schemas/algorithm-entry.schema";
@@ -69,6 +71,18 @@ import {
   MasterySnapshot,
   MasterySnapshotSchema,
 } from "./schemas/mastery-snapshot.schema";
+import {
+  AssessmentResultV2Entry,
+  AssessmentResultV2EntrySchema,
+} from "./schemas/assessment-result-v2.schema";
+import {
+  EvidenceEventV2Entry,
+  EvidenceEventV2EntrySchema,
+} from "./schemas/evidence-event-v2.schema";
+import {
+  MasterySnapshotV2Entry,
+  MasterySnapshotV2EntrySchema,
+} from "./schemas/mastery-snapshot-v2.schema";
 import { Settings, SettingsSchema } from "./schemas/settings.schema";
 import { TaskProgress, TaskProgressSchema } from "./schemas/task-progress.schema";
 import {
@@ -101,6 +115,9 @@ import {
       { name: LearningSignal.name, schema: LearningSignalSchema },
       { name: EvidenceEvent.name, schema: EvidenceEventSchema },
       { name: MasterySnapshot.name, schema: MasterySnapshotSchema },
+      { name: AssessmentResultV2Entry.name, schema: AssessmentResultV2EntrySchema },
+      { name: EvidenceEventV2Entry.name, schema: EvidenceEventV2EntrySchema },
+      { name: MasterySnapshotV2Entry.name, schema: MasterySnapshotV2EntrySchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
@@ -120,7 +137,9 @@ import {
     LearningCleanupService,
     LearningService,
     EvidenceService,
+    EvidenceV2Service,
     MasteryService,
+    MasteryV2Service,
     LearningSignalService,
     InterviewSessionService,
     YandexPlatformMockService,

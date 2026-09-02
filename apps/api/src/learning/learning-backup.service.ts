@@ -21,6 +21,9 @@ import { AiQuizProgress } from "./schemas/ai-quiz-progress.schema";
 import { LearningSignal } from "./schemas/learning-signal.schema";
 import { EvidenceEvent } from "./schemas/evidence-event.schema";
 import { MasterySnapshot } from "./schemas/mastery-snapshot.schema";
+import { AssessmentResultV2Entry } from "./schemas/assessment-result-v2.schema";
+import { EvidenceEventV2Entry } from "./schemas/evidence-event-v2.schema";
+import { MasterySnapshotV2Entry } from "./schemas/mastery-snapshot-v2.schema";
 import { InterviewSession } from "./schemas/interview-session.schema";
 import { MockInterview } from "./schemas/mock-interview.schema";
 import { QuestionProgress } from "./schemas/question-progress.schema";
@@ -62,6 +65,12 @@ export class LearningBackupService {
     private readonly evidenceEventModel: Model<EvidenceEvent>,
     @InjectModel(MasterySnapshot.name)
     private readonly masterySnapshotModel: Model<MasterySnapshot>,
+    @InjectModel(AssessmentResultV2Entry.name)
+    private readonly assessmentResultV2Model: Model<AssessmentResultV2Entry>,
+    @InjectModel(EvidenceEventV2Entry.name)
+    private readonly evidenceEventV2Model: Model<EvidenceEventV2Entry>,
+    @InjectModel(MasterySnapshotV2Entry.name)
+    private readonly masterySnapshotV2Model: Model<MasterySnapshotV2Entry>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
     @InjectModel(InterviewSession.name)
@@ -103,6 +112,9 @@ export class LearningBackupService {
       learningSignals,
       evidenceEvents,
       masterySnapshots,
+      assessmentResultsV2,
+      evidenceEventsV2,
+      masterySnapshotsV2,
       aiQuizProgresses,
       mockInterviews,
       interviewSessions,
@@ -130,6 +142,9 @@ export class LearningBackupService {
       this.learningSignalModel.find().lean().exec(),
       this.evidenceEventModel.find().lean().exec(),
       this.masterySnapshotModel.find().lean().exec(),
+      this.assessmentResultV2Model.find().lean().exec(),
+      this.evidenceEventV2Model.find().lean().exec(),
+      this.masterySnapshotV2Model.find().lean().exec(),
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
       this.interviewSessionModel.find().lean().exec(),
@@ -163,6 +178,9 @@ export class LearningBackupService {
         learningSignals,
         evidenceEvents,
         masterySnapshots,
+        assessmentResultsV2,
+        evidenceEventsV2,
+        masterySnapshotsV2,
         aiQuizProgresses,
         mockInterviews,
         interviewSessions,
@@ -229,6 +247,18 @@ export class LearningBackupService {
       masterySnapshots: await this.validateRecords(
         this.masterySnapshotModel,
         backup.data.masterySnapshots,
+      ),
+      assessmentResultsV2: await this.validateRecords(
+        this.assessmentResultV2Model,
+        backup.data.assessmentResultsV2,
+      ),
+      evidenceEventsV2: await this.validateRecords(
+        this.evidenceEventV2Model,
+        backup.data.evidenceEventsV2,
+      ),
+      masterySnapshotsV2: await this.validateRecords(
+        this.masterySnapshotV2Model,
+        backup.data.masterySnapshotsV2,
       ),
       mockInterviews: await this.validateRecords(
         this.mockInterviewModel,
@@ -352,6 +382,21 @@ export class LearningBackupService {
           masteryModelVersion: record.masteryModelVersion,
           skillId: record.skillId,
         }),
+      ),
+      this.mergeRecords(
+        this.assessmentResultV2Model,
+        prepared.assessmentResultsV2,
+        (record) => ({ operationId: record.operationId }),
+      ),
+      this.mergeRecords(
+        this.evidenceEventV2Model,
+        prepared.evidenceEventsV2,
+        (record) => ({ operationId: record.operationId }),
+      ),
+      this.mergeRecords(
+        this.masterySnapshotV2Model,
+        prepared.masterySnapshotsV2,
+        (record) => ({ snapshotId: record.snapshotId }),
       ),
       this.mergeRecords(
         this.mockInterviewModel,

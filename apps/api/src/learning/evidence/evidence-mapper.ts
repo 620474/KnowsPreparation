@@ -12,21 +12,7 @@ import {
 import { readinessScoresForSignal } from "../readiness";
 import type { LearningSignal } from "../schemas/learning-signal.schema";
 import { resolveSkillIds } from "../skills/skill-resolver";
-
-const CAPABILITY_MAP: Record<string, SkillCapability> = {
-  recall: "recall",
-  apply: "apply",
-  debug: "debug",
-  code: "code",
-  explain: "explain",
-  defend: "defend",
-  comprehension: "explain",
-  prediction: "apply",
-  debugging: "debug",
-  application: "apply",
-  transfer: "apply",
-  tradeoff: "defend",
-};
+import { normalizeSkillCapabilities } from "./evidence-capabilities";
 
 const sourceKind = (signal: LearningSignal): EvidenceSourceKind => {
   if (signal.type === "question_reviewed") return "question_review";
@@ -75,11 +61,9 @@ const itemFamilyId = (signal: LearningSignal) => {
 
 const capabilitiesForSignal = (signal: LearningSignal): SkillCapability[] => {
   const explicit = Array.isArray(signal.payload.capabilities)
-    ? signal.payload.capabilities
-        .map((value) => CAPABILITY_MAP[String(value)])
-        .filter((value): value is SkillCapability => Boolean(value))
+    ? normalizeSkillCapabilities(signal.payload.capabilities)
     : [];
-  if (explicit.length) return [...new Set(explicit)];
+  if (explicit.length) return explicit;
   if (signal.type === "practice_attempted") return ["code"];
   if (signal.type === "mock_completed") return ["explain", "defend"];
   return ["recall"];

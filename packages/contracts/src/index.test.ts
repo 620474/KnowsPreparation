@@ -18,6 +18,8 @@ import {
   researchWorkspaceSchema,
   researchAgentRunSchema,
   yandexPlatformMockAttemptSchema,
+  assessmentResultV2Schema,
+  knowledgeOverviewV2Schema,
 } from "./index";
 
 describe("shared API contracts", () => {
@@ -26,6 +28,51 @@ describe("shared API contracts", () => {
       starterCode: "function solve() {}",
       testCases: [{ title: "case", expression: "solve()", expected: 1 }],
     }).testCases).toHaveLength(1);
+  });
+
+  it("validates native assessment and conservative mastery v2", () => {
+    const assessment = assessmentResultV2Schema.parse({
+      assessmentResultId: "assessment-1",
+      operationId: "operation-1",
+      schemaVersion: "2",
+      ontologyVersion: "frontend-v1",
+      source: {
+        kind: "practice_attempt",
+        entityId: "operation-1",
+        itemId: "task-1",
+        itemVersion: "2",
+        itemFamilyId: "family-1",
+        track: "yandex",
+      },
+      observations: [{
+        criterionId: "runner-tests",
+        rubricVersion: "runner-v2",
+        skillId: "javascript.closures",
+        capability: "code",
+        score: 80,
+        reliability: 1,
+      }],
+      transferLevel: "near_transfer",
+      assistance: { mode: "no_ai", hintCount: 0, solutionViewed: false },
+      evaluator: {
+        type: "deterministic",
+        evaluatorVersion: "runner-v2",
+        model: null,
+        promptVersion: null,
+        schemaVersion: "2",
+      },
+      occurredAt: "2026-09-02T10:00:00.000Z",
+    });
+    expect(assessment.observations[0]?.weight).toBe(1);
+
+    expect(() => knowledgeOverviewV2Schema.parse({
+      ontologyVersion: "frontend-v1",
+      evidenceVersion: "2",
+      masteryModelVersion: "evidence-native-v2",
+      generatedAt: "2026-09-02T10:00:00.000Z",
+      readiness: {},
+      skills: [],
+    })).toThrow();
   });
 
   it("rejects malformed practice revisions", () => {

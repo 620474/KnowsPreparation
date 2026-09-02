@@ -2,7 +2,9 @@ import { z } from "zod";
 import { v6PlanningMetadataSchema } from "./planning";
 
 export * from "./evidence";
+export * from "./evidence-v2";
 export * from "./mastery";
+export * from "./mastery-v2";
 export * from "./planning";
 export * from "./skills";
 

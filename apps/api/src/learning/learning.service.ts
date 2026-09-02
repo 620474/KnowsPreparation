@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { questionAttemptResultSchema, type ReviewRating } from "@prep/contracts";
+import {
+  questionAttemptResultSchema,
+  type ReviewRating,
+  type SkillCapability,
+} from "@prep/contracts";
 
 import {
   BadGatewayException,
@@ -57,6 +61,8 @@ import {
 } from "./generated-runner";
 import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningSignalService } from "./learning-signal.service";
+import { normalizeSkillCapability } from "./evidence/evidence-capabilities";
+import { buildAssessmentObservations } from "./evidence/native-assessment";
 import {
   serializeAiCourse,
   serializeAiLesson,
@@ -78,6 +84,7 @@ import { QuestionAttempt } from "./schemas/question-attempt.schema";
 import { Settings } from "./schemas/settings.schema";
 import { TaskProgress } from "./schemas/task-progress.schema";
 import { inferSkillKeys } from "./skills";
+import { resolveSkillIds } from "./skills/skill-resolver";
 import { scheduleQuestionReview } from "./spaced-repetition";
 import { getQuestionTraining } from "./question-training";
 import { buildTaskProgressUpdate } from "./task-progress";
@@ -1030,6 +1037,7 @@ export class LearningService {
       .exec() ?? await this.questionModel.findOne({ questionId }).lean().exec();
     if (!progress) throw new InternalServerErrorException("Не удалось обновить прогресс");
 
+    const questionSignalOperationId = `question-attempt:${dto.operationId}`;
     await this.signals.record({
       type: "question_attempted",
       itemId: questionId,
@@ -1048,7 +1056,41 @@ export class LearningService {
           ? "near_transfer"
           : "familiar",
       },
-      operationId: `question-attempt:${dto.operationId}`,
+      operationId: questionSignalOperationId,
+      occurredAt: attempt.createdAt,
+      nativeAssessment: {
+        source: {
+          kind: "question_attempt",
+          itemId: questionId,
+          itemVersion: "question-training-v2",
+          itemFamilyId: `question:${questionId}`,
+          track: null,
+        },
+        observations: buildAssessmentObservations(
+          resolveSkillIds(training.skillKeys, questionId, {
+            prompt: question.prompt,
+            category: question.category,
+          }),
+          verifiedCapabilities.map((capability) => ({
+            criterionId: `question:${questionId}:${capability}`,
+            rubricVersion: evaluator.mode === "ai" ? "question-ai-v2" : "question-deterministic-v2",
+            capability: capability as SkillCapability,
+            score,
+            reliability: evaluator.mode === "ai" ? 0.6 : 1,
+          })),
+        ),
+        transferLevel: training.exercise.type === "live_coding" || training.exercise.type === "bug_fix"
+          ? "near_transfer"
+          : "familiar",
+        assistance: { mode: "no_ai", hintCount: 0, solutionViewed: false },
+        evaluator: {
+          type: evaluator.mode === "ai" ? "ai" : "deterministic",
+          evaluatorVersion: evaluator.mode === "ai" ? "question-ai-v2" : "question-deterministic-v2",
+          model: null,
+          promptVersion: evaluator.mode === "ai" ? "question-assessment-v1" : null,
+          schemaVersion: "2",
+        },
+      },
     });
 
     return questionAttemptResultSchema.parse({
@@ -1080,6 +1122,21 @@ export class LearningService {
     );
     const latest = progress.attempts.at(-1);
     if (latest) {
+      const quizSignalOperationId = `quiz:${dto.operationId ?? randomUUID()}`;
+      const nativeQuizObservations = latest.answers.flatMap((answer) => {
+        const capability = normalizeSkillCapability(answer.capability) ?? "recall";
+        const skillKeys = inferSkillKeys(answer.topic);
+        return buildAssessmentObservations(
+          resolveSkillIds(skillKeys, `${itemId}:${answer.questionId}`, { topic: answer.topic }),
+          [{
+            criterionId: `quiz:${answer.questionId}`,
+            rubricVersion: "lesson-quiz-v2",
+            capability,
+            score: answer.correct ? 100 : 0,
+            reliability: 1,
+          }],
+        );
+      });
       await this.signals.record({
         type: "quiz_submitted",
         track: trackKey,
@@ -1096,8 +1153,29 @@ export class LearningService {
           itemFamilyId: `quiz:${itemId}`,
           itemVersion: String(progress.lessonVersion),
         },
-        operationId: `quiz:${dto.operationId ?? randomUUID()}`,
+        operationId: quizSignalOperationId,
         occurredAt: new Date(latest.completedAt),
+        nativeAssessment: {
+          source: {
+            kind: "quiz_attempt",
+            itemId: `${itemId}:${latest.tier}`,
+            itemVersion: String(progress.lessonVersion),
+            itemFamilyId: `quiz:${itemId}`,
+            track: trackKey,
+          },
+          observations: nativeQuizObservations,
+          transferLevel: latest.answers.some((answer) => answer.capability === "transfer")
+            ? "near_transfer"
+            : "familiar",
+          assistance: { mode: "no_ai", hintCount: 0, solutionViewed: false },
+          evaluator: {
+            type: "deterministic",
+            evaluatorVersion: "lesson-quiz-v2",
+            model: null,
+            promptVersion: null,
+            schemaVersion: "2",
+          },
+        },
       });
     }
     return progress;
@@ -1285,6 +1363,10 @@ export class LearningService {
   }
 
   private async recordPracticeAttemptSignal(attempt: PracticeAttempt) {
+    const operationId = `practice:${attempt.operationId}`;
+    const score = attempt.totalCount
+      ? Math.round((attempt.passedCount / attempt.totalCount) * 100)
+      : 0;
     await this.signals.record({
       type: "practice_attempted",
       track: attempt.track,
@@ -1307,8 +1389,46 @@ export class LearningService {
         itemFamilyId: `practice:${attempt.itemId}`,
         transferLevel: attempt.source === "task" ? "near_transfer" : "familiar",
       },
-      operationId: `practice:${attempt.operationId}`,
+      operationId,
       occurredAt: attempt.createdAt,
+      nativeAssessment: {
+        source: {
+          kind: "practice_attempt",
+          itemId: attempt.itemId,
+          itemVersion: attempt.exerciseVersion,
+          itemFamilyId: `practice:${attempt.itemId}`,
+          track: attempt.track,
+        },
+        observations: buildAssessmentObservations(
+          resolveSkillIds(attempt.skillKeys ?? [], attempt.itemId, {
+            source: attempt.source,
+          }),
+          [{
+            criterionId: "runner-tests",
+            rubricVersion: "quickjs-runner-v2",
+            capability: "code",
+            score,
+            reliability: 1,
+          }],
+        ),
+        transferLevel: attempt.source === "task" ? "near_transfer" : "familiar",
+        assistance: {
+          mode: attempt.aiAssisted === true
+            ? "ai_assisted"
+            : attempt.aiAssisted === false
+              ? "no_ai"
+              : "unknown",
+          hintCount: attempt.hintCount ?? 0,
+          solutionViewed: false,
+        },
+        evaluator: {
+          type: "deterministic",
+          evaluatorVersion: "quickjs-runner-v2",
+          model: null,
+          promptVersion: null,
+          schemaVersion: "2",
+        },
+      },
     });
   }
 
@@ -1663,6 +1783,25 @@ export class LearningService {
 
   private async recordMockSignal(interview: MockInterview & { _id: unknown }) {
     if (!interview.evaluation) return;
+    const questionMap = new Map(QUESTION_BANK.map((question) => [question.id, question]));
+    const nativeObservations = interview.evaluation.questions.flatMap((evaluation) => {
+      const question = questionMap.get(evaluation.questionId);
+      if (!question) return [];
+      return buildAssessmentObservations(
+        resolveSkillIds(
+          inferSkillKeys(question.category, question.prompt),
+          question.id,
+          { category: question.category, prompt: question.prompt },
+        ),
+        [{
+          criterionId: `mock:${question.id}:explain`,
+          rubricVersion: "mock-interview-ai-v2",
+          capability: "explain",
+          score: evaluation.score * 20,
+          reliability: 0.6,
+        }],
+      );
+    });
     await this.signals.record({
       type: "mock_completed",
       skillKeys: inferSkillKeys(...interview.evaluation.weakTopics),
@@ -1673,6 +1812,25 @@ export class LearningService {
       },
       operationId: `mock:${String(interview._id)}`,
       occurredAt: interview.completedAt ?? new Date(),
+      nativeAssessment: {
+        source: {
+          kind: "mock_interview",
+          itemId: String(interview._id),
+          itemVersion: "mock-interview-v2",
+          itemFamilyId: `mock:${String(interview._id)}`,
+          track: null,
+        },
+        observations: nativeObservations,
+        transferLevel: "near_transfer",
+        assistance: { mode: "no_ai", hintCount: 0, solutionViewed: false },
+        evaluator: {
+          type: "ai",
+          evaluatorVersion: "mock-interview-ai-v2",
+          model: null,
+          promptVersion: "mock-interview-evaluation-v1",
+          schemaVersion: "2",
+        },
+      },
     });
   }
 

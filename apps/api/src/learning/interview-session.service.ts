@@ -37,10 +37,15 @@ import {
 import { serializeInterviewSession } from "./learning-serialization";
 import { LearningSignalService } from "./learning-signal.service";
 import {
+  buildAssessmentObservations,
+  type AssessmentCriterionDraft,
+} from "./evidence/native-assessment";
+import {
   InterviewSession,
   type InterviewSessionDocument,
 } from "./schemas/interview-session.schema";
 import { inferSkillKeys } from "./skills";
+import { resolveSkillIds } from "./skills/skill-resolver";
 
 const FOLLOW_UP_FALLBACK =
   "Приведи практический пример и назови главный компромисс этого решения.";
@@ -635,6 +640,54 @@ export class InterviewSessionService {
 
   private async recordSignal(interview: InterviewSessionDocument) {
     if (!interview.evaluation) return;
+    const skillKeys = inferSkillKeys(
+      ...interview.evaluation.weakTopics,
+      ...interview.platformItems.flatMap((item) => [item.question.category, item.question.prompt]),
+      interview.codingExercise.title,
+      interview.codingExercise.statement,
+      interview.aiExercise.title,
+      interview.aiExercise.statement,
+    );
+    const skillIds = resolveSkillIds(skillKeys, String(interview._id), {
+      weakTopics: interview.evaluation.weakTopics,
+    });
+    const sectionCriteria: AssessmentCriterionDraft[] = [];
+    if (interview.evaluation.sections.platform.score !== null) {
+      sectionCriteria.push({
+        criterionId: "interview:platform",
+        rubricVersion: "interview-session-v2",
+        capability: "explain",
+        score: interview.evaluation.sections.platform.score,
+        reliability: 0.6,
+      });
+    }
+    if (interview.evaluation.sections.coding.score !== null) {
+      sectionCriteria.push({
+        criterionId: "interview:coding",
+        rubricVersion: "interview-session-v2",
+        capability: "code",
+        score: interview.evaluation.sections.coding.score,
+        reliability: 1,
+      });
+    }
+    if (interview.evaluation.sections.ai.score !== null) {
+      sectionCriteria.push({
+        criterionId: "interview:ai",
+        rubricVersion: "interview-session-v2",
+        capability: "apply",
+        score: interview.evaluation.sections.ai.score,
+        reliability: 0.8,
+      });
+    }
+    if (interview.evaluation.sections.communication.score !== null) {
+      sectionCriteria.push({
+        criterionId: "interview:communication",
+        rubricVersion: "interview-session-v2",
+        capability: "defend",
+        score: interview.evaluation.sections.communication.score,
+        reliability: 0.6,
+      });
+    }
     await this.signals.record({
       type: "mock_completed",
       skillKeys: inferSkillKeys(...interview.evaluation.weakTopics),
@@ -655,6 +708,29 @@ export class InterviewSessionService {
       },
       operationId: `interview:${String(interview._id)}`,
       occurredAt: interview.completedAt ?? new Date(),
+      nativeAssessment: {
+        source: {
+          kind: "interview_session",
+          itemId: String(interview._id),
+          itemVersion: "interview-session-v2",
+          itemFamilyId: `interview:${String(interview._id)}`,
+          track: null,
+        },
+        observations: buildAssessmentObservations(skillIds, sectionCriteria),
+        transferLevel: "far_transfer",
+        assistance: {
+          mode: interview.kind === "exam" ? "no_ai" : "unknown",
+          hintCount: 0,
+          solutionViewed: false,
+        },
+        evaluator: {
+          type: interview.evaluation.assessmentSource === "deterministic" ? "deterministic" : "mixed",
+          evaluatorVersion: "interview-session-v2",
+          model: null,
+          promptVersion: "interview-session-evaluation-v1",
+          schemaVersion: "2",
+        },
+      },
     });
   }
 

@@ -8,6 +8,10 @@ import {
   type LearningSignalType,
 } from "./schemas/learning-signal.schema";
 import { EvidenceService } from "./evidence/evidence.service";
+import {
+  EvidenceV2Service,
+  type NativeAssessmentDraft,
+} from "./evidence/evidence-v2.service";
 
 export interface RecordLearningSignal {
   type: LearningSignalType;
@@ -17,6 +21,7 @@ export interface RecordLearningSignal {
   payload?: Record<string, unknown>;
   operationId: string;
   occurredAt?: Date;
+  nativeAssessment?: Omit<NativeAssessmentDraft, "operationId" | "occurredAt">;
 }
 
 @Injectable()
@@ -27,6 +32,7 @@ export class LearningSignalService {
     @InjectModel(LearningSignal.name)
     private readonly signalModel: Model<LearningSignal>,
     private readonly evidenceService: EvidenceService,
+    private readonly evidenceV2Service: EvidenceV2Service,
   ) {}
 
   async record(signal: RecordLearningSignal) {
@@ -51,13 +57,28 @@ export class LearningSignalService {
           { upsert: true },
         )
         .exec();
-      await this.evidenceService.recordFromSignal(normalized as LearningSignal);
     } catch (error) {
       this.logger.warn({
         event: "learning_signal_write_failed",
         operationId: signal.operationId,
         error: error instanceof Error ? error.message : String(error),
       });
+    }
+    await this.evidenceService.recordFromSignal(normalized as LearningSignal);
+    if (signal.nativeAssessment) {
+      try {
+        await this.evidenceV2Service.recordNative({
+          ...signal.nativeAssessment,
+          operationId: signal.operationId,
+          occurredAt: normalized.occurredAt,
+        });
+      } catch (error) {
+        this.logger.warn({
+          event: "evidence_v2_write_failed",
+          operationId: signal.operationId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   }
 }

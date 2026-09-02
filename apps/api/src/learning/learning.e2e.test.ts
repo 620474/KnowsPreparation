@@ -20,6 +20,9 @@ import { ResearchAgentService } from "../research/research-agent.service";
 import { AiLesson, type AiQuizQuestion } from "./schemas/ai-course.schema";
 import { YandexPlatformMockAttempt } from "./schemas/yandex-platform-mock.schema";
 import { EvidenceEvent } from "./schemas/evidence-event.schema";
+import { AssessmentResultV2Entry } from "./schemas/assessment-result-v2.schema";
+import { EvidenceEventV2Entry } from "./schemas/evidence-event-v2.schema";
+import { MasterySnapshotV2Entry } from "./schemas/mastery-snapshot-v2.schema";
 import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
 
@@ -95,6 +98,9 @@ describe("Learning API", () => {
   let lessonModel: Model<AiLesson>;
   let yandexMockAttemptModel: Model<YandexPlatformMockAttempt>;
   let evidenceEventModel: Model<EvidenceEvent>;
+  let assessmentResultV2Model: Model<AssessmentResultV2Entry>;
+  let evidenceEventV2Model: Model<EvidenceEventV2Entry>;
+  let masterySnapshotV2Model: Model<MasterySnapshotV2Entry>;
   let token: string;
 
   beforeAll(async () => {
@@ -137,6 +143,15 @@ describe("Learning API", () => {
       getModelToken(YandexPlatformMockAttempt.name),
     );
     evidenceEventModel = app.get<Model<EvidenceEvent>>(getModelToken(EvidenceEvent.name));
+    assessmentResultV2Model = app.get<Model<AssessmentResultV2Entry>>(
+      getModelToken(AssessmentResultV2Entry.name),
+    );
+    evidenceEventV2Model = app.get<Model<EvidenceEventV2Entry>>(
+      getModelToken(EvidenceEventV2Entry.name),
+    );
+    masterySnapshotV2Model = app.get<Model<MasterySnapshotV2Entry>>(
+      getModelToken(MasterySnapshotV2Entry.name),
+    );
 
     const loginResponse = await request(app.getHttpServer())
       .post("/api/v1/auth/login")
@@ -1079,6 +1094,53 @@ describe("Learning API", () => {
       progress: { reviewCount: 1, lastRating: "easy" },
     });
     expect(duplicateResponse.body).toEqual(firstResponse.body);
+    const nativeOperationId = `question-attempt:${operationId}`;
+    expect(await assessmentResultV2Model.countDocuments({ operationId: nativeOperationId })).toBe(1);
+    const nativeEvidence = await evidenceEventV2Model
+      .findOne({ operationId: nativeOperationId })
+      .lean()
+      .exec();
+    expect(nativeEvidence).toMatchObject({
+      evidenceVersion: "2",
+      provenance: { kind: "native" },
+      source: { kind: "question_attempt" },
+    });
+    expect(nativeEvidence?.observations.length).toBeGreaterThan(0);
+
+    const overviewV2 = await request(app.getHttpServer())
+      .get("/api/v1/learning/knowledge/v2/overview?target=yandex")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(overviewV2.body).toMatchObject({
+      ontologyVersion: "frontend-v1",
+      evidenceVersion: "2",
+      masteryModelVersion: "evidence-native-v2",
+      readiness: { targetId: "yandex" },
+    });
+    expect(overviewV2.body.readiness.coverage).toBeLessThan(100);
+    expect(await masterySnapshotV2Model.countDocuments({ targetId: "yandex" })).toBe(1);
+
+    const comparison = await request(app.getHttpServer())
+      .get("/api/v1/learning/knowledge/v2/comparison?target=yandex")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(comparison.body).toMatchObject({
+      targetId: "yandex",
+      readiness: {
+        v2Coverage: overviewV2.body.readiness.coverage,
+      },
+    });
+    expect(comparison.body.skills.some(
+      (skill: { unknownCapabilities: string[] }) => skill.unknownCapabilities.length > 0,
+    )).toBe(true);
+
+    const backup = await request(app.getHttpServer())
+      .get("/api/v1/learning/backup")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(backup.body.data.assessmentResultsV2).toHaveLength(1);
+    expect(backup.body.data.evidenceEventsV2).toHaveLength(1);
+    expect(backup.body.data.masterySnapshotsV2).toHaveLength(1);
 
     await request(app.getHttpServer())
       .post("/api/v1/learning/questions/q-02/attempts")
@@ -1153,6 +1215,15 @@ describe("Learning API", () => {
 
     expect(firstResponse.body.attempts).toHaveLength(1);
     expect(duplicateResponse.body).toEqual(firstResponse.body);
+    const quizEvidence = await evidenceEventV2Model
+      .findOne({ operationId: "quiz:quiz-operation-1" })
+      .lean()
+      .exec();
+    expect(quizEvidence).toMatchObject({
+      provenance: { kind: "native" },
+      source: { kind: "quiz_attempt" },
+    });
+    expect(quizEvidence?.observations).toHaveLength(10);
     await request(app.getHttpServer())
       .post(path)
       .set("Authorization", `Bearer ${token}`)
@@ -1353,6 +1424,18 @@ describe("Learning API", () => {
       confidence: 4,
     });
     expect(duplicate.body).toEqual(first.body);
+    const practiceEvidence = await evidenceEventV2Model
+      .findOne({ operationId: "practice:static-attempt-1" })
+      .lean()
+      .exec();
+    expect(practiceEvidence).toMatchObject({
+      provenance: { kind: "native" },
+      source: { kind: "practice_attempt" },
+      assistance: { mode: "no_ai" },
+    });
+    expect(practiceEvidence?.observations.every(
+      (observation) => observation.capability === "code",
+    )).toBe(true);
 
     await lessonModel.create({
       courseKey: YANDEX_SPRINT_AI_KEY,
@@ -1455,6 +1538,8 @@ describe("Learning API", () => {
     });
     expect(exportResponse.body.data.practiceAttempts).toHaveLength(1);
     expect(exportResponse.body.data.learningSignals).toHaveLength(1);
+    expect(exportResponse.body.data.assessmentResultsV2).toHaveLength(1);
+    expect(exportResponse.body.data.evidenceEventsV2).toHaveLength(1);
     expect(JSON.stringify(exportResponse.body)).not.toContain(TEST_PASSWORD);
 
     const collections = await connection.db?.collections();
@@ -1728,6 +1813,18 @@ describe("Learning API", () => {
           sections: { coding: { score: 100 }, ai: { score: 90 } },
         },
       });
+      const interviewEvidence = await evidenceEventV2Model
+        .findOne({ operationId: `interview:${session.id}` })
+        .lean()
+        .exec();
+      expect(interviewEvidence).toMatchObject({
+        provenance: { kind: "native" },
+        source: { kind: "interview_session" },
+        transferLevel: "far_transfer",
+      });
+      expect([...new Set(interviewEvidence?.observations.map(
+        (observation) => observation.capability,
+      ))]).toEqual(expect.arrayContaining(["explain", "code", "apply", "defend"]));
 
       const history = await request(app.getHttpServer())
         .get("/api/v1/learning/interview-sessions?limit=5")

@@ -17,6 +17,9 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "learningSignals",
   "evidenceEvents",
   "masterySnapshots",
+  "assessmentResultsV2",
+  "evidenceEventsV2",
+  "masterySnapshotsV2",
   "aiQuizProgresses",
   "mockInterviews",
   "interviewSessions",
@@ -78,6 +81,9 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
       collection === "learningSignals" ||
       collection === "evidenceEvents" ||
       collection === "masterySnapshots" ||
+      collection === "assessmentResultsV2" ||
+      collection === "evidenceEventsV2" ||
+      collection === "masterySnapshotsV2" ||
       collection === "interviewSessions" ||
       collection === "yandexPlatformMockAttempts" ||
       collection === "researchProjects" ||
