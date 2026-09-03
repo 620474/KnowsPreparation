@@ -61,6 +61,7 @@ import {
 import { InterviewTurnEntry } from "./schemas/interview-turn.schema";
 import { inferSkillKeys } from "./skills";
 import { resolveSkillIds } from "./skills/skill-resolver";
+import { InterviewTimelineV10Service } from "./interview-timeline-v10.service";
 
 const FOLLOW_UP_FALLBACK =
   "Приведи практический пример и назови главный компромисс этого решения.";
@@ -127,6 +128,7 @@ export class InterviewSessionService {
     private readonly signals: LearningSignalService,
     private readonly evidenceV3: EvidenceV3Service,
     private readonly config: ConfigService,
+    private readonly timeline: InterviewTimelineV10Service,
   ) {}
 
   async getCurrent() {
@@ -247,6 +249,9 @@ export class InterviewSessionService {
         assessment: null,
       });
     }
+    const interviewId = String(interview._id);
+    await this.timeline.append({ interviewId, operationId: "session-started", eventType: "session_started", stage: "platform", title: "Интервью началось", content: interviewCompanyLabel(dto.company), metadata: { mode: dto.mode, kind: dto.kind ?? "training", engineVersion } });
+    await this.timeline.append({ interviewId, operationId: `task:${questions[0]!.id}`, eventType: "task_issued", stage: "platform", title: "Вопрос платформы", content: questions[0]!.prompt, metadata: { questionId: questions[0]!.id } });
     return this.serialize(interview);
   }
 
@@ -460,6 +465,9 @@ export class InterviewSessionService {
     interview.markModified("platformItems");
     interview.markModified("conversationState");
     await interview.save();
+    await this.timeline.append({ interviewId, operationId: `answer:${dto.operationId}`, eventType: "answer_submitted", stage: "platform", title: "Ответ кандидата", content: answer, metadata: { questionId: item.question.id, score: assessment.score } });
+    await this.timeline.append({ interviewId, operationId: `action:${dto.operationId}`, eventType: "interviewer_action", stage: interview.currentStage, title: interviewerContent, content: decision.action, metadata: { action: decision.action, questionId: interviewerQuestionId } });
+    if (interview.currentStage === "coding") await this.timeline.append({ interviewId, operationId: `stage-coding:${dto.operationId}`, eventType: "stage_changed", stage: "coding", title: "Переход к live coding" });
     return this.serialize(interview);
   }
 
@@ -578,6 +586,7 @@ export class InterviewSessionService {
     };
     interview.markModified("codingExercise");
     await interview.save();
+    await this.timeline.append({ interviewId, operationId: `coding-run:${interview.codingExercise.attempts}`, eventType: "test_run", stage: "coding", title: "Запуск тестов", content: dto.solution, metadata: { passedCount: interview.codingExercise.result?.passedCount ?? 0, totalCount: interview.codingExercise.result?.totalCount ?? 0, codeHash: interview.codingExercise.process?.lastCodeHash } });
     return this.serialize(interview);
   }
 
@@ -597,6 +606,7 @@ export class InterviewSessionService {
       interview.currentStage = "ai";
     }
     await interview.save();
+    await this.timeline.append({ interviewId, operationId: `stage:${interview.currentStage}`, eventType: "stage_changed", stage: interview.currentStage, title: interview.currentStage === "ai" ? "Переход к AI-секции" : "Переход к защите" });
     return this.serialize(interview);
   }
 
@@ -624,6 +634,8 @@ export class InterviewSessionService {
     });
     interview.markModified("aiMessages");
     await interview.save();
+    const userMessage = interview.aiMessages.at(-1)!;
+    await this.timeline.append({ interviewId, operationId: `ai-user:${userMessage.id}`, eventType: "ai_message", stage: "ai", title: "Запрос к AI", content, metadata: { role: "user" } });
     const history = interview.aiMessages.slice(0, -1).map(({ role, content }) => ({
       role,
       content,
@@ -646,6 +658,8 @@ export class InterviewSessionService {
     });
     interview.markModified("aiMessages");
     await interview.save();
+    const assistantMessage = interview.aiMessages.at(-1)!;
+    await this.timeline.append({ interviewId, operationId: `ai-assistant:${assistantMessage.id}`, eventType: "ai_message", stage: "ai", title: "Ответ AI", content: reply, metadata: { role: "assistant" } });
     return this.serialize(interview);
   }
 
@@ -692,6 +706,7 @@ export class InterviewSessionService {
     interview.defenseAnswers[index] = dto.answer.trim();
     interview.markModified("defenseAnswers");
     await interview.save();
+    await this.timeline.append({ interviewId, operationId: `defense:${index}:${createHash("sha256").update(dto.answer).digest("hex").slice(0, 12)}`, eventType: "answer_submitted", stage: "defense", title: `Ответ защиты ${index + 1}`, content: dto.answer.trim(), metadata: { index } });
     return this.serialize(interview);
   }
 
@@ -786,6 +801,7 @@ export class InterviewSessionService {
       interview.completedAt = new Date();
       interview.markModified("evaluation");
       await interview.save();
+      await this.timeline.append({ interviewId, operationId: "session-completed", eventType: "session_completed", stage: "completed", title: "Интервью завершено", content: interview.evaluation?.summary ?? "", metadata: { overallScore: interview.evaluation?.overallScore ?? null } });
       await this.recordSignal(interview);
       return this.serialize(interview);
     } catch (error) {

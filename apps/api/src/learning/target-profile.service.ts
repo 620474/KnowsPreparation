@@ -33,6 +33,30 @@ const DEFAULT_REQUIREMENTS: Record<string, RequirementSeed[]> = {
     { skillId: "architecture", capabilities: ["design", "defend", "transfer"], importance: 1, required: true },
     { skillId: "testing", capabilities: ["apply", "debug", "design"], importance: 0.9, required: false },
   ],
+  avito: [
+    { skillId: "javascript", capabilities: ["explain", "apply", "debug", "code"], importance: 1.3, required: true },
+    { skillId: "react", capabilities: ["apply", "debug", "code", "design"], importance: 1.4, required: true },
+    { skillId: "architecture", capabilities: ["design", "defend", "transfer"], importance: 1.2, required: true },
+    { skillId: "browser", capabilities: ["apply", "debug", "resilience"], importance: 1, required: true },
+  ],
+  tbank: [
+    { skillId: "javascript", capabilities: ["explain", "apply", "debug", "code"], importance: 1.3, required: true },
+    { skillId: "react", capabilities: ["apply", "debug", "code", "design"], importance: 1.4, required: true },
+    { skillId: "typescript", capabilities: ["explain", "apply", "code"], importance: 1.1, required: true },
+    { skillId: "testing", capabilities: ["apply", "debug", "design"], importance: 1, required: true },
+  ],
+  mts: [
+    { skillId: "react", capabilities: ["apply", "debug", "code", "design"], importance: 1.4, required: true },
+    { skillId: "async.realtime", capabilities: ["explain", "apply", "debug", "design", "resilience"], importance: 1.5, required: true },
+    { skillId: "browser", capabilities: ["explain", "apply", "debug"], importance: 1.1, required: true },
+    { skillId: "typescript", capabilities: ["explain", "apply", "code"], importance: 0.9, required: true },
+  ],
+  "2gis": [
+    { skillId: "javascript", capabilities: ["explain", "apply", "debug", "code"], importance: 1.3, required: true },
+    { skillId: "react", capabilities: ["apply", "debug", "code", "design"], importance: 1.3, required: true },
+    { skillId: "browser", capabilities: ["explain", "apply", "debug", "resilience"], importance: 1.2, required: true },
+    { skillId: "architecture", capabilities: ["design", "defend", "transfer"], importance: 1, required: false },
+  ],
 };
 
 const keywordProfiles: Array<{ pattern: RegExp; seed: RequirementSeed }> = [
@@ -108,7 +132,7 @@ export class TargetProfileService {
     const now = new Date(0).toISOString();
     return targetProfileV2Schema.parse({
       targetId,
-      label: targetId === "yandex" ? "Яндекс Frontend" : targetId === "ozon" ? "Ozon Frontend" : "Frontend Middle+/Senior",
+      label: ({ yandex: "Яндекс Frontend", ozon: "Ozon Frontend", avito: "Avito Frontend", tbank: "Т-Банк Frontend", mts: "МТС / МГТС Frontend", "2gis": "2ГИС Frontend" } as Record<string, string>)[targetId] ?? "Frontend Middle+/Senior",
       company: targetId === "general" ? null : targetId,
       role: "Frontend Developer",
       seniority: null,

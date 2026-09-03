@@ -14,7 +14,7 @@ import type {
 import { Schema as MongooseSchema, type HydratedDocument } from "mongoose";
 
 export const INTERVIEW_SESSION_MODES = ["express", "full"] as const;
-export const INTERVIEW_SESSION_COMPANIES = ["general", "yandex", "ozon"] as const;
+export const INTERVIEW_SESSION_COMPANIES = ["general", "yandex", "ozon", "avito", "tbank", "mts", "2gis"] as const;
 export const INTERVIEW_SESSION_STATUSES = [
   "in_progress",
   "evaluating",

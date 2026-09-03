@@ -12,6 +12,7 @@ import {
   Play,
   ShieldCheck,
   Sparkles,
+  History,
   X,
 } from "lucide-react";
 
@@ -41,10 +42,14 @@ const kindOptions = [
   { value: "exam", label: "Экзамен без AI" },
 ];
 
-const companyOptions = [
+const fallbackCompanyOptions = [
   { value: "general", label: "Общий бигтех" },
   { value: "yandex", label: "Яндекс" },
   { value: "ozon", label: "Ozon" },
+  { value: "avito", label: "Avito" },
+  { value: "tbank", label: "Т-Банк" },
+  { value: "mts", label: "МТС / МГТС" },
+  { value: "2gis", label: "2ГИС" },
 ];
 
 const stageLabels = {
@@ -118,6 +123,10 @@ export function InterviewSimulatorView() {
     queryKey: HISTORY_QUERY_KEY,
     queryFn: () => learningApi.listInterviewSessions(10),
   });
+  const companyProfilesQuery = useQuery({
+    queryKey: ["company-profiles-v10"],
+    queryFn: learningApi.listCompanyProfilesV10,
+  });
   const calibrationQuery = useQuery({
     queryKey: ["readiness-calibration"],
     queryFn: learningApi.getReadinessCalibration,
@@ -141,6 +150,13 @@ export function InterviewSimulatorView() {
   const codingTelemetryRef = useRef({ sessionId: "", openedAt: 0, revisionCount: 0 });
 
   const session = selectedSession ?? currentQuery.data ?? null;
+  const companyOptions = companyProfilesQuery.data?.map((profile) => ({ value: profile.companyId, label: profile.label })) ?? fallbackCompanyOptions;
+  const selectedCompanyProfile = companyProfilesQuery.data?.find((profile) => profile.companyId === company);
+  const replayQuery = useQuery({
+    queryKey: ["interview-replay-v10", session?.id],
+    queryFn: () => learningApi.getInterviewReplayV10(session!.id),
+    enabled: Boolean(session?.id && session.status === "completed"),
+  });
   const codingSolution = session && codingDraft?.sessionId === session.id
     ? codingDraft.value
     : session?.codingExercise.solution ?? "";
@@ -287,6 +303,13 @@ export function InterviewSimulatorView() {
             value={mode}
             onChange={(value) => value && setMode(value as InterviewSessionMode)}
           />
+          {selectedCompanyProfile ? (
+            <div className="interview-company-profile">
+              <strong>{selectedCompanyProfile.summary}</strong>
+              <span>{selectedCompanyProfile.focusAreas.join(" · ")}</span>
+              <small>Достоверность профиля: {selectedCompanyProfile.confidence}</small>
+            </div>
+          ) : null}
           <Select
             data={companyOptions}
             label="Профиль"
@@ -431,6 +454,19 @@ export function InterviewSimulatorView() {
           <div><h2>Слабые темы</h2>{evaluation.weakTopics.map((item) => <span key={item}>{item}</span>)}</div>
           <div><h2>Следующие шаги</h2>{evaluation.recommendations.map((item) => <span key={item}>{item}</span>)}</div>
         </section>
+        {replayQuery.data?.events.length ? (
+          <section className="interview-replay">
+            <div className="section-heading"><div><p className="eyebrow">Replay</p><h2><History size={20} /> Как проходило интервью</h2></div></div>
+            <div className="interview-replay-list">
+              {replayQuery.data.events.map((event) => (
+                <article key={event.eventId}>
+                  <span>{new Date(event.occurredAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                  <div><strong>{event.title}</strong>{event.content ? <p>{event.content}</p> : null}</div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
         <Button className="primary-button interview-new-button" onClick={() => setSelectedSession(null)}>
           Новая сессия
         </Button>

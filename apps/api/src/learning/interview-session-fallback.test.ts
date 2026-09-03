@@ -11,6 +11,7 @@ const createService = () => new InterviewSessionService(
   {} as never,
   {} as never,
   { get: () => "true" } as never,
+  {} as never,
 );
 
 describe("InterviewSessionService AI fallbacks", () => {

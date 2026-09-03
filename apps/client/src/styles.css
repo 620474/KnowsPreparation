@@ -6446,6 +6446,33 @@ p {
   gap: 20px;
 }
 
+.interview-company-profile {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-subtle);
+}
+
+.interview-company-profile span,
+.interview-company-profile small { color: var(--text-muted); }
+
+.interview-replay { display: grid; gap: 18px; }
+.interview-replay h2 { display: flex; align-items: center; gap: 10px; }
+.interview-replay-list { display: grid; gap: 10px; }
+.interview-replay-list article {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.interview-replay-list article > span { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.interview-replay-list p { margin: 6px 0 0; white-space: pre-wrap; color: var(--text-muted); }
+
 .interview-session-header h1 {
   margin: 4px 0 0;
 }

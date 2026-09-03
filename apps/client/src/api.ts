@@ -39,6 +39,8 @@ import {
   checkpointSessionV1Schema,
   decisionPlanV9Schema,
   readinessV9Schema,
+  companyProfileV1Schema,
+  interviewReplayV1Schema,
 } from "@prep/contracts";
 import { z } from "zod";
 import {
@@ -68,6 +70,8 @@ import type {
   LearningBackup,
   InterviewSession,
   InterviewSessionCompany,
+  CompanyProfileV1,
+  InterviewReplayV1,
   InterviewSessionKind,
   InterviewSessionMode,
   ReadinessCalibrationSummary,
@@ -363,6 +367,13 @@ export const learningApi = {
     requestV2<unknown[]>("/learning/targets").then((items) =>
       items.map((item) => targetProfileV2Schema.parse(item)),
     ) as Promise<TargetProfileV2[]>,
+  listCompanyProfilesV10: () =>
+    requestV3<unknown[]>("/learning/company-profiles").then((items) =>
+      items.map((item) => companyProfileV1Schema.parse(item)),
+    ) as Promise<CompanyProfileV1[]>,
+  getInterviewReplayV10: (interviewId: string) =>
+    requestV3<InterviewReplayV1>(`/learning/interviews/${encodeURIComponent(interviewId)}/replay`)
+      .then((result) => interviewReplayV1Schema.parse(result)),
   createTargetProfileV2: (input: {
     vacancyText: string;
     company?: string | null;

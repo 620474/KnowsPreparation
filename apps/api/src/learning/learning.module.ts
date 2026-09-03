@@ -139,6 +139,9 @@ import { InterviewOutcomeV3Entry, InterviewOutcomeV3EntrySchema } from "./schema
 import { ExposureEventV2Entry, ExposureEventV2EntrySchema } from "./schemas/exposure-event-v2.schema";
 import { EvidenceLedgerV10Service } from "./evidence-ledger-v10.service";
 import { CandidateStateV10Service } from "./candidate-state-v10.service";
+import { CompanyProfileV10Service } from "./company-profile-v10.service";
+import { InterviewTimelineV10Service } from "./interview-timeline-v10.service";
+import { InterviewTimelineEventEntry, InterviewTimelineEventEntrySchema } from "./schemas/interview-timeline-event.schema";
 
 @Module({
   imports: [
@@ -181,6 +184,7 @@ import { CandidateStateV10Service } from "./candidate-state-v10.service";
       { name: ReadinessSnapshotV3Entry.name, schema: ReadinessSnapshotV3EntrySchema },
       { name: InterviewOutcomeV3Entry.name, schema: InterviewOutcomeV3EntrySchema },
       { name: ExposureEventV2Entry.name, schema: ExposureEventV2EntrySchema },
+      { name: InterviewTimelineEventEntry.name, schema: InterviewTimelineEventEntrySchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
@@ -213,6 +217,8 @@ import { CandidateStateV10Service } from "./candidate-state-v10.service";
     VerificationMigrationService,
     EvidenceLedgerV10Service,
     CandidateStateV10Service,
+    CompanyProfileV10Service,
+    InterviewTimelineV10Service,
     LearningSignalService,
     LearningMissionService,
     ReadinessCalibrationService,

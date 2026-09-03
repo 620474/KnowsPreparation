@@ -11,6 +11,7 @@ export * from "./mastery-v3";
 export * from "./ai-observability";
 export * from "./verification-v9";
 export * from "./candidate-state-v10";
+export * from "./interview-v10";
 export * from "./planning";
 export * from "./skills";
 
@@ -527,7 +528,7 @@ export const yandexPlatformMockAttemptSchema = z.object({
 
 export const interviewSessionModeSchema = z.enum(["express", "full"]);
 export const interviewSessionKindSchema = z.enum(["training", "exam"]);
-export const interviewSessionCompanySchema = z.enum(["general", "yandex", "ozon"]);
+export const interviewSessionCompanySchema = z.enum(["general", "yandex", "ozon", "avito", "tbank", "mts", "2gis"]);
 export const interviewSessionStatusSchema = z.enum([
   "in_progress",
   "evaluating",
@@ -707,7 +708,7 @@ export const interviewSessionSchema = z.object({
 
 export const readinessPredictionSnapshotSchema = z.object({
   snapshotId: z.string(),
-  targetId: z.enum(["general", "yandex", "ozon"]),
+  targetId: interviewSessionCompanySchema,
   applicationId: z.string().nullable(),
   interviewSessionId: z.string().nullable(),
   readinessIndex: z.number().int().min(0).max(100),
@@ -742,7 +743,7 @@ export const readinessCalibrationSummarySchema = z.object({
 });
 
 export const createReadinessPredictionSchema = z.object({
-  targetId: z.enum(["general", "yandex", "ozon"]),
+  targetId: interviewSessionCompanySchema,
   applicationId: z.string().trim().min(1).max(120).nullable().default(null),
 });
 

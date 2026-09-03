@@ -13,7 +13,7 @@ export class ExposureEventV2Entry {
   @Prop({ required: true, index: true }) sessionId!: string;
   @Prop({ required: true, index: true }) itemId!: string;
   @Prop({ type: String, default: null }) leaseId!: string | null;
-  @Prop({ required: true, enum: ["viewed", "attempted", "answer_revealed"], index: true }) eventType!: ExposureEventType;
+  @Prop({ type: String, required: true, enum: ["viewed", "attempted", "answer_revealed"], index: true }) eventType!: ExposureEventType;
   @Prop({ required: true }) conceptFamilyId!: string;
   @Prop({ required: true }) formFamilyId!: string;
   @Prop({ required: true }) contextFamilyId!: string;

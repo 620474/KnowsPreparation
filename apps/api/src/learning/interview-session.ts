@@ -13,6 +13,10 @@ const COMPANY_LABELS: Record<InterviewSessionCompany, string> = {
   general: "российский бигтех",
   yandex: "Яндекс",
   ozon: "Ozon",
+  avito: "Avito",
+  tbank: "Т-Банк",
+  mts: "МТС / МГТС",
+  "2gis": "2ГИС",
 };
 
 export const interviewCompanyLabel = (company: InterviewSessionCompany) =>

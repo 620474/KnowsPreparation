@@ -4,6 +4,8 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateCheckpointV9Dto, RecordInterviewOutcomeV3Dto, SubmitCheckpointAttemptV9Dto } from "./dto/learning.dto";
 import { VerificationV9Service } from "./verification-v9.service";
 import { CandidateStateV10Service } from "./candidate-state-v10.service";
+import { CompanyProfileV10Service } from "./company-profile-v10.service";
+import { InterviewTimelineV10Service } from "./interview-timeline-v10.service";
 
 @UseGuards(JwtAuthGuard)
 @Controller({ path: "learning", version: "3" })
@@ -11,6 +13,8 @@ export class LearningV3Controller {
   constructor(
     private readonly verification: VerificationV9Service,
     private readonly candidateState: CandidateStateV10Service,
+    private readonly companyProfiles: CompanyProfileV10Service,
+    private readonly interviewTimeline: InterviewTimelineV10Service,
   ) {}
 
   @Post("checkpoints") createCheckpoint(@Body() dto: CreateCheckpointV9Dto) { return this.verification.createCheckpoint(dto.targetId, dto.availableMinutes); }
@@ -22,6 +26,9 @@ export class LearningV3Controller {
   @Get("readiness") @Header("Cache-Control", "private, no-store") readiness(@Query("targetId") targetId?: string) { return this.verification.readiness(targetId); }
   @Get("decision/today") @Header("Cache-Control", "private, no-store") decision(@Query("targetId") targetId?: string, @Query("availableMinutes") minutes?: string) { return this.verification.decision(targetId, Math.min(360, Math.max(5, Number(minutes) || 60))); }
   @Get("candidate-state") @Header("Cache-Control", "private, no-store") state(@Query("targetId") targetId?: string) { return this.candidateState.get(targetId); }
+  @Get("company-profiles") companyProfileList() { return this.companyProfiles.list(); }
+  @Get("company-profiles/:companyId") companyProfile(@Param("companyId") companyId: string) { return this.companyProfiles.get(companyId); }
+  @Get("interviews/:interviewId/replay") @Header("Cache-Control", "private, no-store") replay(@Param("interviewId") interviewId: string) { return this.interviewTimeline.replay(interviewId); }
   @Post("readiness/snapshots") freeze(@Body("targetId") targetId = "general") { return this.verification.freezeReadiness(targetId); }
   @Post("interview-outcomes") outcome(@Body() dto: RecordInterviewOutcomeV3Dto) { return this.verification.recordOutcome(dto); }
   @Get("interview-outcomes") outcomes(@Query("targetId") targetId?: string) { return this.verification.listOutcomes(targetId); }
