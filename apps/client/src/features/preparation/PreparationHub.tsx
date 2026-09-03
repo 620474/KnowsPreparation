@@ -95,7 +95,7 @@ export function PreparationHub({
           <div className="section-hub-icon"><Building2 /></div>
           <p className="eyebrow">14-дневный спринт</p>
           <h2>Ozon</h2>
-          <p>React, JavaScript, алгоритмы и формат технического интервью.</p>
+          <p>React-transfer: JavaScript, async, браузер и алгоритмы без притворной точности по текущему стеку.</p>
           <Progress color="cyan" value={ozon.percent} size="sm" />
           <div className="section-hub-progress">
             <span>{ozon.completed} из {ozon.total} блоков</span>

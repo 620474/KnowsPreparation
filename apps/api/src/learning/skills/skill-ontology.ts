@@ -88,6 +88,7 @@ export const SKILL_ONTOLOGY: SkillDefinition[] = [
   child("react.forms", "Формы", "Controlled state, validation и доступные формы.", "react", ["react.hooks"], ["css-a11y.accessibility"]),
 
   child("browser.rendering", "Рендеринг браузера", "DOM, CSSOM, layout, paint и compositing.", "browser", ["css-a11y.layout"]),
+  child("browser.performance-observability", "Web performance и observability", "Performance API, Core Web Vitals, long tasks, profiling, frontend-метрики и мониторинг runtime-ошибок.", "browser", ["browser.rendering", "browser.network"]),
   child("browser.network", "HTTP и сеть", "HTTP, REST, кеширование и диагностика Network.", "browser"),
   child("browser.storage", "Хранение данных", "Cookies, Web Storage, IndexedDB и cache.", "browser", ["browser.network"]),
   child("browser.security", "Web Security", "CORS, CSP, XSS, CSRF и безопасные контексты.", "browser", ["browser.network"]),

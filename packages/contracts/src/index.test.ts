@@ -26,9 +26,33 @@ import {
   interviewOutcomeV4InputSchema,
   candidateStateV1Schema,
   exposureEventV2Schema,
+  companyProfileV1Schema,
 } from "./index";
 
 describe("shared API contracts", () => {
+  it("preserves evidence provenance in company profiles", () => {
+    const profile = companyProfileV1Schema.parse({
+      companyId: "avito",
+      label: "Avito",
+      summary: "Подтверждённый процесс",
+      focusAreas: ["Programming"],
+      interviewStages: ["Platform"],
+      confidence: "high",
+      sources: [{
+        label: "Playbook",
+        url: "https://github.com/avito-tech/playbook",
+        kind: "engineering",
+        reviewedAt: "2026-09-03T00:00:00.000Z",
+        publishedAt: "2025-01-01",
+        confidence: "high",
+      }],
+      version: "2.0.0",
+    });
+
+    expect(profile.sources[0]?.kind).toBe("engineering");
+    expect(profile.sources[0]?.confidence).toBe("high");
+  });
+
   it("validates append-only exposure events and candidate state", () => {
     expect(exposureEventV2Schema.parse({
       eventId: "event-1", operationId: "lease-1", schemaVersion: "2", targetId: "general",

@@ -10,12 +10,12 @@ export function OzonSprintView(props: OzonSprintViewProps) {
   return (
     <YandexSprintView
       {...props}
-      description="Программа основана на присланных конспектах интервью 2024 года и не является официальным списком вопросов Ozon."
-      eyebrow="Ozon · 14 дней · без календаря"
+      description="React-transfer программа по присланным конспектам 2024 года. JavaScript, async, браузер и алгоритмы переносимы; React-блоки не выдаются за официальный актуальный стек Ozon."
+      eyebrow="Ozon · React-transfer · 14 дней"
       sprintDays={props.data.ozonSprint}
       track="ozon"
-      title="Спринт к интервью Ozon"
-      weekTitles={["JavaScript и асинхронность", "Браузер, React и мок-интервью"]}
+      title="Ozon: React-transfer"
+      weekTitles={["JavaScript и асинхронность", "Браузер, перенос React-знаний и мок"]}
     />
   );
 }

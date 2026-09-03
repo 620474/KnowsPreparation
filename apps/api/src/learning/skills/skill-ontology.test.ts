@@ -16,4 +16,13 @@ describe("skill ontology", () => {
       if (skill.parentSkillId) expect(ids.has(skill.parentSkillId)).toBe(true);
     }
   });
+
+  it("tracks frontend performance evidence separately from rendering knowledge", () => {
+    expect(SKILL_ONTOLOGY.find(
+      (skill) => skill.skillId === "browser.performance-observability",
+    )).toMatchObject({
+      parentSkillId: "browser",
+      legacySkillKey: "browser",
+    });
+  });
 });

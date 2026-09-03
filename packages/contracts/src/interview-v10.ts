@@ -3,8 +3,18 @@ import { z } from "zod";
 export const companyProfileSourceSchema = z.object({
   label: z.string().min(1),
   url: z.string().url().nullable(),
-  kind: z.enum(["official", "vacancy", "curated"]),
+  kind: z.enum([
+    "official",
+    "vacancy",
+    "engineering",
+    "candidate_report",
+    "community",
+    "curated",
+  ]),
   reviewedAt: z.string(),
+  publishedAt: z.string().optional(),
+  interviewAt: z.string().optional(),
+  confidence: z.enum(["low", "medium", "high"]).optional(),
 });
 
 export const companyProfileV1Schema = z.object({

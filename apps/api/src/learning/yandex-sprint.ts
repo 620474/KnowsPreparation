@@ -331,29 +331,29 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
     },
   },
   {
-    title: "Закрытие слабых мест",
+    title: "Архитектурный трек",
     platform: {
-      title: "Повтор двух слабых тем",
-      description: "Выбери темы по результатам моков, объясни каждую за пять минут и реши по два фрагмента без подсказок.",
-      resourceIds: ["yandex-frontend-interview", "yandex-prep", "frontend-handbook"],
+      title: "Архитектура frontend-сервиса",
+      description: "Сформулируй требования и нагрузку, набросай высокоуровневую архитектуру, затем углубись в frontend-компоненты, безопасность, доступность, мониторинг и метрики скорости.",
+      resourceIds: ["yandex-frontend-interview", "yandex-frontend-architecture", "avito-system-design"],
     },
     algorithms: {
-      title: "Две случайные лёгкие задачи",
-      description: "Реши две новые задачи по 25 минут: условие, примеры, подход, код, Big-O и ручные тесты.",
+      title: "Кодинг перед архитектурой",
+      description: "Реши две компактные задачи, защити сложность и освободи оставшееся время для проектирования и обсуждения компромиссов.",
       resourceIds: ["yandex-coderun-frontend-2026", "leetcode-plan"],
     },
     ai: {
-      title: "Аудит итогового diff",
-      description: "Проверь с AI корректность, безопасность, сложность и лишние изменения, затем составь собственный итоговый review.",
+      title: "Design review архитектуры",
+      description: "Попроси AI выступить критиком: проверить failure modes, безопасность, доступность, мониторинг и альтернативы, затем самостоятельно защити исправленную схему.",
       resourceIds: ["ai-assisted-32", "ai-assisted-03"],
     },
   },
   {
-    title: "Генеральная репетиция",
+    title: "Опыт и защита решений",
     platform: {
-      title: "Платформа без запуска первых 30 минут",
-      description: "Разбирай JS-фрагменты вслух, сначала моделируя выполнение в уме, затем проверяй ответы в DevTools.",
-      resourceIds: ["yandex-frontend-interview", "ydkjs", "js-async-habr"],
+      title: "Разбор реального frontend-опыта",
+      description: "Подготовь два проекта: свою роль, ограничения, принятое решение, альтернативы, измеримый результат, ошибки и то, что изменил бы сейчас.",
+      resourceIds: ["yandex-frontend-interview", "yandex-prep", "frontend-handbook"],
     },
     algorithms: {
       title: "Задача за 50 минут",
@@ -361,17 +361,17 @@ const SPRINT_DAYS: SprintDayDefinition[] = [
       resourceIds: ["yandex-coderun-frontend-2026", "yandex-algorithms"],
     },
     ai: {
-      title: "Устная защита AI-решения",
-      description: "Без помощи AI объясни сгенерированный код, архитектуру, тесты, компромиссы и три вещи, которые изменил бы сам.",
+      title: "Репетиция защиты опыта",
+      description: "Попроси AI задать неудобные follow-up вопросы по роли, ownership, компромиссам и результатам, затем повтори рассказ без подсказок.",
       resourceIds: ["ai-assisted-31", "ai-assisted-29"],
     },
   },
   {
-    title: "Финальный мок",
+    title: "Финальный мок и командные финалы",
     platform: {
-      title: "Яндекс: платформа",
-      description: "60 минут с демонстрацией экрана, без AI и поиска. Интервьюер задаёт JS-вопросы и просит объяснять результат выполнения.",
-      resourceIds: ["yandex-frontend-interview", "js-execution-model", "js-async-habr"],
+      title: "Яндекс: платформа или архитектура",
+      description: "Проведи 60–90 минут без AI и поиска по своему целевому треку: JS-платформа либо проектирование frontend-сервиса с защитой решений.",
+      resourceIds: ["yandex-frontend-interview", "js-execution-model", "yandex-frontend-architecture"],
     },
     algorithms: {
       title: "Яндекс: решение задачи",
@@ -624,7 +624,7 @@ export const YANDEX_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => 
 });
 
 export const YANDEX_SPRINT_AI_KEY = "yandex-sprint";
-export const YANDEX_SPRINT_AI_VERSION = 1;
+export const YANDEX_SPRINT_AI_VERSION = 2;
 
 export const YANDEX_TASK_IDS = new Set(
   YANDEX_SPRINT.flatMap((day) => day.blocks.map((block) => block.id)),

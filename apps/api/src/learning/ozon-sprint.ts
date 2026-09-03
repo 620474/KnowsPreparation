@@ -356,7 +356,7 @@ export const OZON_SPRINT: StudyDay[] = SPRINT_DAYS.map((definition, index) => {
 });
 
 export const OZON_SPRINT_AI_KEY = "ozon-sprint";
-export const OZON_SPRINT_AI_VERSION = 1;
+export const OZON_SPRINT_AI_VERSION = 2;
 export const OZON_TASK_IDS = new Set(
   OZON_SPRINT.flatMap((day) => day.blocks.map((block) => block.id)),
 );
