@@ -37,6 +37,9 @@ import {
 } from "./track-registry";
 
 const DAY_MS = 86_400_000;
+const CROSS_TRACK_PASS_SCORE = 70;
+const CROSS_TRACK_MASTERY_SCORE = 75;
+const CROSS_TRACK_MASTERY_LOWER = 55;
 
 const dateKey = (value: Date) => value.toISOString().slice(0, 10);
 
@@ -47,6 +50,39 @@ const recommendationId = (
   itemId: string | null,
   source: AdaptivePlanItem["source"],
 ) => [date, kind, track ?? "all", itemId ?? "all", source ?? "none"].join(":");
+
+const uniqueSkills = (item: AdaptivePlanItem) => [...new Set(item.skillKeys)];
+
+const hasStrongSkillOverlap = (left: AdaptivePlanItem, right: AdaptivePlanItem) => {
+  if (!left.track || !right.track || left.track === right.track) return false;
+  if (!["lesson", "plan"].includes(left.kind) || !["lesson", "plan"].includes(right.kind)) {
+    return false;
+  }
+  const leftSkills = uniqueSkills(left);
+  const rightSkills = uniqueSkills(right);
+  if (!leftSkills.length || !rightSkills.length) return false;
+  const overlap = leftSkills.filter((skill) => rightSkills.includes(skill)).length;
+  return overlap / Math.min(leftSkills.length, rightSkills.length) >= 0.75;
+};
+
+const crossTrackSignalScore = (signal: Pick<LearningSignal, "type" | "payload">) => {
+  const numberValue = (value: unknown) =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+  if (signal.type === "question_attempted" || signal.type === "mock_completed") {
+    return numberValue(signal.payload.score);
+  }
+  if (signal.type === "quiz_submitted") {
+    const score = numberValue(signal.payload.score);
+    const maxScore = numberValue(signal.payload.maxScore);
+    return score !== null && maxScore ? score / maxScore * 100 : null;
+  }
+  if (signal.type === "practice_attempted") {
+    const passed = numberValue(signal.payload.passedCount);
+    const total = numberValue(signal.payload.totalCount);
+    return passed !== null && total ? passed / total * 100 : null;
+  }
+  return null;
+};
 
 export function selectAdaptivePlanItems(
   candidates: AdaptivePlanItem[],
@@ -61,6 +97,7 @@ export function selectAdaptivePlanItems(
     if (skippedIds.has(candidate.id) || selected.some((item) => item.id === candidate.id)) {
       continue;
     }
+    if (selected.some((item) => hasStrongSkillOverlap(item, candidate))) continue;
     if (usedMinutes + candidate.minutes > budgetMinutes) continue;
     selected.push(candidate);
     usedMinutes += candidate.minutes;
@@ -139,6 +176,71 @@ export function applyMasteryPriority(
         reasonCodes: [...new Set(reasonCodes)],
         expectedLearningGain,
         expectedInformationGain,
+      },
+    };
+  });
+}
+
+export function applyCrossTrackCoverage(
+  candidates: AdaptivePlanItem[],
+  overview: KnowledgeOverview,
+  signals: Array<Pick<LearningSignal, "type" | "track" | "skillKeys" | "payload">>,
+) {
+  const masteryById = new Map(overview.skills.map((skill) => [skill.skillId, skill]));
+  const sourceTracksBySkill = new Map<SkillKey, Set<TrackKey>>();
+  for (const signal of signals) {
+    if (!signal.track || signal.payload.aiAssisted === true) continue;
+    const score = crossTrackSignalScore(signal);
+    if (score === null || score < CROSS_TRACK_PASS_SCORE) continue;
+    for (const skill of signal.skillKeys) {
+      const tracks = sourceTracksBySkill.get(skill) ?? new Set<TrackKey>();
+      tracks.add(signal.track);
+      sourceTracksBySkill.set(skill, tracks);
+    }
+  }
+
+  return candidates.map((candidate) => {
+    if (!candidate.track || !["lesson", "plan"].includes(candidate.kind)) return candidate;
+    const targetedSkillIds = uniqueSkills(candidate);
+    if (!targetedSkillIds.length) return candidate;
+    const coveredSkillIds = targetedSkillIds.filter((skillId) => {
+      const mastery = masteryById.get(skillId);
+      const sourceTracks = sourceTracksBySkill.get(skillId);
+      return Boolean(
+        mastery &&
+        mastery.estimate !== null && mastery.estimate >= CROSS_TRACK_MASTERY_SCORE &&
+        mastery.lower !== null && mastery.lower >= CROSS_TRACK_MASTERY_LOWER &&
+        mastery.independentFamilyCount >= 2 && mastery.noAiEvidenceCount >= 1 &&
+        sourceTracks && [...sourceTracks].some((track) => track !== candidate.track),
+      );
+    });
+    if (!coveredSkillIds.length) return candidate;
+    const sourceTracks = [...new Set(coveredSkillIds.flatMap((skillId) =>
+      [...(sourceTracksBySkill.get(skillId) ?? [])].filter((track) => track !== candidate.track),
+    ))];
+    const canOpenVerification = candidate.kind === "lesson" || candidate.source === "lesson";
+    const mode = coveredSkillIds.length === targetedSkillIds.length && canOpenVerification
+      ? "verify" as const
+      : "partial" as const;
+    const v6 = candidate.v6 ?? {
+      targetedSkillIds,
+      reasonCodes: [],
+      expectedLearningGain: 50,
+      expectedInformationGain: 50,
+    };
+    return {
+      ...candidate,
+      minutes: mode === "verify" ? Math.min(15, candidate.minutes) : candidate.minutes,
+      score: candidate.score + (mode === "verify" ? 6 : 0),
+      reason: mode === "verify"
+        ? `${candidate.reason} · тема уже подтверждена в другом треке, проверь перенос знаний`
+        : `${candidate.reason} · ${coveredSkillIds.length} из ${targetedSkillIds.length} навыков уже подтверждены в других треках`,
+      v6: {
+        ...v6,
+        reasonCodes: [...new Set([...v6.reasonCodes, "CROSS_TRACK_COVERAGE" as const])],
+        expectedLearningGain: mode === "verify" ? Math.min(v6.expectedLearningGain, 30) : v6.expectedLearningGain,
+        expectedInformationGain: mode === "verify" ? Math.max(v6.expectedInformationGain, 60) : v6.expectedInformationGain,
+        crossTrack: { mode, coveredSkillIds, sourceTracks },
       },
     };
   });
@@ -424,14 +526,18 @@ export class AdaptivePlanService {
       effectiveCheckIn.focus,
     );
     const v6PlannerEnabled = this.config.get<string>("PLANNER_V6_ENABLED") !== "false";
-    const availableCandidates = v6PlannerEnabled
-      ? applyMasteryPriority(
-          readinessCandidates,
-          await this.masteryService.getOverview(
-            effectiveCheckIn.focus === "yandex" || effectiveCheckIn.focus === "ozon"
-              ? effectiveCheckIn.focus
-              : "general",
-          ),
+    const masteryOverview = v6PlannerEnabled
+      ? await this.masteryService.getOverview(
+          effectiveCheckIn.focus === "yandex" || effectiveCheckIn.focus === "ozon"
+            ? effectiveCheckIn.focus
+            : "general",
+        )
+      : null;
+    const availableCandidates = masteryOverview
+      ? applyCrossTrackCoverage(
+          applyMasteryPriority(readinessCandidates, masteryOverview),
+          masteryOverview,
+          readinessSignals,
         )
       : readinessCandidates;
     let items = selectAdaptivePlanItems(

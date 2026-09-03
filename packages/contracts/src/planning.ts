@@ -9,6 +9,7 @@ export const adaptiveReasonCodeSchema = z.enum([
   "FAILED_PRACTICE",
   "UPCOMING_INTERVIEW",
   "NEXT_CURRICULUM_STEP",
+  "CROSS_TRACK_COVERAGE",
 ]);
 
 export const v6PlanningMetadataSchema = z.object({
@@ -16,6 +17,11 @@ export const v6PlanningMetadataSchema = z.object({
   reasonCodes: z.array(adaptiveReasonCodeSchema),
   expectedLearningGain: z.number().min(0).max(100),
   expectedInformationGain: z.number().min(0).max(100),
+  crossTrack: z.object({
+    mode: z.enum(["partial", "verify"]),
+    coveredSkillIds: z.array(z.string()),
+    sourceTracks: z.array(z.string()),
+  }).optional(),
 });
 
 export type AdaptiveReasonCode = z.infer<typeof adaptiveReasonCodeSchema>;

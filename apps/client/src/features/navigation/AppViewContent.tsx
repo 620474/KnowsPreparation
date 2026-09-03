@@ -144,7 +144,7 @@ export function AppViewContent({
       item.track &&
       item.itemId &&
       (item.kind === "lesson" || item.source === "lesson")
-    ) openLessonReader(item.track, item.itemId);
+    ) openLessonReader(item.track, item.itemId, item.v6?.crossTrack?.mode === "verify");
     else if (item.track) navigateToView(viewForTrack(item.track));
   };
 

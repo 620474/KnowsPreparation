@@ -284,6 +284,38 @@
   font-weight: 800;
 }
 
+.adaptive-cross-track {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+
+.adaptive-cross-track span {
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: var(--accent-hover);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adaptive-cross-track small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.adaptive-cross-track.partial span {
+  border-color: var(--line-strong);
+  color: var(--muted-strong);
+  background: var(--surface-subtle);
+}
+
 @media (max-width: 760px) {
   .skill-overview-grid,
   .skill-capability-grid,

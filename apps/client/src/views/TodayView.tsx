@@ -60,6 +60,15 @@ const skillLabels = {
   ai: "AI",
 } satisfies Record<SkillKey, string>;
 
+const trackLabels: Record<string, string> = {
+  curriculum: "Основной план",
+  course: "AI-курс",
+  yandex: "Яндекс",
+  ozon: "Ozon",
+  avito: "Avito",
+  tbank: "Т-Банк",
+};
+
 export function TodayView({
   data,
   onOpenDay,
@@ -310,6 +319,16 @@ export function TodayView({
                     </div>
                     <h3>{item.title}</h3>
                     <p>{item.reason}</p>
+                    {item.v6?.crossTrack ? (
+                      <div className={`adaptive-cross-track ${item.v6.crossTrack.mode}`}>
+                        <span>
+                          {item.v6.crossTrack.mode === "verify" ? "Перенос знаний" : "Частичное пересечение"}
+                        </span>
+                        <small>
+                          Из: {item.v6.crossTrack.sourceTracks.map((track) => trackLabels[track] ?? track).join(", ")}
+                        </small>
+                      </div>
+                    ) : null}
                     {item.v6?.reasonCodes.length ? (
                       <div className="adaptive-reason-codes">
                         {item.v6.reasonCodes.map((reason) => <span key={reason}>{reason}</span>)}
@@ -319,12 +338,12 @@ export function TodayView({
                   <div className="adaptive-today-actions">
                     <Button
                       className="primary-button"
-                      leftSection={<Play size={15} />}
+                      leftSection={item.v6?.crossTrack?.mode === "verify" ? <Check size={15} /> : <Play size={15} />}
                       size="xs"
                       type="button"
                       onClick={() => onOpenAdaptiveItem(item)}
                     >
-                      Начать
+                      {item.v6?.crossTrack?.mode === "verify" ? "Подтвердить" : "Начать"}
                     </Button>
                     <Button
                       className="secondary-button"
