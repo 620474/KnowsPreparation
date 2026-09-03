@@ -26,7 +26,10 @@ import {
 } from "@prep/contracts";
 import type { Model } from "mongoose";
 
-import { AiAgentService } from "../agents/ai-agent.service";
+import {
+  AiAgentService,
+  type AiAgentExecutionOptions,
+} from "../agents/ai-agent.service";
 import { ResearchService } from "../learning/research.service";
 import { ResearchClaimEntry } from "../learning/schemas/research-claim.schema";
 import { ResearchEvidenceEntry } from "../learning/schemas/research-evidence.schema";
@@ -76,6 +79,15 @@ interface ResearchRunLease {
   epoch: number;
 }
 
+type ResearchInvocationStep =
+  | "planning"
+  | "discovery"
+  | "challenge"
+  | "gap_challenge"
+  | "synthesis"
+  | "audit"
+  | "actions";
+
 const cloneEmptyDraft = (): ResearchAgentDraft => ({
   protocol: { ...EMPTY_RESEARCH_AGENT_DRAFT.protocol },
   evidence: [],
@@ -121,6 +133,7 @@ const serializeRun = (run: ResearchAgentRunEntry): ResearchAgentRun => ({
 export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
   private readonly controllers = new Map<string, AbortController>();
   private recoveryTimer: ReturnType<typeof setInterval> | null = null;
+  private shuttingDown = false;
 
   constructor(
     private readonly aiAgent: AiAgentService,
@@ -147,6 +160,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy() {
+    this.shuttingDown = true;
     if (this.recoveryTimer) clearInterval(this.recoveryTimer);
     for (const controller of this.controllers.values()) controller.abort();
     this.controllers.clear();
@@ -196,6 +210,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         leaseUntil: null,
         leaseOwner: null,
         leaseEpoch: 0,
+        currentInvocation: null,
         applyOperationId: null,
         appliedAt: null,
         startedAt: new Date(),
@@ -247,6 +262,14 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
     ).exec();
     if (!run) throw new ConflictException("Этот запуск уже нельзя отменить");
     this.controllers.get(runId)?.abort();
+    if (run.currentInvocation?.responseId) {
+      await this.aiAgent.cancelBackgroundResponse(run.currentInvocation.responseId)
+        .catch(() => undefined);
+    }
+    await this.runModel.updateOne(
+      { projectId, runId, status: "cancelled" },
+      { $unset: { currentInvocation: 1 } },
+    ).exec();
     return serializeRun(run);
   }
 
@@ -487,12 +510,13 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         : await this.runModelStep(
             runId,
             lease,
+            "planning",
             researchModel,
             researchModelCostClass,
-            () => this.aiAgent.planResearch({
+            (execution) => this.aiAgent.planResearch({
               ...projectInput,
               existingProtocol: project.protocol,
-            }, controller.signal, researchModel),
+            }, controller.signal, researchModel, execution),
             controller,
           );
       if (!hasProtocol) {
@@ -510,14 +534,15 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         const discovery = await this.runModelStep(
           runId,
           lease,
+          "discovery",
           researchModel,
           researchModelCostClass,
-          () => this.aiAgent.discoverResearchEvidence({
+          (execution) => this.aiAgent.discoverResearchEvidence({
             project: projectInput,
             protocol: plan.protocol,
             searchQueries: plan.searchQueries,
             mode: "discovery",
-          }, controller.signal, researchModel),
+          }, controller.signal, researchModel, execution),
           controller,
         );
         allEvidence = this.mergeEvidence(discovery.evidence, run.budget.maximumSources);
@@ -540,15 +565,16 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           const challenge = await this.runModelStep(
             runId,
             lease,
+            "challenge",
             run.reviewModel,
             configuration.reviewModelCostClass,
-            () => this.aiAgent.discoverResearchEvidence({
+            (execution) => this.aiAgent.discoverResearchEvidence({
               project: projectInput,
               protocol: plan.protocol,
               searchQueries: plan.searchQueries,
               existingEvidence: allEvidence,
               mode: "challenge",
-            }, controller.signal, run.reviewModel),
+            }, controller.signal, run.reviewModel, execution),
             controller,
           );
           allEvidence = this.mergeEvidence(
@@ -567,15 +593,16 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           const gapSearch = await this.runModelStep(
             runId,
             lease,
+            "gap_challenge",
             run.reviewModel,
             configuration.reviewModelCostClass,
-            () => this.aiAgent.discoverResearchEvidence({
+            (execution) => this.aiAgent.discoverResearchEvidence({
               project: projectInput,
               protocol: plan.protocol,
               searchQueries: [...plan.searchQueries, ...gaps].slice(0, 8),
               existingEvidence: allEvidence,
               mode: "challenge",
-            }, controller.signal, run.reviewModel),
+            }, controller.signal, run.reviewModel, execution),
             controller,
           );
           allEvidence = this.mergeEvidence(
@@ -588,18 +615,22 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         }
       }
       if (resumesChallenge && run.mode !== "quick") {
+        const resumeStep = run.currentInvocation?.step === "gap_challenge"
+          ? "gap_challenge"
+          : "challenge";
         const challenge = await this.runModelStep(
           runId,
           lease,
+          resumeStep,
           run.reviewModel,
           configuration.reviewModelCostClass,
-          () => this.aiAgent.discoverResearchEvidence({
+          (execution) => this.aiAgent.discoverResearchEvidence({
             project: projectInput,
             protocol: plan.protocol,
             searchQueries: [...plan.searchQueries, ...gaps].slice(0, 8),
             existingEvidence: allEvidence,
             mode: "challenge",
-          }, controller.signal, run.reviewModel),
+          }, controller.signal, run.reviewModel, execution),
           controller,
         );
         allEvidence = this.mergeEvidence(
@@ -611,7 +642,10 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         await this.updateSourceUsage(runId, lease, challenge.evidence.length, allEvidence.length);
       }
 
-      if (run.draft.claims.length === 0) {
+      if (
+        run.draft.claims.length === 0 &&
+        run.currentInvocation?.step !== "synthesis"
+      ) {
         await this.setPhase(runId, lease, "synthesis", 68, "Связываю выводы с доказательствами", {
           "draft.evidence": allEvidence,
           "draft.unresolvedGaps": gaps,
@@ -631,16 +665,17 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         : await this.runModelStep(
             runId,
             lease,
+            "synthesis",
             synthesisModel,
             synthesisModelCostClass,
-            () => this.aiAgent.synthesizeResearch({
+            (execution) => this.aiAgent.synthesizeResearch({
               project: projectInput,
               protocol: plan.protocol,
               evidence: allEvidence,
               discoverySummary,
               challengeSummary,
               gaps,
-            }, controller.signal, synthesisModel),
+            }, controller.signal, synthesisModel, execution),
             controller,
           );
       if (run.draft.claims.length === 0) {
@@ -656,14 +691,15 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         : await this.runModelStep(
             runId,
             lease,
+            "audit",
             run.reviewModel,
             configuration.reviewModelCostClass,
-            () => this.aiAgent.auditResearchClaims({
+            (execution) => this.aiAgent.auditResearchClaims({
               type: run.type,
               mode: run.mode,
               claims: synthesis.claims,
               evidence: allEvidence,
-            }, controller.signal, run.reviewModel),
+            }, controller.signal, run.reviewModel, execution),
             controller,
           );
       const verifiedClaimIds = new Set(
@@ -673,7 +709,10 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         this.leaseFilter(runId, lease),
         { $set: { "usage.validatedClaims": verifiedClaimIds.size } },
       ).exec();
-      if (run.draft.actions.length === 0) {
+      if (
+        run.draft.actions.length === 0 &&
+        run.currentInvocation?.step !== "actions"
+      ) {
         await this.setPhase(runId, lease, "actions", 92, "Готовлю изменения для учебного плана", {
           "draft.citationAudits": audit.audits,
           "draft.contradictions": audit.contradictions,
@@ -684,9 +723,10 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         : await this.runModelStep(
             runId,
             lease,
+            "actions",
             run.reviewModel,
             configuration.reviewModelCostClass,
-            () => this.aiAgent.mapResearchActions({
+            (execution) => this.aiAgent.mapResearchActions({
               type: run.type,
               mode: run.mode,
               decisionStatement: project.decisionStatement,
@@ -694,7 +734,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
               claims: synthesis.claims.filter((claim) => verifiedClaimIds.has(claim.candidateId)),
               contradictions: audit.contradictions,
               unresolvedGaps: synthesis.unresolvedGaps,
-            }, controller.signal, run.reviewModel),
+            }, controller.signal, run.reviewModel, execution),
             controller,
           );
       await this.runModel.updateOne(
@@ -718,7 +758,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
               stopReason: synthesis.stopReason,
             },
           },
-          $unset: { activeProjectId: 1 },
+          $unset: { activeProjectId: 1, currentInvocation: 1 },
           $push: {
             logs: {
               phase: "review",
@@ -730,11 +770,22 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       ).exec();
     } catch (error) {
       const current = await this.runModel.findOne({ runId })
-        .select({ status: 1 })
+        .select({ status: 1, currentInvocation: 1 })
         .lean()
         .exec();
+      if (this.shuttingDown && current?.status === "running") {
+        await this.runModel.updateOne(
+          this.leaseFilter(runId, lease),
+          { $set: { leaseUntil: null, leaseOwner: null } },
+        ).exec();
+        return;
+      }
       if (current?.status !== "cancelled" && !(error instanceof ResearchLeaseLostError)) {
         const budgetExceeded = error instanceof ResearchBudgetExceededError;
+        if (current?.currentInvocation?.responseId) {
+          await this.aiAgent.cancelBackgroundResponse(current.currentInvocation.responseId)
+            .catch(() => undefined);
+        }
         await this.runModel.updateOne(
           this.leaseFilter(runId, lease),
           {
@@ -745,7 +796,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
               leaseOwner: null,
               error: error instanceof Error ? error.message : "Неизвестная ошибка агента",
             },
-            $unset: { activeProjectId: 1 },
+            $unset: { activeProjectId: 1, currentInvocation: 1 },
             $push: {
               logs: {
                 phase: "complete",
@@ -768,9 +819,10 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
   private async runModelStep<T>(
     runId: string,
     lease: ResearchRunLease,
+    step: ResearchInvocationStep,
     model: string,
     costClass: ResearchModelCostClass,
-    operation: () => Promise<T>,
+    operation: (execution?: AiAgentExecutionOptions) => Promise<T>,
     controller: AbortController,
   ) {
     let lastError: unknown;
@@ -783,23 +835,91 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
         throw new ResearchBudgetExceededError("Истекло максимальное время исследования");
       }
       const usesSol = costClass === "sol";
-      if (run.usage.modelCalls >= run.budget.maximumModelCalls) {
-        throw new ResearchBudgetExceededError("Исчерпан лимит AI-вызовов");
+      const currentInvocation = run.currentInvocation;
+      const useBackground = Boolean(currentInvocation) || (
+        run.mode !== "quick" && this.aiAgent.researchBackgroundEnabled
+      );
+      if (currentInvocation && currentInvocation.step !== step) {
+        throw new Error(`Нельзя продолжить шаг ${step}: сохранён вызов ${currentInvocation.step}`);
       }
-      if (usesSol && run.usage.solCalls >= run.budget.maximumSolCalls) {
-        throw new ResearchBudgetExceededError("Исчерпан лимит вызовов Sol");
+      if (useBackground && currentInvocation?.responseId === null) {
+        throw new Error(
+          "Фоновый AI-вызов был создан, но его responseId не успел сохраниться. Повторный запрос заблокирован.",
+        );
       }
-      const reserved = await this.runModel.updateOne(
-        this.leaseFilter(runId, lease),
-        {
-          $inc: {
-            "usage.modelCalls": 1,
-            ...(usesSol ? { "usage.solCalls": 1 } : {}),
+      if (!currentInvocation) {
+        if (run.usage.modelCalls >= run.budget.maximumModelCalls) {
+          throw new ResearchBudgetExceededError("Исчерпан лимит AI-вызовов");
+        }
+        if (usesSol && run.usage.solCalls >= run.budget.maximumSolCalls) {
+          throw new ResearchBudgetExceededError("Исчерпан лимит вызовов Sol");
+        }
+        const reserved = await this.runModel.updateOne(
+          {
+            ...this.leaseFilter(runId, lease),
+            currentInvocation: null,
           },
-          $set: { leaseUntil: new Date(Date.now() + LEASE_MS) },
-        },
-      ).exec();
-      if (reserved.modifiedCount === 0) throw new ResearchLeaseLostError();
+          {
+            $inc: {
+              "usage.modelCalls": 1,
+              ...(usesSol ? { "usage.solCalls": 1 } : {}),
+            },
+            $set: {
+              leaseUntil: new Date(Date.now() + LEASE_MS),
+              ...(useBackground
+                ? {
+                    currentInvocation: {
+                      step,
+                      responseId: null,
+                      status: "creating",
+                      model,
+                      startedAt: new Date(),
+                    },
+                  }
+                : {}),
+            },
+          },
+        ).exec();
+        if (reserved.modifiedCount === 0) throw new ResearchLeaseLostError();
+      }
+      const execution: AiAgentExecutionOptions | undefined = useBackground
+        ? {
+            background: {
+              responseId: currentInvocation?.responseId ?? null,
+              deadlineAt,
+              metadata: {
+                research_run_id: runId,
+                research_step: step,
+              },
+              onResponseCreated: async (responseId) => {
+                const updated = await this.runModel.updateOne(
+                  {
+                    ...this.leaseFilter(runId, lease),
+                    "currentInvocation.step": step,
+                  },
+                  {
+                    $set: {
+                      "currentInvocation.responseId": responseId,
+                      "currentInvocation.status": "waiting",
+                      leaseUntil: new Date(Date.now() + LEASE_MS),
+                    },
+                  },
+                ).exec();
+                if (updated.modifiedCount === 0) throw new ResearchLeaseLostError();
+              },
+              onTerminalFailure: async () => {
+                const cleared = await this.runModel.updateOne(
+                  {
+                    ...this.leaseFilter(runId, lease),
+                    "currentInvocation.step": step,
+                  },
+                  { $unset: { currentInvocation: 1 } },
+                ).exec();
+                if (cleared.matchedCount === 0) throw new ResearchLeaseLostError();
+              },
+            },
+          }
+        : undefined;
       let leaseLost = false;
       const heartbeat = setInterval(() => {
         void this.runModel.updateOne(
@@ -814,7 +934,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
       }, HEARTBEAT_MS);
       heartbeat.unref?.();
       try {
-        const result = await operation();
+        const result = await operation(execution);
         if (leaseLost) throw new ResearchLeaseLostError();
         return result;
       } catch (error) {
@@ -885,6 +1005,7 @@ export class ResearchAgentService implements OnModuleInit, OnModuleDestroy {
           leaseUntil: new Date(Date.now() + LEASE_MS),
           ...fields,
         },
+        $unset: { currentInvocation: 1 },
         $push: { logs: { phase, message, at: new Date().toISOString() } },
       },
     ).exec();

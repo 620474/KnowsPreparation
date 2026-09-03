@@ -64,7 +64,9 @@ flowchart LR
 
 Research Agent работает на сервере и продолжает run после закрытия Android-приложения. Доступны профили технической темы, компании, вакансии, методики обучения и post-interview, а также режимы Quick, Standard и Deep.
 
-Pipeline сохраняет каждый этап в MongoDB: протокол, поиск, red-team, синтез, citation audit и Action Mapper. Lease owner, epoch и heartbeat защищают run от параллельного выполнения, а после перезапуска агент продолжает с последнего сохранённого checkpoint. Лимиты времени, источников, AI-вызовов и Sol контролируются кодом. Источники, выводы и предлагаемые действия попадают в проект только после ручного подтверждения; статический учебный план агент автоматически не переписывает.
+Pipeline сохраняет каждый этап в MongoDB: протокол, поиск, red-team, синтез, citation audit и Action Mapper. Lease owner, epoch и heartbeat защищают run от параллельного выполнения. Standard и Deep запускают OpenAI Responses в background mode, сохраняют `responseId` текущего шага и после перезапуска продолжают polling того же ответа без повторного платного вызова; Quick остаётся синхронным. Лимиты времени, источников, AI-вызовов и Sol контролируются кодом. Источники, выводы и предлагаемые действия попадают в проект только после ручного подтверждения; статический учебный план агент автоматически не переписывает.
+
+Флаг `OPENAI_RESEARCH_BACKGROUND_ENABLED=false` возвращает новые шаги Standard/Deep к синхронному режиму; уже начатый фоновый шаг всё равно безопасно завершается по сохранённому `responseId`.
 
 ## Как устроено обучение
 
@@ -308,6 +310,7 @@ Workflow `.github/workflows/ci.yml` запускает typecheck, lint, тест
    OPENAI_AGENT_MODEL=gpt-5.6-terra
    OPENAI_RESEARCH_MODEL=gpt-5.6-sol
    OPENAI_RESEARCH_MODEL_COST_CLASS=sol
+   OPENAI_RESEARCH_BACKGROUND_ENABLED=true
    OPENAI_REVIEW_MODEL_COST_CLASS=standard
    OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
    INTERVIEW_V2_ENABLED=true

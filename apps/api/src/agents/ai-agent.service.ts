@@ -64,6 +64,29 @@ const modelCostClass = (
   fallback: ResearchModelCostClass,
 ): ResearchModelCostClass => value === "sol" || value === "standard" ? value : fallback;
 
+const BACKGROUND_RESPONSE_STATUSES = [
+  "queued",
+  "in_progress",
+  "completed",
+  "failed",
+  "cancelled",
+  "incomplete",
+] as const;
+
+type BackgroundResponseStatus = (typeof BACKGROUND_RESPONSE_STATUSES)[number];
+
+export interface AiAgentBackgroundInvocation {
+  responseId: string | null;
+  deadlineAt: number;
+  metadata: Record<string, string>;
+  onResponseCreated: (responseId: string) => Promise<void>;
+  onTerminalFailure: (responseId: string) => Promise<void>;
+}
+
+export interface AiAgentExecutionOptions {
+  background?: AiAgentBackgroundInvocation;
+}
+
 const sourceVerificationSchema = z.object({
   status: z.enum(["verified", "partial", "rejected"]),
   score: z.number().int().min(0).max(100),
@@ -695,6 +718,40 @@ export class AiAgentService {
     );
   }
 
+  get researchBackgroundEnabled() {
+    const configured = this.config.get<string | boolean>(
+      "OPENAI_RESEARCH_BACKGROUND_ENABLED",
+    );
+    if (configured === undefined) return true;
+    return !["0", "false", "off"].includes(String(configured).trim().toLowerCase());
+  }
+
+  async cancelBackgroundResponse(responseId: string, signal?: AbortSignal) {
+    const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
+    if (!apiKey || !responseId) return;
+    const { response } = await this.fetchOpenAiJson(
+      `https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}/cancel`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      },
+      signal,
+    );
+    if (!response.ok) {
+      this.logger.warn({
+        event: "agent_background_cancel_error",
+        responseId,
+        status: response.status,
+      });
+      throw new BadGatewayException(
+        `AI-агент не отменил фоновый ответ (HTTP ${response.status}).`,
+      );
+    }
+  }
+
   async verifyLesson(
     input: { track: string; title: string; lesson: GeneratedLesson },
     signal?: AbortSignal,
@@ -979,7 +1036,7 @@ export class AiAgentService {
     primaryQuestion: string;
     scope: string;
     existingProtocol: ResearchProtocol;
-  }, signal?: AbortSignal, model = this.researchModel) {
+  }, signal?: AbortSignal, model = this.researchModel, execution?: AiAgentExecutionOptions) {
     const response = await this.request(
       "autonomous_research_plan",
       jsonSchema.researchPlan,
@@ -995,7 +1052,7 @@ export class AiAgentService {
       3_000,
       signal,
       {},
-      { model },
+      { model, execution },
     );
     return researchPlanSchema.parse(response.data);
   }
@@ -1011,7 +1068,7 @@ export class AiAgentService {
     searchQueries: string[];
     existingEvidence?: ResearchAgentEvidenceDraft[];
     mode: "discovery" | "challenge";
-  }, signal?: AbortSignal, model?: string) {
+  }, signal?: AbortSignal, model?: string, execution?: AiAgentExecutionOptions) {
     const challenge = input.mode === "challenge";
     const response = await this.request(
       challenge ? "autonomous_research_challenge" : "autonomous_research_discovery",
@@ -1036,6 +1093,7 @@ export class AiAgentService {
       {
         model: model ?? (challenge ? this.researchReviewModel : this.researchModel),
         sourcePolicy: "all",
+        execution,
       },
     );
     const parsed = researchDiscoverySchema.parse(response.data);
@@ -1063,7 +1121,7 @@ export class AiAgentService {
     discoverySummary: string;
     challengeSummary: string;
     gaps: string[];
-  }, signal?: AbortSignal, model = this.researchReviewModel): Promise<{
+  }, signal?: AbortSignal, model = this.researchReviewModel, execution?: AiAgentExecutionOptions): Promise<{
     claims: ResearchAgentClaimDraft[];
     summary: string;
     unresolvedGaps: string[];
@@ -1084,7 +1142,7 @@ export class AiAgentService {
       6_000,
       signal,
       {},
-      { model },
+      { model, execution },
     );
     const parsed = researchSynthesisSchema.parse(response.data);
     const evidenceByUrl = new Map(input.evidence.map((entry) => [entry.url, entry]));
@@ -1117,7 +1175,7 @@ export class AiAgentService {
     mode: ResearchAgentMode;
     claims: ResearchAgentClaimDraft[];
     evidence: ResearchAgentEvidenceDraft[];
-  }, signal?: AbortSignal, model = this.researchReviewModel): Promise<{
+  }, signal?: AbortSignal, model = this.researchReviewModel, execution?: AiAgentExecutionOptions): Promise<{
     audits: ResearchAgentCitationAudit[];
     contradictions: ResearchAgentContradiction[];
   }> {
@@ -1136,7 +1194,7 @@ export class AiAgentService {
       5_000,
       signal,
       {},
-      { model },
+      { model, execution },
     );
     const parsed = researchAuditSchema.parse(response.data);
     const allowedPairs = new Set(input.claims.flatMap((claim) =>
@@ -1162,7 +1220,7 @@ export class AiAgentService {
     claims: ResearchAgentClaimDraft[];
     contradictions: ResearchAgentContradiction[];
     unresolvedGaps: string[];
-  }, signal?: AbortSignal, model = this.researchReviewModel): Promise<ResearchAgentActionDraft[]> {
+  }, signal?: AbortSignal, model = this.researchReviewModel, execution?: AiAgentExecutionOptions): Promise<ResearchAgentActionDraft[]> {
     const response = await this.request(
       "autonomous_research_actions",
       jsonSchema.researchActions,
@@ -1178,7 +1236,7 @@ export class AiAgentService {
       4_000,
       signal,
       {},
-      { model },
+      { model, execution },
     );
     return researchActionsSchema.parse(response.data).actions.map((action, index) => ({
       ...action,
@@ -1197,41 +1255,40 @@ export class AiAgentService {
     options: {
       model?: string;
       sourcePolicy?: "official" | "all";
+      execution?: AiAgentExecutionOptions;
     } = {},
   ) {
     const apiKey = this.config.get<string>("OPENAI_API_KEY")?.trim();
     if (!apiKey) {
       throw new ServiceUnavailableException("AI-агенты не настроены: добавь OPENAI_API_KEY.");
     }
-    const abortContext = createOpenAiAbortContext(externalSignal);
     const startedAt = Date.now();
     const selectedModel = options.model ?? this.model;
     const runtime = createAgentRunEnvelope(name, selectedModel, maxOutputTokens);
     let status: "success" | "error" | "timeout" = "error";
     let usage: Record<string, number> | null = null;
     try {
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          instructions,
-          input: JSON.stringify(input),
-          max_output_tokens: runtime.budget.maximumOutputTokens,
-          store: false,
-          text: { format: { type: "json_schema", name, strict: true, schema } },
-          ...extras,
-        }),
-        signal: abortContext.signal,
-      });
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
-        this.logger.warn({ event: "agent_http_error", operation: name, status: response.status });
-        throw new BadGatewayException(`AI-агент не ответил (HTTP ${response.status}).`);
-      }
+      const background = options.execution?.background;
+      const payload = {
+        model: selectedModel,
+        instructions,
+        input: JSON.stringify(input),
+        max_output_tokens: runtime.budget.maximumOutputTokens,
+        text: { format: { type: "json_schema", name, strict: true, schema } },
+        ...extras,
+        ...(background
+          ? { background: true, store: true, metadata: background.metadata }
+          : { store: false }),
+      };
+      const body = background
+        ? await this.requestBackgroundResponse(
+          apiKey,
+          name,
+          payload,
+          background,
+          externalSignal,
+        )
+        : await this.requestSynchronousResponse(apiKey, name, payload, externalSignal);
       const data = JSON.parse(extractResponseText(body)) as unknown;
       usage = this.extractUsage(body);
       status = "success";
@@ -1246,7 +1303,7 @@ export class AiAgentService {
       ) {
         throw error;
       }
-      if (abortContext.timedOut() || isAbortError(error)) {
+      if (isAbortError(error)) {
         status = "timeout";
         throw new BadGatewayException("AI-агент не ответил за 90 секунд.");
       }
@@ -1257,7 +1314,6 @@ export class AiAgentService {
       });
       throw new BadGatewayException("AI-агент вернул некорректный ответ.");
     } finally {
-      abortContext.dispose();
       if (this.invocationModel) {
         void this.invocationModel.create({
           invocationId: runtime.runId,
@@ -1278,6 +1334,195 @@ export class AiAgentService {
         }).catch(() => undefined);
       }
     }
+  }
+
+  private async requestSynchronousResponse(
+    apiKey: string,
+    operation: string,
+    payload: Record<string, unknown>,
+    signal?: AbortSignal,
+  ) {
+    const { response, body } = await this.fetchOpenAiJson(
+      "https://api.openai.com/v1/responses",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      },
+      signal,
+    );
+    if (!response.ok) {
+      this.logger.warn({ event: "agent_http_error", operation, status: response.status });
+      throw new BadGatewayException(`AI-агент не ответил (HTTP ${response.status}).`);
+    }
+    return body;
+  }
+
+  private async requestBackgroundResponse(
+    apiKey: string,
+    operation: string,
+    payload: Record<string, unknown>,
+    invocation: AiAgentBackgroundInvocation,
+    signal?: AbortSignal,
+  ) {
+    let responseId = invocation.responseId;
+    let body: unknown;
+
+    if (responseId) {
+      body = await this.retrieveBackgroundResponse(apiKey, operation, responseId, signal);
+    } else {
+      const created = await this.fetchOpenAiJson(
+        "https://api.openai.com/v1/responses",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        signal,
+      );
+      if (!created.response.ok) {
+        await invocation.onTerminalFailure("");
+        this.logger.warn({
+          event: "agent_http_error",
+          operation,
+          status: created.response.status,
+        });
+        throw new BadGatewayException(
+          `AI-агент не запустил фоновый ответ (HTTP ${created.response.status}).`,
+        );
+      }
+      responseId = this.extractResponseId(created.body);
+      if (!responseId) {
+        await invocation.onTerminalFailure("");
+        throw new BadGatewayException("AI-агент не вернул идентификатор фонового ответа.");
+      }
+      try {
+        await invocation.onResponseCreated(responseId);
+      } catch (error) {
+        await this.cancelBackgroundResponse(responseId).catch(() => undefined);
+        throw error;
+      }
+      body = created.body;
+    }
+
+    let pollDelayMs = 1_500;
+    while (true) {
+      const status = this.extractBackgroundStatus(body);
+      if (status === "completed") return body;
+      if (status === "failed" || status === "cancelled" || status === "incomplete") {
+        await invocation.onTerminalFailure(responseId);
+        throw new BadGatewayException(
+          `Фоновый ответ AI-агента завершился со статусом ${status}.`,
+        );
+      }
+      if (status !== "queued" && status !== "in_progress") {
+        await invocation.onTerminalFailure(responseId);
+        throw new BadGatewayException("AI-агент вернул неизвестный статус фонового ответа.");
+      }
+      if (Date.now() >= invocation.deadlineAt) {
+        throw new BadGatewayException("AI-агент не завершил фоновый ответ вовремя.");
+      }
+      await this.waitForBackgroundPoll(pollDelayMs, signal, invocation.deadlineAt);
+      body = await this.retrieveBackgroundResponse(apiKey, operation, responseId, signal);
+      pollDelayMs = Math.min(Math.round(pollDelayMs * 1.5), 10_000);
+    }
+  }
+
+  private async retrieveBackgroundResponse(
+    apiKey: string,
+    operation: string,
+    responseId: string,
+    signal?: AbortSignal,
+  ) {
+    const retrieved = await this.fetchOpenAiJson(
+      `https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${apiKey}` },
+      },
+      signal,
+    );
+    if (!retrieved.response.ok) {
+      this.logger.warn({
+        event: "agent_background_retrieve_error",
+        operation,
+        responseId,
+        status: retrieved.response.status,
+      });
+      throw new BadGatewayException(
+        `AI-агент не восстановил фоновый ответ (HTTP ${retrieved.response.status}).`,
+      );
+    }
+    return retrieved.body;
+  }
+
+  private async fetchOpenAiJson(
+    url: string,
+    init: RequestInit,
+    externalSignal?: AbortSignal,
+  ) {
+    const abortContext = createOpenAiAbortContext(externalSignal);
+    try {
+      const response = await fetch(url, { ...init, signal: abortContext.signal });
+      const body: unknown = await response.json().catch(() => null);
+      return { response, body };
+    } catch (error) {
+      if (abortContext.timedOut()) {
+        throw new BadGatewayException("AI-агент не ответил за 90 секунд.");
+      }
+      throw error;
+    } finally {
+      abortContext.dispose();
+    }
+  }
+
+  private extractResponseId(value: unknown) {
+    if (!value || typeof value !== "object" || !("id" in value)) return null;
+    const id = (value as { id?: unknown }).id;
+    return typeof id === "string" && id.length > 0 ? id : null;
+  }
+
+  private extractBackgroundStatus(value: unknown): BackgroundResponseStatus | null {
+    if (!value || typeof value !== "object" || !("status" in value)) return null;
+    const status = (value as { status?: unknown }).status;
+    return typeof status === "string" && BACKGROUND_RESPONSE_STATUSES.includes(
+      status as BackgroundResponseStatus,
+    )
+      ? status as BackgroundResponseStatus
+      : null;
+  }
+
+  private async waitForBackgroundPoll(
+    delayMs: number,
+    signal: AbortSignal | undefined,
+    deadlineAt: number,
+  ) {
+    const waitMs = Math.max(0, Math.min(delayMs, deadlineAt - Date.now()));
+    if (signal?.aborted) throw this.abortError();
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, waitMs);
+      const onAbort = () => {
+        clearTimeout(timeout);
+        signal?.removeEventListener("abort", onAbort);
+        reject(this.abortError());
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+    });
+  }
+
+  private abortError() {
+    const error = new Error("The operation was aborted");
+    error.name = "AbortError";
+    return error;
   }
 
   private extractUsage(value: unknown) {

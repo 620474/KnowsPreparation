@@ -90,6 +90,15 @@ export class ResearchAgentRunEntry {
   @Prop({ type: Number, default: 0 })
   leaseEpoch!: number;
 
+  @Prop({ type: MongooseSchema.Types.Mixed, default: null })
+  currentInvocation!: {
+    step: string;
+    responseId: string | null;
+    status: "creating" | "waiting";
+    model: string;
+    startedAt: Date;
+  } | null;
+
   @Prop({ type: String, default: null })
   applyOperationId!: string | null;
 

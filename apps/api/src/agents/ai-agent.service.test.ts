@@ -16,6 +16,21 @@ const respond = (data: unknown, sources: Array<{ title: string; url: string }> =
     ],
   }), { status: 200, headers: { "Content-Type": "application/json" } });
 
+const respondInBackground = (
+  responseId: string,
+  data: unknown,
+  status: "queued" | "in_progress" | "completed" | "cancelled" = "completed",
+) => new Response(JSON.stringify({
+  id: responseId,
+  status,
+  output: status === "completed"
+    ? [{
+        type: "message",
+        content: [{ type: "output_text", text: JSON.stringify(data) }],
+      }]
+    : [],
+}), { status: 200, headers: { "Content-Type": "application/json" } });
+
 const lesson = {
   goals: ["Понять очередь задач"],
   explanation: "Promise callbacks выполняются как microtasks.",
@@ -258,6 +273,91 @@ describe("AiAgentService", () => {
 
     expect(service.researchModelCostClass).toBe("sol");
     expect(service.researchReviewModelCostClass).toBe("standard");
+  });
+
+  it("creates a stored background response for durable research", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      respondInBackground("resp_research_1", {
+        protocol: researchProtocol,
+        searchQueries: ["websocket reconnect", "reconnect backoff"],
+      }),
+    );
+    const onResponseCreated = vi.fn(async () => undefined);
+
+    const result = await createService().planResearch({
+      title: "Reconnect",
+      decisionStatement: "Выбрать стратегию",
+      primaryQuestion: "Что устойчивее?",
+      scope: "WebSocket",
+      existingProtocol: researchProtocol,
+    }, undefined, "gpt-5.6-sol-test", {
+      background: {
+        responseId: null,
+        deadlineAt: Date.now() + 60_000,
+        metadata: { research_run_id: "run-1", research_step: "planning" },
+        onResponseCreated,
+        onTerminalFailure: vi.fn(async () => undefined),
+      },
+    });
+
+    expect(result.searchQueries).toHaveLength(2);
+    expect(onResponseCreated).toHaveBeenCalledWith("resp_research_1");
+    const requestBody = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body)) as {
+      background: boolean;
+      store: boolean;
+      metadata: Record<string, string>;
+    };
+    expect(requestBody).toMatchObject({
+      background: true,
+      store: true,
+      metadata: { research_run_id: "run-1", research_step: "planning" },
+    });
+  });
+
+  it("resumes an existing background response without creating a new one", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      respondInBackground("resp_research_2", {
+        protocol: researchProtocol,
+        searchQueries: ["websocket reconnect", "reconnect backoff"],
+      }),
+    );
+    const onResponseCreated = vi.fn(async () => undefined);
+
+    await createService().planResearch({
+      title: "Reconnect",
+      decisionStatement: "Выбрать стратегию",
+      primaryQuestion: "Что устойчивее?",
+      scope: "WebSocket",
+      existingProtocol: researchProtocol,
+    }, undefined, "gpt-5.6-sol-test", {
+      background: {
+        responseId: "resp_research_2",
+        deadlineAt: Date.now() + 60_000,
+        metadata: { research_run_id: "run-2", research_step: "planning" },
+        onResponseCreated,
+        onTerminalFailure: vi.fn(async () => undefined),
+      },
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      "https://api.openai.com/v1/responses/resp_research_2",
+    );
+    expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({ method: "GET" });
+    expect(onResponseCreated).not.toHaveBeenCalled();
+  });
+
+  it("cancels a remote background response", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      respondInBackground("resp_research_3", {}, "cancelled"),
+    );
+
+    await createService().cancelBackgroundResponse("resp_research_3");
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://api.openai.com/v1/responses/resp_research_3/cancel",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
   it("drops claim links that do not exist in collected evidence", async () => {

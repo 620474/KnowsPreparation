@@ -731,7 +731,10 @@ describe("Learning API", () => {
       searchQueries: ["websocket reconnect backoff", "websocket reconnect fixed delay"],
     });
     const discoverySpy = vi.spyOn(agents, "discoverResearchEvidence")
-      .mockRejectedValueOnce(new Error("temporary discovery failure"))
+      .mockImplementationOnce(async (_input, _signal, _model, execution) => {
+        await execution?.background?.onTerminalFailure("");
+        throw new Error("temporary discovery failure");
+      })
       .mockResolvedValueOnce({ evidence: [source], summary: "Backoff выглядит устойчивее", gaps: [] })
       .mockResolvedValueOnce({ evidence: [], summary: "Сильных опровержений нет", gaps: [] });
     const synthesisSpy = vi.spyOn(agents, "synthesizeResearch").mockResolvedValue({
