@@ -33,6 +33,7 @@ import { InterviewOutcomeV3Entry } from "./schemas/interview-outcome-v3.schema";
 import { ItemExposureEntry } from "./schemas/item-exposure.schema";
 import { ReadinessSnapshotV3Entry } from "./schemas/readiness-snapshot-v3.schema";
 import { TargetProfileService } from "./target-profile.service";
+import { EvidenceLedgerV10Service } from "./evidence-ledger-v10.service";
 
 const normalize = (value: string) => value.toLowerCase().replace(/[\s,;]+/g, "").trim();
 const average = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
@@ -49,6 +50,7 @@ export class VerificationV9Service {
     private readonly config: ConfigService,
     private readonly targets: TargetProfileService,
     private readonly learningMastery: MasteryV3Service,
+    private readonly evidenceLedger: EvidenceLedgerV10Service,
     @InjectModel(AssessmentEventV4Entry.name) private readonly events: Model<AssessmentEventV4Entry>,
     @InjectModel(ItemExposureEntry.name) private readonly exposures: Model<ItemExposureEntry>,
     @InjectModel(CheckpointSessionEntry.name) private readonly sessions: Model<CheckpointSessionEntry>,
@@ -103,7 +105,10 @@ export class VerificationV9Service {
     const session = await this.sessions.findOne({ sessionId }).lean().exec();
     if (!session) throw new NotFoundException("Контрольная сессия не найдена");
     if (session.status !== "active") return this.serializeSession(session);
-    if (session.activeLease) return this.serializeSession(session);
+    if (session.activeLease) {
+      await this.recordExposureEvent(session, session.activeLease.itemId, session.activeLease.leaseId, "viewed", session.activeLease.leaseId);
+      return this.serializeSession(session);
+    }
     const completed = new Set(session.attempts.map((attempt) => attempt.itemId));
     const nextId = session.currentItemId ?? session.reservedItemIds.find((itemId) => !completed.has(itemId));
     if (!nextId) return this.completeCheckpoint(sessionId);
@@ -134,6 +139,7 @@ export class VerificationV9Service {
       },
       { upsert: true },
     ).exec();
+    await this.recordExposureEvent(session, nextId, lease.leaseId, "viewed", lease.leaseId, now);
     return this.serializeSession(claimed);
   }
 
@@ -482,6 +488,12 @@ export class VerificationV9Service {
     eventId: string,
     result: CheckpointAttemptResult,
   ) {
+    const session = await this.sessions.findOne({ sessionId }).lean().exec();
+    const leaseId = session?.activeLease?.leaseId ?? null;
+    await Promise.all([
+      this.recordExposureEvent({ sessionId, targetId }, itemId, leaseId, "attempted", operationId),
+      this.recordExposureEvent({ sessionId, targetId }, itemId, leaseId, "answer_revealed", operationId),
+    ]);
     await Promise.all([
       this.sessions.updateOne(
         { sessionId, "attempts.operationId": { $ne: operationId } },
@@ -500,6 +512,28 @@ export class VerificationV9Service {
         },
       ).exec(),
     ]);
+  }
+
+  private async recordExposureEvent(
+    session: Pick<CheckpointSessionEntry, "sessionId" | "targetId">,
+    itemId: string,
+    leaseId: string | null,
+    eventType: "viewed" | "attempted" | "answer_revealed",
+    operationId: string,
+    occurredAt?: Date,
+  ) {
+    const manifest = this.requireManifest(itemId);
+    await this.evidenceLedger.record({
+      eventType,
+      operationId,
+      targetId: session.targetId,
+      sessionId: session.sessionId,
+      itemId,
+      leaseId,
+      manifest,
+      contentHash: this.manifestContentHash(manifest),
+      occurredAt,
+    });
   }
 
   private assertEnabled() {

@@ -10,6 +10,7 @@ export * from "./mastery-v2";
 export * from "./mastery-v3";
 export * from "./ai-observability";
 export * from "./verification-v9";
+export * from "./candidate-state-v10";
 export * from "./planning";
 export * from "./skills";
 

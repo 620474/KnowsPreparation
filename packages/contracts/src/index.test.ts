@@ -24,9 +24,26 @@ import {
   questionAttemptResultSchema,
   checkpointPublicItemSchema,
   interviewOutcomeV4InputSchema,
+  candidateStateV1Schema,
+  exposureEventV2Schema,
 } from "./index";
 
 describe("shared API contracts", () => {
+  it("validates append-only exposure events and candidate state", () => {
+    expect(exposureEventV2Schema.parse({
+      eventId: "event-1", operationId: "lease-1", schemaVersion: "2", targetId: "general",
+      sessionId: "session-1", itemId: "q-01", leaseId: "lease-1", eventType: "viewed",
+      conceptFamilyId: "event-loop", formFamilyId: "predict", contextFamilyId: "browser",
+      contentHash: "hash", occurredAt: "2026-09-03T08:00:00.000Z",
+    }).eventType).toBe("viewed");
+    expect(candidateStateV1Schema.parse({
+      version: "candidate-state-v1", targetId: "general", targetLabel: "Frontend", generatedAt: "2026-09-03T08:00:00.000Z",
+      readiness: { status: "uncertain", learningMastery: 20, verifiedTransferReadiness: 10, verifiedCoverage: 5, blockers: [], capabilities: [] },
+      evidence: { totalAssessments: 1, eligibleAssessments: 1, validAssessments: 1, latestAssessmentAt: "2026-09-03T08:00:00.000Z" },
+      exposure: { totalEvents: 3, uniqueItemsViewed: 1, attempts: 1, answersRevealed: 1, repeatedItemCount: 0, latestExposureAt: "2026-09-03T08:00:00.000Z" },
+      behavior: { averageConfidenceGap: 10, averageDurationMs: 1_000, averageRevisionCount: 1, interruptedAssessmentCount: 0 },
+    }).exposure.totalEvents).toBe(3);
+  });
   it("keeps checkpoint independence metadata private", () => {
     const item = checkpointPublicItemSchema.parse({
       itemId: "q-01", leaseId: "lease-1", leaseStartedAt: "2026-09-03T08:00:00.000Z",
