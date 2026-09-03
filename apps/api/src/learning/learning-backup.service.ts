@@ -48,6 +48,11 @@ import { ResearchEvidenceEntry } from "./schemas/research-evidence.schema";
 import { ResearchClaimEntry } from "./schemas/research-claim.schema";
 import { ResearchAgentRunEntry } from "../research/schemas/research-agent-run.schema";
 import { ResearchActionEntry } from "../research/schemas/research-action.schema";
+import { AssessmentEventV4Entry } from "./schemas/assessment-event-v4.schema";
+import { CheckpointSessionEntry } from "./schemas/checkpoint-session.schema";
+import { ItemExposureEntry } from "./schemas/item-exposure.schema";
+import { ReadinessSnapshotV3Entry } from "./schemas/readiness-snapshot-v3.schema";
+import { InterviewOutcomeV3Entry } from "./schemas/interview-outcome-v3.schema";
 
 @Injectable()
 export class LearningBackupService {
@@ -92,6 +97,11 @@ export class LearningBackupService {
     private readonly readinessSnapshotV2Model: Model<ReadinessSnapshotV2Entry>,
     @InjectModel(ReadinessOutcomeV2Entry.name)
     private readonly readinessOutcomeV2Model: Model<ReadinessOutcomeV2Entry>,
+    @InjectModel(AssessmentEventV4Entry.name) private readonly assessmentEventV4Model: Model<AssessmentEventV4Entry>,
+    @InjectModel(CheckpointSessionEntry.name) private readonly checkpointSessionV1Model: Model<CheckpointSessionEntry>,
+    @InjectModel(ItemExposureEntry.name) private readonly itemExposureV1Model: Model<ItemExposureEntry>,
+    @InjectModel(ReadinessSnapshotV3Entry.name) private readonly readinessSnapshotV3Model: Model<ReadinessSnapshotV3Entry>,
+    @InjectModel(InterviewOutcomeV3Entry.name) private readonly interviewOutcomeV3Model: Model<InterviewOutcomeV3Entry>,
     @InjectModel(MockInterview.name)
     private readonly mockInterviewModel: Model<MockInterview>,
     @InjectModel(InterviewSession.name)
@@ -153,6 +163,11 @@ export class LearningBackupService {
       targetProfilesV2,
       readinessSnapshotsV2,
       readinessOutcomesV2,
+      assessmentEventsV4,
+      checkpointSessionsV1,
+      itemExposuresV1,
+      readinessSnapshotsV3,
+      interviewOutcomesV3,
       aiQuizProgresses,
       mockInterviews,
       interviewSessions,
@@ -194,6 +209,11 @@ export class LearningBackupService {
       this.targetProfileV2Model.find().lean().exec(),
       this.readinessSnapshotV2Model.find().lean().exec(),
       this.readinessOutcomeV2Model.find().lean().exec(),
+      this.assessmentEventV4Model.find().lean().exec(),
+      this.checkpointSessionV1Model.find().lean().exec(),
+      this.itemExposureV1Model.find().lean().exec(),
+      this.readinessSnapshotV3Model.find().lean().exec(),
+      this.interviewOutcomeV3Model.find().lean().exec(),
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
       this.interviewSessionModel.find().lean().exec(),
@@ -241,6 +261,11 @@ export class LearningBackupService {
         targetProfilesV2,
         readinessSnapshotsV2,
         readinessOutcomesV2,
+        assessmentEventsV4,
+        checkpointSessionsV1,
+        itemExposuresV1,
+        readinessSnapshotsV3,
+        interviewOutcomesV3,
         aiQuizProgresses,
         mockInterviews,
         interviewSessions,
@@ -346,6 +371,11 @@ export class LearningBackupService {
         this.readinessOutcomeV2Model,
         backup.data.readinessOutcomesV2,
       ),
+      assessmentEventsV4: await this.validateRecords(this.assessmentEventV4Model, backup.data.assessmentEventsV4),
+      checkpointSessionsV1: await this.validateRecords(this.checkpointSessionV1Model, backup.data.checkpointSessionsV1),
+      itemExposuresV1: await this.validateRecords(this.itemExposureV1Model, backup.data.itemExposuresV1),
+      readinessSnapshotsV3: await this.validateRecords(this.readinessSnapshotV3Model, backup.data.readinessSnapshotsV3),
+      interviewOutcomesV3: await this.validateRecords(this.interviewOutcomeV3Model, backup.data.interviewOutcomesV3),
       mockInterviews: await this.validateRecords(
         this.mockInterviewModel,
         backup.data.mockInterviews,
@@ -533,6 +563,11 @@ export class LearningBackupService {
         prepared.readinessOutcomesV2,
         (record) => ({ outcomeId: record.outcomeId }),
       ),
+      this.mergeRecords(this.assessmentEventV4Model, prepared.assessmentEventsV4, (record) => ({ operationId: record.operationId })),
+      this.mergeRecords(this.checkpointSessionV1Model, prepared.checkpointSessionsV1, (record) => ({ sessionId: record.sessionId })),
+      this.mergeRecords(this.itemExposureV1Model, prepared.itemExposuresV1, (record) => ({ itemId: record.itemId })),
+      this.mergeRecords(this.readinessSnapshotV3Model, prepared.readinessSnapshotsV3, (record) => ({ snapshotId: record.snapshotId })),
+      this.mergeRecords(this.interviewOutcomeV3Model, prepared.interviewOutcomesV3, (record) => ({ outcomeId: record.outcomeId })),
       this.mergeRecords(
         this.mockInterviewModel,
         prepared.mockInterviews,

@@ -99,11 +99,25 @@ export class EvidenceV3Service {
   async recordNative(event: AssessmentEventV3) {
     if (!this.isWriteEnabled()) return null;
     const parsed = assessmentEventV3Schema.parse(event);
-    await this.eventModel.updateOne(
-      { operationId: parsed.operationId },
-      { $set: { ...parsed, occurredAt: new Date(parsed.occurredAt) } },
-      { upsert: true },
-    ).exec();
+    const existing = await this.eventModel.findOne({ operationId: parsed.operationId }).lean().exec();
+    if (existing) {
+      const normalized = assessmentEventV3Schema.parse({
+        ...existing,
+        occurredAt: new Date(existing.occurredAt).toISOString(),
+      });
+      return normalized.eventId;
+    }
+    try {
+      await this.eventModel.create({ ...parsed, occurredAt: new Date(parsed.occurredAt) });
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+      const raced = await this.eventModel.findOne({ operationId: parsed.operationId }).lean().exec();
+      const normalized = raced && assessmentEventV3Schema.parse({
+        ...raced,
+        occurredAt: new Date(raced.occurredAt).toISOString(),
+      });
+      if (!normalized) throw error;
+    }
     return parsed.eventId;
   }
 

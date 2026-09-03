@@ -152,7 +152,6 @@ export function AppViewContent({
         onOpenMock={() => navigateToView("interview")}
         onOpenReview={() => navigateToView("review")}
         onOpenResearch={() => navigateToResearchProject(null)}
-        onOpenSkills={() => navigateToSkill(null)}
         onOpenMission={navigateToMission}
         onOpenAdaptiveItem={openAdaptiveItem}
       />

@@ -30,7 +30,7 @@
 | **Interview Gym** | Сессии на 5/10 минут, 30 проверяемых задач, QuickJS и автоматическое планирование повторений |
 | **Собеседования** | Adaptive Interview Director, Exam mode без AI, голосовые ответы, live coding и итоговый отчёт |
 | **Skill Graph** | 40+ versioned навыков, Evidence v3, Bayesian mastery и отдельные design/transfer/resilience |
-| **Decision Loop v8** | До трёх действий с максимальным снижением риска для выбранной компании или вакансии |
+| **Verified Readiness v9** | Hidden Checkpoint отделяет обучение от независимой проверки и учитывает exposure, уверенность и перенос |
 | **Аналитика** | Evidence readiness отделена от вероятности пройти интервью; forecast включается только после калибровки |
 | **Исследования** | Проекты, evidence matrix, автономный поиск, citation audit, противоречия и действия |
 | **Поиск работы** | Воронка вакансий, follow-up, недельные KPI, интервью, конверсия и карьерная стратегия |
@@ -103,6 +103,10 @@ Mastery считается воспроизводимо: старые резул
 Quiz, practice, interview и Transfer Lab создают native `AssessmentResultV2` и `EvidenceEventV2` с criterion-level оценками; старые события проецируются с явным `legacy_projection`. Mastery v2 учитывает обязательные, но ещё не проверенные capabilities через coverage и широкую uncertainty-полосу, а каждое новое состояние сохраняется историческим snapshot.
 
 Evidence v3 дополнительно разделяет задание, его версию, семейство концепта, форму и контекст. Повтор одной формы не создаёт ложную уверенность; process telemetry фиксирует время, запуски, ошибки тестов и число правок. Mastery v3 воспроизводится из immutable-событий и хранит posterior, доверительный диапазон и покрытие отдельно по `recall/explain/apply/debug/code/design/defend/transfer/resilience`.
+
+Verified Transfer Readiness v9 добавляет отдельный слой контрольных evidence. Экран «Сегодня» запускает online-authoritative checkpoint и получает только одно текущее задание; будущие формы, эталоны и runner tests не отправляются клиенту. Ответ после проверки получает eligibility `eligible`, `exposed` или `repeated`, поэтому знакомая либо подсмотренная форма остаётся полезной для обучения, но не способна подтвердить готовность.
+
+API `/api/v3` хранит append-only `AssessmentEventV4`, историю exposure, confidence-before-result и process telemetry. Capability становится `verified` только после двух независимых форм без AI и подсказок. Learning Mastery, Verified Transfer Readiness и экспериментальный Interview Forecast отображаются как разные показатели. Decision Loop v9 возвращает максимум два действия и может честно сообщить, что на сегодня достаточно.
 
 Цель можно выбрать готовую — общий Frontend, Яндекс или Ozon — либо создать из текста вакансии. Decision Loop v8 ранжирует пробелы по нижней границе mastery и предлагает максимум три действия: диагностику, интервенцию, параллельную перепроверку, перенос в новый контекст или контрольный экзамен.
 
@@ -300,6 +304,10 @@ Workflow `.github/workflows/ci.yml` запускает typecheck, lint, тест
    INTERVIEW_V3_ENABLED=true
    PLANNER_V8_ENABLED=true
    READINESS_V8_ENABLED=true
+   CHECKPOINT_V9_ENABLED=true
+   EVIDENCE_V4_DUAL_WRITE=true
+   READINESS_V9_EXPOSE=true
+   DECISION_V9_ENABLED=true
    ```
 
 6. Настройте проверки контейнера:

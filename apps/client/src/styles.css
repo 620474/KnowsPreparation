@@ -4001,6 +4001,28 @@ p {
   white-space: pre-wrap;
 }
 
+.verified-readiness-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid rgba(107, 245, 176, 0.4);
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--surface-overlay), color-mix(in srgb, var(--accent) 8%, var(--surface)));
+}
+
+.verified-readiness-card h2,
+.verified-readiness-card p { margin: 4px 0; }
+
+.checkpoint-question,
+.checkpoint-complete { display: grid; gap: 18px; }
+
+@media (max-width: 720px) {
+  .verified-readiness-card { grid-template-columns: 1fr; }
+  .verified-readiness-card > button { width: 100%; }
+}
+
 .analytics-stat-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }

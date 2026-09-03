@@ -35,6 +35,10 @@ import {
   researchAgentRunSchema,
   researchActionSchema,
   yandexPlatformMockAttemptSchema,
+  checkpointAttemptResultSchema,
+  checkpointSessionV1Schema,
+  decisionPlanV9Schema,
+  readinessV9Schema,
 } from "@prep/contracts";
 import { z } from "zod";
 import {
@@ -119,6 +123,10 @@ import type {
   ReadinessSnapshotV2,
   SkillDetailV3,
   TargetProfileV2,
+  CheckpointAttemptResult,
+  CheckpointSessionV1,
+  DecisionPlanV9,
+  ReadinessV9,
 } from "./types";
 import { SseParser } from "./lib/sse";
 
@@ -149,6 +157,10 @@ export function getApiV2Url() {
   return getApiUrl().replace(/\/v1$/, "/v2");
 }
 
+export function getApiV3Url() {
+  return getApiUrl().replace(/\/v1$/, "/v3");
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -168,6 +180,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 async function requestV2<T>(path: string, init: RequestInit = {}): Promise<T> {
   return requestFrom<T>(getApiV2Url(), path, init);
+}
+
+async function requestV3<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return requestFrom<T>(getApiV3Url(), path, init);
 }
 
 async function requestFrom<T>(baseUrl: string, path: string, init: RequestInit = {}): Promise<T> {
@@ -394,6 +410,25 @@ export const learningApi = {
     requestV2<AiObservabilitySummary>(
       `/learning/ai/observability?days=${days}`,
     ).then((result) => aiObservabilitySummarySchema.parse(result)),
+  getReadinessV9: (targetId = "general") =>
+    requestV3<ReadinessV9>(`/learning/readiness?targetId=${encodeURIComponent(targetId)}`)
+      .then((result) => readinessV9Schema.parse(result)),
+  getDecisionPlanV9: (targetId = "general", availableMinutes = 60) =>
+    requestV3<DecisionPlanV9>(`/learning/decision/today?targetId=${encodeURIComponent(targetId)}&availableMinutes=${availableMinutes}`)
+      .then((result) => decisionPlanV9Schema.parse(result)),
+  createCheckpointV9: (targetId: string, availableMinutes: number) =>
+    requestV3<CheckpointSessionV1>("/learning/checkpoints", { method: "POST", body: JSON.stringify({ targetId, availableMinutes }) })
+      .then((result) => checkpointSessionV1Schema.parse(result)),
+  nextCheckpointItemV9: (sessionId: string) =>
+    requestV3<CheckpointSessionV1>(`/learning/checkpoints/${encodeURIComponent(sessionId)}/next`, { method: "POST" })
+      .then((result) => checkpointSessionV1Schema.parse(result)),
+  submitCheckpointAttemptV9: (sessionId: string, input: {
+    operationId: string; answer: string; explanation?: string; selectedOptionIndex?: number;
+    confidenceBefore: number; confidenceAfter?: number; durationMs: number;
+    runCount?: number; failedTestCount?: number; revisionCount?: number;
+    networkInterrupted?: boolean; deviceClass?: "mobile" | "desktop" | "unknown";
+  }) => requestV3<CheckpointAttemptResult>(`/learning/checkpoints/${encodeURIComponent(sessionId)}/attempts`, { method: "POST", body: JSON.stringify(input) })
+    .then((result) => checkpointAttemptResultSchema.parse(result)),
   listResearchProjects: () =>
     request<ResearchProject[]>("/learning/research/projects").then((projects) =>
       projects.map((project) => researchProjectSchema.parse(project)),

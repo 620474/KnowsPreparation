@@ -136,6 +136,42 @@ export class SubmitTransferAssessmentDto {
   operationId!: string;
 }
 
+export class CreateCheckpointV9Dto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  targetId = "general";
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  @Max(60)
+  availableMinutes!: number;
+}
+
+export class SubmitCheckpointAttemptV9Dto {
+  @IsString() @MinLength(1) @MaxLength(80) operationId!: string;
+  @IsString() @MinLength(1) @MaxLength(50_000) answer!: string;
+  @IsOptional() @IsString() @MaxLength(8_000) explanation?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) selectedOptionIndex?: number;
+  @Type(() => Number) @IsInt() @Min(0) @Max(100) confidenceBefore!: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100) confidenceAfter?: number;
+  @Type(() => Number) @IsInt() @Min(0) @Max(3_600_000) durationMs!: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) runCount = 0;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) failedTestCount = 0;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) revisionCount = 0;
+  @IsOptional() @IsBoolean() networkInterrupted = false;
+  @IsOptional() @IsIn(["mobile", "desktop", "unknown"]) deviceClass: "mobile" | "desktop" | "unknown" = "unknown";
+}
+
+export class RecordInterviewOutcomeV3Dto {
+  @IsString() @MinLength(1) @MaxLength(80) operationId!: string;
+  @IsString() @MinLength(1) @MaxLength(80) snapshotId!: string;
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(12) sections!: Array<Record<string, unknown>>;
+  @IsOptional() @IsString() @MaxLength(4_000) notes?: string;
+  @IsDateString({ strict: true }) occurredAt!: string;
+}
+
 export class ImportBackupDto {
   @IsObject()
   backup!: Record<string, unknown>;

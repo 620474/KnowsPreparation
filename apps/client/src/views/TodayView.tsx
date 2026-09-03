@@ -26,6 +26,7 @@ import { getDateForOffset, getDayForOffset, getStudyPosition, getWeekForDay } fr
 import { buildReviewQueue } from "../lib/review-queue";
 import { RESEARCH_PROJECTS_QUERY_KEY } from "../lib/research";
 import type { AdaptivePlanCheckIn, AdaptivePlanItem, BootstrapData, SkillKey } from "../types";
+import { VerifiedCheckpointCard } from "../components/VerifiedCheckpointCard";
 
 interface TodayViewProps {
   data: BootstrapData;
@@ -36,7 +37,6 @@ interface TodayViewProps {
   onOpenReview: () => void;
   onOpenAdaptiveItem: (item: AdaptivePlanItem) => void;
   onOpenResearch: () => void;
-  onOpenSkills: () => void;
   onOpenMission: (missionId: string) => void;
 }
 
@@ -69,7 +69,6 @@ export function TodayView({
   onOpenReview,
   onOpenAdaptiveItem,
   onOpenResearch,
-  onOpenSkills,
   onOpenMission,
 }: TodayViewProps) {
   const researchProjects = useQuery({
@@ -91,14 +90,6 @@ export function TodayView({
     ? checkIn.focus
     : "general";
   const missions = useTodayMissions(knowledgeTarget);
-  const knowledge = useQuery({
-    queryKey: ["knowledge-overview-v3", knowledgeTarget],
-    queryFn: () => learningApi.getKnowledgeOverviewV3(knowledgeTarget),
-  });
-  const decisionPlan = useQuery({
-    queryKey: ["decision-plan-v8", knowledgeTarget, checkIn.availableMinutes],
-    queryFn: () => learningApi.getDecisionPlanV8(knowledgeTarget, checkIn.availableMinutes),
-  });
   const position = getStudyPosition(data.settings.startDate);
   const day = getDayForOffset(data.curriculum, position.rawOffset);
   const week = getWeekForDay(data.curriculum, day);
@@ -208,50 +199,7 @@ export function TodayView({
         </div>
       </section>
 
-      {knowledge.data ? (
-        <button className="today-readiness-card" type="button" onClick={onOpenSkills}>
-          <Target size={26} />
-          <div>
-            <span>Готовность · {knowledge.data.readiness.targetLabel}</span>
-            <strong>{Math.round(knowledge.data.readiness.evidenceReadiness.index)}%</strong>
-            <small>
-              диапазон {Math.round(knowledge.data.readiness.evidenceReadiness.lower)}–{Math.round(knowledge.data.readiness.evidenceReadiness.upper)}% ·
-              покрытие {Math.round(knowledge.data.readiness.evidenceReadiness.coverage)}%
-            </small>
-          </div>
-          <ArrowRight size={20} />
-        </button>
-      ) : null}
-
-      {decisionPlan.data?.actions.length ? (
-        <section className="today-missions-panel">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Decision Loop v8 · до трёх действий</p>
-              <h2>Что сильнее всего снизит риск</h2>
-              <p>План строится по нижней границе навыка, разнообразию форм и контекстов.</p>
-            </div>
-            <Route size={28} />
-          </div>
-          <div className="today-mission-list">
-            {decisionPlan.data.actions.map((action) => (
-              <button
-                key={action.actionId}
-                type="button"
-                onClick={action.kind === "stress_exam" ? onOpenMock : onOpenSkills}
-              >
-                <span className="mission-state">{action.estimatedMinutes} минут · {action.kind.replaceAll("_", " ")}</span>
-                <strong>{action.title}</strong>
-                <small>{action.reason}</small>
-                <span className="today-mission-link">
-                  {action.kind === "stress_exam" ? "Начать экзамен" : "Открыть доказательства"}
-                  <ArrowRight size={15} />
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <VerifiedCheckpointCard targetId={knowledgeTarget} availableMinutes={checkIn.availableMinutes} />
 
       {missions.data?.enabled && missions.data.missions.length ? (
         <section className="today-missions-panel">

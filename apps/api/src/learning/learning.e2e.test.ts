@@ -273,6 +273,52 @@ describe("Learning API", () => {
     expect(observability.body).toMatchObject({ windowDays: 30, totalCalls: 0 });
   });
 
+  it("runs a server-authoritative v9 checkpoint without leaking future items", async () => {
+    const created = await request(app.getHttpServer())
+      .post("/api/v3/learning/checkpoints")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ targetId: "general", availableMinutes: 6 })
+      .expect(201);
+    expect(created.body).toMatchObject({ status: "active", totalItems: 2, completedItems: 0, currentItem: null });
+    expect(created.body.reservedItemIds).toBeUndefined();
+
+    const first = await request(app.getHttpServer())
+      .post(`/api/v3/learning/checkpoints/${created.body.sessionId}/next`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(201);
+    expect(first.body.currentItem).toMatchObject({ itemId: "q-01" });
+    expect(first.body.currentItem.expectedAnswer).toBeUndefined();
+    expect(first.body.currentItem.exercise.runner).toBeUndefined();
+
+    const attempt = await request(app.getHttpServer())
+      .post(`/api/v3/learning/checkpoints/${created.body.sessionId}/attempts`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        operationId: "checkpoint-v9-attempt-1",
+        answer: "A,G,C,F,D,E,B",
+        explanation: "Сначала sync, затем очередь микрозадач и timer.",
+        confidenceBefore: 80,
+        confidenceAfter: 90,
+        durationMs: 45_000,
+        deviceClass: "desktop",
+      })
+      .expect(201);
+    expect(attempt.body).toMatchObject({ passed: true, score: 100, verificationEligibility: "eligible" });
+
+    const readiness = await request(app.getHttpServer())
+      .get("/api/v3/learning/readiness?targetId=general")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(readiness.body).toMatchObject({ version: "verified-transfer-v1", targetId: "general", status: "not_ready" });
+    expect(readiness.body.capabilities.some((item: { eligibleEvidenceCount: number }) => item.eligibleEvidenceCount > 0)).toBe(true);
+
+    const decision = await request(app.getHttpServer())
+      .get("/api/v3/learning/decision/today?targetId=general&availableMinutes=60")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(decision.body.actions.length).toBeLessThanOrEqual(2);
+  });
+
   it("stores only the Terra-reviewed lesson and its metadata", async () => {
     const track = getStaticTrack("yandex");
     const itemId = track.days[0]?.blocks.find((block) => block.kind !== "review")?.id;

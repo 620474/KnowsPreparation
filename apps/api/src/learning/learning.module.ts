@@ -13,6 +13,7 @@ import { LearningBootstrapService } from "./learning-bootstrap.service";
 import { LearningCleanupService } from "./learning-cleanup.service";
 import { LearningController } from "./learning.controller";
 import { LearningV2Controller } from "./learning-v2.controller";
+import { LearningV3Controller } from "./learning-v3.controller";
 import { LearningService } from "./learning.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { LearningMissionService } from "./learning-mission.service";
@@ -128,6 +129,12 @@ import { ReadinessSnapshotV2Entry, ReadinessSnapshotV2EntrySchema } from "./sche
 import { ReadinessOutcomeV2Entry, ReadinessOutcomeV2EntrySchema } from "./schemas/readiness-outcome-v2.schema";
 import { AiInvocationEntry, AiInvocationEntrySchema } from "./schemas/ai-invocation.schema";
 import { AiObservabilityService } from "./ai-observability.service";
+import { VerificationV9Service } from "./verification-v9.service";
+import { AssessmentEventV4Entry, AssessmentEventV4EntrySchema } from "./schemas/assessment-event-v4.schema";
+import { CheckpointSessionEntry, CheckpointSessionEntrySchema } from "./schemas/checkpoint-session.schema";
+import { ItemExposureEntry, ItemExposureEntrySchema } from "./schemas/item-exposure.schema";
+import { ReadinessSnapshotV3Entry, ReadinessSnapshotV3EntrySchema } from "./schemas/readiness-snapshot-v3.schema";
+import { InterviewOutcomeV3Entry, InterviewOutcomeV3EntrySchema } from "./schemas/interview-outcome-v3.schema";
 
 @Module({
   imports: [
@@ -164,6 +171,11 @@ import { AiObservabilityService } from "./ai-observability.service";
       { name: ReadinessSnapshotV2Entry.name, schema: ReadinessSnapshotV2EntrySchema },
       { name: ReadinessOutcomeV2Entry.name, schema: ReadinessOutcomeV2EntrySchema },
       { name: AiInvocationEntry.name, schema: AiInvocationEntrySchema },
+      { name: AssessmentEventV4Entry.name, schema: AssessmentEventV4EntrySchema },
+      { name: CheckpointSessionEntry.name, schema: CheckpointSessionEntrySchema },
+      { name: ItemExposureEntry.name, schema: ItemExposureEntrySchema },
+      { name: ReadinessSnapshotV3Entry.name, schema: ReadinessSnapshotV3EntrySchema },
+      { name: InterviewOutcomeV3Entry.name, schema: InterviewOutcomeV3EntrySchema },
       { name: AiQuizProgress.name, schema: AiQuizProgressSchema },
       { name: MockInterview.name, schema: MockInterviewSchema },
       { name: InterviewSession.name, schema: InterviewSessionSchema },
@@ -174,7 +186,7 @@ import { AiObservabilityService } from "./ai-observability.service";
       },
     ]),
   ],
-  controllers: [LearningController, LearningV2Controller],
+  controllers: [LearningController, LearningV2Controller, LearningV3Controller],
   providers: [
     AiContentService,
     AdaptivePlanService,
@@ -192,6 +204,7 @@ import { AiObservabilityService } from "./ai-observability.service";
     TargetProfileService,
     DecisionV8Service,
     AiObservabilityService,
+    VerificationV9Service,
     LearningSignalService,
     LearningMissionService,
     ReadinessCalibrationService,
