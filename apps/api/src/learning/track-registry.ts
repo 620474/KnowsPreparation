@@ -2,7 +2,9 @@ import { NotFoundException } from "@nestjs/common";
 import { TRACK_KEYS, type TrackKey } from "@prep/contracts";
 
 import { CURRICULUM, type StudyBlock, type StudyDay } from "./curriculum";
+import { AVITO_SPRINT, AVITO_SPRINT_AI_KEY, AVITO_SPRINT_AI_VERSION } from "./avito-sprint";
 import { OZON_SPRINT, OZON_SPRINT_AI_KEY, OZON_SPRINT_AI_VERSION } from "./ozon-sprint";
+import { TBANK_SPRINT, TBANK_SPRINT_AI_KEY, TBANK_SPRINT_AI_VERSION } from "./tbank-sprint";
 import {
   YANDEX_SPRINT,
   YANDEX_SPRINT_AI_KEY,
@@ -102,6 +104,38 @@ export const STATIC_TRACKS = {
     },
     missingItemMessage: "Тема Ozon-спринта не найдена",
     saveLessonError: "Не удалось сохранить разбор темы Ozon",
+  },
+  avito: {
+    key: "avito",
+    courseKey: AVITO_SPRINT_AI_KEY,
+    courseVersion: AVITO_SPRINT_AI_VERSION,
+    days: AVITO_SPRINT,
+    chatGoal: "пройти frontend-собеседование в Avito",
+    lessonPrompt: {
+      name: "avito_frontend_interview_lesson",
+      role: "Ты сильный frontend-инженер, готовящий кандидата к интервью в Avito.",
+      program: "Подготовь самостоятельный урок на русском языке по текущему блоку 12-дневного Avito-спринта.",
+      note: "Ориентируй материал на Programming, Platform, Design и защиту сложности; не выдавай примеры задач за реальные вопросы компании.",
+      targetCompany: "Avito",
+    },
+    missingItemMessage: "Тема Avito-спринта не найдена",
+    saveLessonError: "Не удалось сохранить разбор темы Avito",
+  },
+  tbank: {
+    key: "tbank",
+    courseKey: TBANK_SPRINT_AI_KEY,
+    courseVersion: TBANK_SPRINT_AI_VERSION,
+    days: TBANK_SPRINT,
+    chatGoal: "пройти frontend-собеседование в Т-Банке",
+    lessonPrompt: {
+      name: "tbank_frontend_interview_lesson",
+      role: "Ты сильный frontend-инженер, готовящий кандидата к интервью в Т-Банке.",
+      program: "Подготовь самостоятельный урок на русском языке по текущему блоку 10-дневного спринта Т-Банка.",
+      note: "Ориентируй материал на language/framework, algorithms, architecture и team matching; не выдавай учебные аналоги за реальные вопросы компании.",
+      targetCompany: "Т-Банк",
+    },
+    missingItemMessage: "Тема спринта Т-Банка не найдена",
+    saveLessonError: "Не удалось сохранить разбор темы Т-Банка",
   },
 } satisfies Record<StaticTrackKey, StaticTrackDefinition>;
 

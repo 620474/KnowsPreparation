@@ -8,6 +8,8 @@ export type AppView =
   | "career"
   | "yandex"
   | "ozon"
+  | "avito"
+  | "tbank"
   | "ai-course"
   | "plan"
   | "resources"
@@ -26,7 +28,7 @@ export interface LessonRouteTarget {
   itemId: string;
 }
 
-export type DayTrackKey = Extract<TrackKey, "curriculum" | "yandex" | "ozon">;
+export type DayTrackKey = Extract<TrackKey, "curriculum" | "yandex" | "ozon" | "avito" | "tbank">;
 
 export interface DayRouteTarget {
   track: DayTrackKey;
@@ -53,6 +55,8 @@ const viewPaths: Record<AppView, string> = {
   career: "career",
   yandex: "yandex",
   ozon: "ozon",
+  avito: "avito",
+  tbank: "tbank",
   "ai-course": "ai",
   plan: "plan",
   resources: "resources",
@@ -77,6 +81,8 @@ const trackViews = {
   curriculum: "plan",
   yandex: "yandex",
   ozon: "ozon",
+  avito: "avito",
+  tbank: "tbank",
 } satisfies Record<TrackKey, AppView>;
 
 const viewTracks = Object.fromEntries(
@@ -86,7 +92,7 @@ const viewTracks = Object.fromEntries(
 export const trackForView = (view: AppView): TrackKey | undefined => viewTracks[view];
 
 const isDayTrack = (track: TrackKey | undefined): track is DayTrackKey =>
-  track === "curriculum" || track === "yandex" || track === "ozon";
+  track === "curriculum" || track === "yandex" || track === "ozon" || track === "avito" || track === "tbank";
 
 const decodeItemId = (value: string) => {
   try {

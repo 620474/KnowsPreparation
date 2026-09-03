@@ -14,6 +14,7 @@ export function OzonSprintView(props: OzonSprintViewProps) {
       eyebrow="Ozon · React-transfer · 14 дней"
       sprintDays={props.data.ozonSprint}
       track="ozon"
+      priorityLabel="React-transfer"
       title="Ozon: React-transfer"
       weekTitles={["JavaScript и асинхронность", "Браузер, перенос React-знаний и мок"]}
     />

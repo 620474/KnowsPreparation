@@ -18,6 +18,8 @@ const data: BootstrapData = {
   curriculum: [],
   yandexSprint: [],
   ozonSprint: [],
+  avitoSprint: [],
+  tbankSprint: [],
   resources: [],
   questions: [
     { id: "q-js", number: 1, category: "JavaScript", prompt: "JS" },
@@ -63,7 +65,7 @@ const data: BootstrapData = {
     enabled: true,
     model: "test-model",
     course: null,
-    lessons: { course: {}, curriculum: {}, yandex: {}, ozon: {} },
+    lessons: { course: {}, curriculum: {}, yandex: {}, ozon: {}, avito: {}, tbank: {} },
 
 
     quizProgress: {
@@ -91,8 +93,10 @@ const data: BootstrapData = {
       curriculum: {},
       yandex: {},
       ozon: {},
+      avito: {},
+      tbank: {},
     },
-    practiceProgress: { course: {}, curriculum: {}, yandex: {}, ozon: {} },
+    practiceProgress: { course: {}, curriculum: {}, yandex: {}, ozon: {}, avito: {}, tbank: {} },
   },
 };
 

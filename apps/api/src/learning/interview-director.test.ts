@@ -49,6 +49,26 @@ describe("interview director policy", () => {
     })).toMatchObject({ action: "move_on", forced: true, reason: "depth_limit" });
   });
 
+  it("uses the company-specific follow-up depth", () => {
+    expect(reduceInterviewAction({
+      state: { ...state, depth: 4 },
+      proposal,
+      kind: "training",
+      secondsRemaining: 900,
+      hasNextQuestion: true,
+      companyPolicy: {
+        sectionWeights: { platform: 1, coding: 1, architecture: 1, defense: 1 },
+        requireComplexityDefense: false,
+        requireCodeDefense: true,
+        allowChangingRequirements: true,
+        systemDesignMode: "optional",
+        maxFollowUpDepth: 4,
+        targetDurationMinutes: 90,
+        vacancyConditionalSkills: [],
+      },
+    })).toMatchObject({ action: "move_on", forced: true, reason: "depth_limit" });
+  });
+
   it("blocks solution-like hints in exam mode", () => {
     expect(reduceInterviewAction({
       state,

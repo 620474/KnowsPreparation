@@ -20,7 +20,7 @@ export const questionStatusSchema = z.enum(["new", "learning", "review", "master
 export const reviewRatingSchema = z.enum(["again", "hard", "good", "easy"]);
 export const difficultySchema = z.enum(["easy", "medium", "hard"]);
 export const aiLevelSchema = z.enum(["middle", "middle-plus", "senior"]);
-export const TRACK_KEYS = ["course", "curriculum", "yandex", "ozon"] as const;
+export const TRACK_KEYS = ["course", "curriculum", "yandex", "ozon", "avito", "tbank"] as const;
 export const trackKeySchema = z.enum(TRACK_KEYS);
 export type TrackKey = z.infer<typeof trackKeySchema>;
 export const SKILL_KEYS = [
@@ -1612,6 +1612,8 @@ export const bootstrapContentSchema = z.object({
   curriculum: z.array(studyWeekSchema),
   yandexSprint: z.array(studyDaySchema),
   ozonSprint: z.array(studyDaySchema),
+  avitoSprint: z.array(studyDaySchema),
+  tbankSprint: z.array(studyDaySchema),
   resources: z.array(learningResourceSchema),
   questions: z.array(interviewQuestionSchema),
   algorithmPatterns: z.array(z.string()),

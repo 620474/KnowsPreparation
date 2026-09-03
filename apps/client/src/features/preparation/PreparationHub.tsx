@@ -15,9 +15,11 @@ interface PreparationHubProps {
   data: BootstrapData;
   onOpenInterview: () => void;
   onOpenCareer: () => void;
+  onOpenAvito: () => void;
   onOpenOzon: () => void;
   onOpenPlan: () => void;
   onOpenYandex: () => void;
+  onOpenTBank: () => void;
 }
 
 interface TrackDay {
@@ -41,12 +43,16 @@ export function PreparationHub({
   data,
   onOpenInterview,
   onOpenCareer,
+  onOpenAvito,
   onOpenOzon,
   onOpenPlan,
   onOpenYandex,
+  onOpenTBank,
 }: PreparationHubProps) {
   const yandex = summarizeTrack(data.yandexSprint, data.progress.tasks);
   const ozon = summarizeTrack(data.ozonSprint, data.progress.tasks);
+  const avito = summarizeTrack(data.avitoSprint, data.progress.tasks);
+  const tbank = summarizeTrack(data.tbankSprint, data.progress.tasks);
   const curriculum = summarizeTrack(
     data.curriculum.flatMap((week) => week.days),
     data.progress.tasks,
@@ -108,6 +114,24 @@ export function PreparationHub({
       </section>
 
       <section className="section-hub-secondary-grid">
+        <button type="button" className="section-hub-link-card" onClick={onOpenAvito}>
+          <Building2 />
+          <span>
+            <small>12-дневный спринт · {avito.percent}%</small>
+            <strong>Avito</strong>
+            <span>Programming, Platform, Design и защита сложности</span>
+          </span>
+          <ArrowRight />
+        </button>
+        <button type="button" className="section-hub-link-card" onClick={onOpenTBank}>
+          <Building2 />
+          <span>
+            <small>10-дневный спринт · {tbank.percent}%</small>
+            <strong>Т-Банк</strong>
+            <span>Language/framework, algorithms и architecture</span>
+          </span>
+          <ArrowRight />
+        </button>
         <button type="button" className="section-hub-link-card" onClick={onOpenCareer}>
           <BriefcaseBusiness />
           <span>

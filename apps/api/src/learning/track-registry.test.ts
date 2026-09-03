@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CURRICULUM, TASK_IDS } from "./curriculum";
+import { runPracticeSolution } from "./generated-runner";
 import {
   CURRICULUM_DAYS,
   findStaticTrackByCourse,
@@ -13,9 +14,9 @@ import {
 } from "./track-registry";
 
 describe("track registry", () => {
-  it("exposes four tracks with unique course keys", () => {
-    expect(TRACK_KEYS).toEqual(["course", "curriculum", "yandex", "ozon"]);
-    expect(STATIC_TRACK_LIST).toHaveLength(3);
+  it("exposes all tracks with unique course keys", () => {
+    expect(TRACK_KEYS).toEqual(["course", "curriculum", "yandex", "ozon", "avito", "tbank"]);
+    expect(STATIC_TRACK_LIST).toHaveLength(5);
     expect(new Set(STATIC_TRACK_LIST.map((track) => track.courseKey)).size).toBe(
       STATIC_TRACK_LIST.length,
     );
@@ -55,6 +56,21 @@ describe("track registry", () => {
       expect(findStaticTrackByCourse(track.courseKey, track.courseVersion)?.key).toBe(
         track.key,
       );
+    }
+  });
+
+  it("keeps new company runners executable and unsolved", async () => {
+    for (const trackKey of ["avito", "tbank"] as const) {
+      const runners = STATIC_TRACK_LIST
+        .find((track) => track.key === trackKey)
+        ?.days.flatMap((day) => day.blocks)
+        .flatMap((block) => block.exercise?.runner ? [block.exercise.runner] : []) ?? [];
+      expect(runners.length).toBeGreaterThan(0);
+      for (const runner of runners) {
+        const result = await runPracticeSolution(runner, runner.starterCode, 2_000);
+        expect(result.error).toBeNull();
+        expect(result.passed).toBe(false);
+      }
     }
   });
 

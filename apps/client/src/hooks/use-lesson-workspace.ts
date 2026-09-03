@@ -48,6 +48,8 @@ function collectTrackItems(data: BootstrapData): Record<TrackKey, TrackItem[]> {
     ),
     yandex: collectDayItems(data.yandexSprint, "Яндекс"),
     ozon: collectDayItems(data.ozonSprint, "Ozon"),
+    avito: collectDayItems(data.avitoSprint, "Avito"),
+    tbank: collectDayItems(data.tbankSprint, "Т-Банк"),
   };
 }
 

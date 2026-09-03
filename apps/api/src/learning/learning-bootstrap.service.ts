@@ -35,6 +35,8 @@ const STATIC_CONTENT = {
   curriculum: CURRICULUM,
   yandexSprint: getStaticTrack("yandex").days,
   ozonSprint: getStaticTrack("ozon").days,
+  avitoSprint: getStaticTrack("avito").days,
+  tbankSprint: getStaticTrack("tbank").days,
   resources: RESOURCES,
   questions: QUESTION_BANK,
   algorithmPatterns: ALGORITHM_PATTERNS,

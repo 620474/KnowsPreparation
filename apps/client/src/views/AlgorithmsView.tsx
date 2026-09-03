@@ -35,7 +35,12 @@ export function AlgorithmsView({
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [solvedAt, setSolvedAt] = useState(dateToInputValue());
   const [note, setNote] = useState("");
-  const practiceTasks = getPracticeTasks(data.yandexSprint, data.ozonSprint);
+  const practiceTasks = getPracticeTasks(
+    data.yandexSprint,
+    data.ozonSprint,
+    data.avitoSprint,
+    data.tbankSprint,
+  );
   const completedPracticeTasks = practiceTasks.filter(
     (task) => data.progress.tasks[task.id]?.completed,
   ).length;

@@ -7,13 +7,15 @@ import {
 } from "./bootstrap";
 import type { BootstrapContent, BootstrapProgress } from "../types";
 
-const emptyTrackRecord = { course: {}, curriculum: {}, yandex: {}, ozon: {} };
+const emptyTrackRecord = { course: {}, curriculum: {}, yandex: {}, ozon: {}, avito: {}, tbank: {} };
 
 const content: BootstrapContent = {
   contentVersion: "content-v1",
   curriculum: [],
   yandexSprint: [],
   ozonSprint: [],
+  avitoSprint: [],
+  tbankSprint: [],
   resources: [],
   questions: [],
   algorithmPatterns: [],
@@ -59,6 +61,8 @@ describe("bootstrap payloads", () => {
       "curriculum",
       "yandex",
       "ozon",
+      "avito",
+      "tbank",
     ]);
   });
 

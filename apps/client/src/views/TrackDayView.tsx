@@ -16,10 +16,9 @@ import {
 
 import { ResourceLinks } from "../components/ResourceLinks";
 import { TaskWorkspace } from "../components/TaskWorkspace";
+import type { DayTrackKey } from "../lib/app-route";
 import { getDateForOffset } from "../lib/date";
-import type { BootstrapData, StudyDay, TaskUpdateHandler, TrackKey } from "../types";
-
-type DayTrackKey = Extract<TrackKey, "curriculum" | "yandex" | "ozon">;
+import type { BootstrapData, StudyDay, TaskUpdateHandler } from "../types";
 
 interface TrackDayViewProps {
   data: BootstrapData;

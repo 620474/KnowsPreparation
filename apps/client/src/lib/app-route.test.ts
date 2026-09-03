@@ -17,6 +17,8 @@ describe("app routes", () => {
     ["career", "#/career"],
     ["yandex", "#/yandex"],
     ["ozon", "#/ozon"],
+    ["avito", "#/avito"],
+    ["tbank", "#/tbank"],
     ["ai-course", "#/ai"],
     ["plan", "#/plan"],
     ["resources", "#/resources"],
@@ -54,6 +56,8 @@ describe("app routes", () => {
     ["plan", "curriculum", "w02-d03"],
     ["yandex", "yandex", "yandex-d03"],
     ["ozon", "ozon", "ozon-d03"],
+    ["avito", "avito", "avito-d03"],
+    ["tbank", "tbank", "tbank-d03"],
   ] as const)("round-trips a %s day and its lesson", (view, track, dayId) => {
     const dayRoute = {
       view,
@@ -81,6 +85,8 @@ describe("app routes", () => {
     expect(viewForTrack("curriculum")).toBe("plan");
     expect(viewForTrack("yandex")).toBe("yandex");
     expect(viewForTrack("ozon")).toBe("ozon");
+    expect(viewForTrack("avito")).toBe("avito");
+    expect(viewForTrack("tbank")).toBe("tbank");
   });
 
   it("round-trips a Yandex platform mock route", () => {

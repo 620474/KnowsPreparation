@@ -48,6 +48,12 @@ const InterviewSimulatorView = lazy(() =>
 const OzonSprintView = lazy(() =>
   import("../../views/OzonSprintView").then((module) => ({ default: module.OzonSprintView })),
 );
+const AvitoSprintView = lazy(() =>
+  import("../../views/AvitoSprintView").then((module) => ({ default: module.AvitoSprintView })),
+);
+const TBankSprintView = lazy(() =>
+  import("../../views/TBankSprintView").then((module) => ({ default: module.TBankSprintView })),
+);
 const PlanView = lazy(() =>
   import("../../views/PlanView").then((module) => ({ default: module.PlanView })),
 );
@@ -183,11 +189,13 @@ export function AppViewContent({
     return (
       <PreparationHub
         data={data}
+        onOpenAvito={() => navigateToView("avito")}
         onOpenCareer={() => navigateToView("career")}
         onOpenInterview={() => navigateToView("interview")}
         onOpenOzon={() => navigateToView("ozon")}
         onOpenPlan={() => navigateToView("plan")}
         onOpenYandex={() => navigateToView("yandex")}
+        onOpenTBank={() => navigateToView("tbank")}
       />
     );
   }
@@ -274,6 +282,60 @@ export function AppViewContent({
 
   if (activeView === "ozon") {
     return <OzonSprintView data={data} onOpenDay={(dayId) => navigateToTrackDay("ozon", dayId)} />;
+  }
+
+  if (activeView === "avito" && dayReader?.track === "avito") {
+    return (
+      <TrackDayView
+        key={dayReader.dayId}
+        data={data}
+        dayId={dayReader.dayId}
+        days={data.avitoSprint}
+        track="avito"
+        trackLabel="Avito"
+        generatingLessonId={generatingLesson?.track === "avito" ? generatingLesson.itemId : null}
+        generationCharacters={generationProgress?.track === "avito" ? generationProgress.characters : 0}
+        onBack={() => navigateToView("avito")}
+        onGenerateLesson={(blockId) => { setError(""); generateLesson("avito", blockId); }}
+        onOpenChat={openChat}
+        onOpenDay={(dayId) => navigateToTrackDay("avito", dayId)}
+        onOpenLesson={(blockId) => openLessonReader("avito", blockId)}
+        onOpenQuiz={(blockId) => openLessonReader("avito", blockId, true)}
+        onReviewSolution={openChatWithDraft}
+        onUpdateTask={updateTask}
+      />
+    );
+  }
+
+  if (activeView === "avito") {
+    return <AvitoSprintView data={data} onOpenDay={(dayId) => navigateToTrackDay("avito", dayId)} />;
+  }
+
+  if (activeView === "tbank" && dayReader?.track === "tbank") {
+    return (
+      <TrackDayView
+        key={dayReader.dayId}
+        data={data}
+        dayId={dayReader.dayId}
+        days={data.tbankSprint}
+        track="tbank"
+        trackLabel="Т-Банк"
+        generatingLessonId={generatingLesson?.track === "tbank" ? generatingLesson.itemId : null}
+        generationCharacters={generationProgress?.track === "tbank" ? generationProgress.characters : 0}
+        onBack={() => navigateToView("tbank")}
+        onGenerateLesson={(blockId) => { setError(""); generateLesson("tbank", blockId); }}
+        onOpenChat={openChat}
+        onOpenDay={(dayId) => navigateToTrackDay("tbank", dayId)}
+        onOpenLesson={(blockId) => openLessonReader("tbank", blockId)}
+        onOpenQuiz={(blockId) => openLessonReader("tbank", blockId, true)}
+        onReviewSolution={openChatWithDraft}
+        onUpdateTask={updateTask}
+      />
+    );
+  }
+
+  if (activeView === "tbank") {
+    return <TBankSprintView data={data} onOpenDay={(dayId) => navigateToTrackDay("tbank", dayId)} />;
   }
 
   if (activeView === "ai-course") {

@@ -39,6 +39,8 @@ const preparationViews: AppView[] = [
   "career",
   "yandex",
   "ozon",
+  "avito",
+  "tbank",
   "plan",
   "interview",
   "mock-interview",

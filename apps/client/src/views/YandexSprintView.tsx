@@ -20,7 +20,8 @@ interface YandexSprintViewProps {
   title?: string;
   description?: string;
   weekTitles?: string[];
-  track?: Extract<TrackKey, "yandex" | "ozon">;
+  track?: Extract<TrackKey, "yandex" | "ozon" | "avito" | "tbank">;
+  priorityLabel?: string;
   onOpenDay: (dayId: string) => void;
 }
 
@@ -38,6 +39,7 @@ export function YandexSprintView({
   description = "Иди по дням с начала: платформа, задачи, AI-секция и короткий разбор результата.",
   weekTitles = WEEK_TITLES,
   track = "yandex",
+  priorityLabel = track === "yandex" ? "Приоритет №1" : "Компания",
   onOpenDay,
 }: YandexSprintViewProps) {
   const sprintDays = providedSprintDays ?? data.yandexSprint ?? [];
@@ -65,7 +67,7 @@ export function YandexSprintView({
       <section className="hero-grid today-hero-grid">
         <div className="hero-card today-hero-card">
           <div className="hero-topline">
-            <span className="status-pill"><Target size={15} /> {track === "yandex" ? "Приоритет №1" : "Приоритет №2"}</span>
+            <span className="status-pill"><Target size={15} /> {priorityLabel}</span>
             <span>{Math.round(totalMinutes / 60)} часов</span>
           </div>
           <p className="eyebrow">{eyebrow}</p>

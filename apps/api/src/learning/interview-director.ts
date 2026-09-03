@@ -5,6 +5,7 @@ import type {
   InterviewerAction,
 } from "@prep/contracts";
 import { createHash } from "node:crypto";
+import type { CompanyInterviewPolicy } from "./company-interview-policy";
 
 export const INTERVIEW_POLICY_VERSION = "interview-director-v3";
 export const MAX_INTERVIEW_DEPTH = 5;
@@ -25,6 +26,7 @@ export interface InterviewPolicyInput {
   kind: InterviewSessionKind;
   secondsRemaining: number;
   hasNextQuestion: boolean;
+  companyPolicy?: CompanyInterviewPolicy;
 }
 
 export interface InterviewPolicyDecision extends InterviewActionProposal {
@@ -103,8 +105,10 @@ export function reduceInterviewAction({
   kind,
   secondsRemaining,
   hasNextQuestion,
+  companyPolicy,
 }: InterviewPolicyInput): InterviewPolicyDecision {
-  if (secondsRemaining <= 90 || state.depth >= MAX_INTERVIEW_DEPTH) {
+  const maxDepth = companyPolicy?.maxFollowUpDepth ?? MAX_INTERVIEW_DEPTH;
+  if (secondsRemaining <= 90 || state.depth >= maxDepth) {
     return {
       ...proposal,
       action: "move_on",

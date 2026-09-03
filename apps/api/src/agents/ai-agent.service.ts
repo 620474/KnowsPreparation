@@ -28,6 +28,7 @@ import { z } from "zod";
 import type { Model } from "mongoose";
 
 import { extractResponseText, type GeneratedLesson } from "../learning/ai-course";
+import type { CompanyInterviewPolicy } from "../learning/company-interview-policy";
 import type { InterviewActionProposal } from "../learning/interview-director";
 import { createOpenAiAbortContext, isAbortError } from "../learning/openai-request";
 import { AiInvocationEntry } from "../learning/schemas/ai-invocation.schema";
@@ -849,6 +850,7 @@ export class AiAgentService {
     claimLedger?: Array<{ normalizedClaim: string; contradictedBy: string[] }>;
     capabilityCoverage?: Array<{ capability: string; observed: number; target: number; uncertainty: number }>;
     unresolvedGaps?: string[];
+    companyPolicy?: CompanyInterviewPolicy;
   }): Promise<InterviewActionProposal> {
     const evaluator = getEvaluatorDescriptor("interviewDirector");
     const response = await this.request(
@@ -860,6 +862,7 @@ export class AiAgentService {
         "Сначала оцени последний ответ кандидата, затем выбери ровно одно следующее действие.",
         "probe уточняет пробел; challenge проверяет обоснование; counterexample просит разобрать контрпример; change_constraint меняет ограничение; request_code просит короткий код; request_tradeoff проверяет компромиссы; move_on завершает ветку.",
         "Не раскрывай правильный ответ, решение или конкретную подсказку. Вопрос должен проверять понимание, а не угадывание.",
+        "Следуй companyPolicy: учитывай веса секций, обязательность защиты кода и сложности, глубину follow-up и systemDesignMode. vacancyConditionalSkills проверяй только когда они подтверждены vacancyContext.",
         "nextQuestionId разрешено указывать только при move_on и только из candidateQuestions.",
         `Версия evaluator: ${evaluator.evaluatorVersion}; schema: ${evaluator.schemaVersion}.`,
         "Пиши по-русски.",

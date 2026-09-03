@@ -32,7 +32,10 @@ export function projectAssessmentV2ToV3(
     operationId: assessment.operationId,
     schemaVersion: ASSESSMENT_EVENT_V3_VERSION,
     ontologyVersion: SKILL_ONTOLOGY_VERSION,
-    targetId: assessment.source.track === "yandex" || assessment.source.track === "ozon"
+    targetId: assessment.source.track === "yandex" ||
+      assessment.source.track === "ozon" ||
+      assessment.source.track === "avito" ||
+      assessment.source.track === "tbank"
       ? assessment.source.track
       : null,
     source: {

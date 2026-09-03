@@ -560,12 +560,16 @@ describe("Learning API", () => {
       "curriculum",
       "yandex",
       "ozon",
+      "avito",
+      "tbank",
     ]);
     expect(Object.keys(progressResponse.body.ai.quizProgress)).toEqual([
       "course",
       "curriculum",
       "yandex",
       "ozon",
+      "avito",
+      "tbank",
     ]);
 
     await request(app.getHttpServer())

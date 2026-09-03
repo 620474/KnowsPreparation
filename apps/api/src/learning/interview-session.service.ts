@@ -20,6 +20,7 @@ import { isValidObjectId, type Model } from "mongoose";
 import { AiAgentService, type InterviewAnswerAssessment } from "../agents/ai-agent.service";
 import { CareerApplicationEntry } from "../career/schemas/career-application.schema";
 import { AiContentService, type AiDeltaHandler } from "./ai-content.service";
+import { getCompanyInterviewPolicy } from "./company-interview-policy";
 import { EvidenceV3Service } from "./evidence/evidence-v3.service";
 import type {
   SendInterviewAiMessageDto,
@@ -265,6 +266,7 @@ export class InterviewSessionService {
     await this.assertStage(interview, "platform");
 
     const state = interview.conversationState;
+    const companyPolicy = getCompanyInterviewPolicy(interview.company);
     const item = interview.platformItems.find(
       (candidate) => candidate.question.id === state.questionId,
     );
@@ -329,6 +331,7 @@ export class InterviewSessionService {
           })),
           capabilityCoverage: state.capabilityCoverage,
           unresolvedGaps: state.unresolvedGaps,
+          companyPolicy,
         });
       } catch (error) {
         this.logFallback("director_action", error);
@@ -352,6 +355,7 @@ export class InterviewSessionService {
         Math.ceil(((interview.deadlineAt?.getTime() ?? Date.now()) - Date.now()) / 1_000),
       ),
       hasNextQuestion: Boolean(nextQuestion),
+      companyPolicy,
     });
     let branchAssessment = {
       score: decision.score,

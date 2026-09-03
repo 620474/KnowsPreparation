@@ -2,8 +2,8 @@ import type { StudyBlock, StudyDay, StudyExercise, TrackKey } from "../types";
 
 export interface PracticeTask {
   id: string;
-  source: "Яндекс" | "Ozon";
-  track: Extract<TrackKey, "yandex" | "ozon">;
+  source: "Яндекс" | "Ozon" | "Avito" | "Т-Банк";
+  track: Extract<TrackKey, "yandex" | "ozon" | "avito" | "tbank">;
   dayNumber: number;
   dayTitle: string;
   block: StudyBlock & { exercise: StudyExercise };
@@ -31,9 +31,16 @@ const collectPracticeTasks = (
     ),
   );
 
-export function getPracticeTasks(yandexSprint: StudyDay[], ozonSprint: StudyDay[]) {
+export function getPracticeTasks(
+  yandexSprint: StudyDay[],
+  ozonSprint: StudyDay[],
+  avitoSprint: StudyDay[] = [],
+  tbankSprint: StudyDay[] = [],
+) {
   return [
     ...collectPracticeTasks("Яндекс", "yandex", yandexSprint),
     ...collectPracticeTasks("Ozon", "ozon", ozonSprint),
+    ...collectPracticeTasks("Avito", "avito", avitoSprint),
+    ...collectPracticeTasks("Т-Банк", "tbank", tbankSprint),
   ];
 }
