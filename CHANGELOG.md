@@ -1,3 +1,5 @@
+## [8.2.0](https://github.com/620474/KnowsPreparation/compare/v8.1.0...v8.2.0) (2026-09-03)
+
 ## [8.1.0](https://github.com/620474/KnowsPreparation/compare/v8.0.1...v8.1.0) (2026-09-03)
 
 ## [8.0.1](https://github.com/620474/KnowsPreparation/compare/v8.0.0...v8.0.1) (2026-09-02)
