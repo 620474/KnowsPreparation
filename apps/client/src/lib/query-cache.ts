@@ -4,7 +4,7 @@ import {
   type DehydratedState,
   type QueryClient,
 } from "@tanstack/react-query";
-import { TRACK_KEYS } from "@prep/contracts";
+import { bootstrapDataSchema, TRACK_KEYS } from "@prep/contracts";
 
 import { isOfflineMutationKey } from "./offline-mutation-keys";
 import { openClientDatabase, QUERY_CACHE_STORE } from "./client-database";
@@ -76,20 +76,33 @@ const migrateMutationVariables = (variables: unknown) => {
 export function migratePersistedQueryCache(
   cache: PersistedQueryCache,
 ): PersistedQueryCache {
-  if (cache.version === CACHE_VERSION) return cache;
+  const hasInvalidBootstrap = cache.state.queries.some(
+    (query) =>
+      query.queryKey[0] === "bootstrap" &&
+      !bootstrapDataSchema.safeParse(query.state.data).success,
+  );
+  if (cache.version === CACHE_VERSION && !hasInvalidBootstrap) return cache;
+
+  const versionChanged = cache.version !== CACHE_VERSION;
   return {
     version: CACHE_VERSION,
     timestamp: cache.timestamp,
     state: {
       ...cache.state,
-      queries: cache.state.queries.filter((query) => query.queryKey[0] !== "bootstrap"),
-      mutations: cache.state.mutations.map((mutation) => ({
-        ...mutation,
-        state: {
-          ...mutation.state,
-          variables: migrateMutationVariables(mutation.state.variables),
-        },
-      })),
+      queries: cache.state.queries.filter(
+        (query) =>
+          query.queryKey[0] !== "bootstrap" ||
+          bootstrapDataSchema.safeParse(query.state.data).success,
+      ),
+      mutations: versionChanged
+        ? cache.state.mutations.map((mutation) => ({
+            ...mutation,
+            state: {
+              ...mutation.state,
+              variables: migrateMutationVariables(mutation.state.variables),
+            },
+          }))
+        : cache.state.mutations,
     },
   };
 }

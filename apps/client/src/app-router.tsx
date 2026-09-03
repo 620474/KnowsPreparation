@@ -1,6 +1,7 @@
 import { Navigate, createHashRouter } from "react-router-dom";
 
 import App from "./App";
+import { AppRouteError } from "./components/AppErrorBoundary";
 
 const applicationPaths = [
   "today",
@@ -46,6 +47,7 @@ export const appRouter = createHashRouter([
   { path: "/", element: <Navigate replace to="/today" /> },
   {
     element: <App />,
+    errorElement: <AppRouteError />,
     children: applicationPaths.map((path) => ({ path })),
   },
   { path: "*", element: <Navigate replace to="/today" /> },

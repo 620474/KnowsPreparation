@@ -47,4 +47,23 @@ describe("query cache", () => {
       itemId: "item-1",
     });
   });
+
+  it("drops an incompatible bootstrap from the current cache version", () => {
+    const cache = {
+      version: 2,
+      timestamp: Date.UTC(2026, 8, 3),
+      state: {
+        queries: [
+          { queryKey: ["bootstrap"], state: { data: { curriculum: [] } } },
+          { queryKey: ["ai-chat", "yandex", "item-1"], state: { data: {} } },
+        ],
+        mutations: [],
+      },
+    } as unknown as PersistedQueryCache;
+
+    const migrated = migratePersistedQueryCache(cache);
+
+    expect(migrated.state.queries).toHaveLength(1);
+    expect(migrated.state.queries[0]?.queryKey[0]).toBe("ai-chat");
+  });
 });

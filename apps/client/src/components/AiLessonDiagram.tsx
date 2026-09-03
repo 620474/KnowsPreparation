@@ -1,7 +1,12 @@
 import { Modal } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { useId, useState } from "react";
-import { Maximize2, Workflow } from "lucide-react";
+import {
+  useId,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { ArrowLeft, Maximize2, Workflow } from "lucide-react";
 
 import { createDiagramLayout } from "../lib/ai-diagram";
 import type { DiagramLayout } from "../lib/ai-diagram";
@@ -158,6 +163,15 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
   const isMobile = useMediaQuery("(max-width: 820px)");
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(diagram.nodes[0]?.id ?? "");
+  const panRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
   const selectedNode =
     diagram.nodes.find((node) => node.id === selectedNodeId) ?? diagram.nodes[0];
   const askAboutSelectedNode = () => {
@@ -166,6 +180,44 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
       section: `Схема «${diagram.title}»: ${selectedNode.label}`,
       excerpt: selectedNode.detail,
     });
+  };
+  const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    panRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+      moved: false,
+    };
+    suppressClickRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const continuePan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - pan.startX;
+    const deltaY = event.clientY - pan.startY;
+    if (!pan.moved && Math.hypot(deltaX, deltaY) < 6) return;
+    pan.moved = true;
+    event.preventDefault();
+    event.currentTarget.scrollLeft = pan.scrollLeft - deltaX;
+    event.currentTarget.scrollTop = pan.scrollTop - deltaY;
+  };
+  const stopPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+    suppressClickRef.current = pan.moved;
+    if (pan.moved) {
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+    }
+    panRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   };
 
   return (
@@ -222,7 +274,19 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
         zIndex={100}
         onClose={() => setIsExpanded(false)}
       >
-        <div className="ai-diagram-expanded-scroll">
+        <div
+          className="ai-diagram-expanded-scroll"
+          onClickCapture={(event) => {
+            if (!suppressClickRef.current) return;
+            suppressClickRef.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onPointerCancel={stopPan}
+          onPointerDown={startPan}
+          onPointerMove={continuePan}
+          onPointerUp={stopPan}
+        >
           <DiagramCanvas
             layout={layout}
             markerId={`${markerId}-expanded`}
@@ -243,6 +307,16 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
                 : undefined
             }
           />
+        ) : null}
+        {isMobile ? (
+          <button
+            className="ai-diagram-mobile-close"
+            type="button"
+            onClick={() => setIsExpanded(false)}
+          >
+            <ArrowLeft aria-hidden="true" size={18} />
+            Вернуться к уроку
+          </button>
         ) : null}
       </Modal>
     </>

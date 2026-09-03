@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type UIEvent } from "react";
 import { Alert, Badge, Button } from "@mantine/core";
 import {
   AlertTriangle,
@@ -82,6 +82,10 @@ export function AiLessonReader({
   onSubmitQuiz,
 }: AiLessonReaderProps) {
   const quizRef = useRef<HTMLDivElement>(null);
+  const [toolbarHidden, setToolbarHidden] = useState(false);
+  const scrollPositionRef = useRef(0);
+  const scrollDirectionRef = useRef<"up" | "down">("down");
+  const scrollDistanceRef = useRef(0);
   const sourceIssues = lesson.sourceVerificationIssues ?? [];
   const criticalSourceIssues = sourceIssues.filter((issue) => issue.severity === "critical");
   const sourceWarnings = sourceIssues.filter((issue) => issue.severity === "warning");
@@ -94,8 +98,37 @@ export function AiLessonReader({
     return () => window.cancelAnimationFrame(animationFrame);
   }, [focusQuiz, lesson.version]);
 
+  const handleReaderScroll = (event: UIEvent<HTMLElement>) => {
+    const scrollTop = event.currentTarget.scrollTop;
+    const delta = scrollTop - scrollPositionRef.current;
+    const direction = delta > 0 ? "down" : delta < 0 ? "up" : scrollDirectionRef.current;
+
+    if (direction !== scrollDirectionRef.current) {
+      scrollDirectionRef.current = direction;
+      scrollDistanceRef.current = 0;
+    }
+    scrollDistanceRef.current += Math.abs(delta);
+    scrollPositionRef.current = scrollTop;
+
+    if (scrollTop <= 24) {
+      setToolbarHidden(false);
+      scrollDistanceRef.current = 0;
+    } else if (direction === "down" && scrollDistanceRef.current >= 28) {
+      setToolbarHidden(true);
+      scrollDistanceRef.current = 0;
+    } else if (direction === "up" && scrollDistanceRef.current >= 14) {
+      setToolbarHidden(false);
+      scrollDistanceRef.current = 0;
+    }
+  };
+
   return (
-    <div aria-label={`Урок: ${title}`} aria-modal="true" className="ai-lesson-reader" role="dialog">
+    <div
+      aria-label={`Урок: ${title}`}
+      aria-modal="true"
+      className={`ai-lesson-reader${toolbarHidden ? " is-toolbar-hidden" : ""}`}
+      role="dialog"
+    >
       <header className="ai-lesson-reader-toolbar">
         <Button
           className="secondary-button"
@@ -132,7 +165,7 @@ export function AiLessonReader({
         </div>
       </header>
 
-      <main className="ai-lesson-reader-scroll">
+      <main className="ai-lesson-reader-scroll" onScroll={handleReaderScroll}>
         <div className="ai-lesson-reader-content">
           {error ? (
             <Alert

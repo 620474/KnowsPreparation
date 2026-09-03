@@ -3159,7 +3159,18 @@ p {
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-color: rgba(124, 156, 255, 0.45) transparent;
-  touch-action: pan-x pan-y;
+  cursor: grab;
+  touch-action: none;
+  -webkit-overflow-scrolling: touch;
+  user-select: none;
+}
+
+.ai-diagram-expanded-scroll:active {
+  cursor: grabbing;
+}
+
+.ai-diagram-mobile-close {
+  display: none;
 }
 
 .ai-diagram-svg--expanded {
@@ -5208,15 +5219,31 @@ p {
   }
 
   .ai-diagram-modal-content {
+    display: flex;
+    height: 100dvh;
     border: 0;
     border-radius: 0;
+    flex-direction: column;
+  }
+
+  .ai-diagram-modal-header {
+    min-height: calc(60px + env(safe-area-inset-top));
+    padding-top: calc(12px + env(safe-area-inset-top));
+    flex: 0 0 auto;
+  }
+
+  .ai-diagram-modal-header .mantine-Modal-close {
+    width: 44px;
+    height: 44px;
   }
 
   .ai-diagram-modal-body {
     display: flex;
-    height: calc(100dvh - 60px);
+    height: auto;
     max-height: none;
+    min-height: 0;
     overflow: hidden;
+    flex: 1 1 auto;
     flex-direction: column;
   }
 
@@ -5233,10 +5260,40 @@ p {
     flex: 0 0 auto;
   }
 
+  .ai-diagram-mobile-close {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    color: var(--text-strong);
+    background: var(--surface-input);
+    font: inherit;
+    font-weight: 850;
+    flex: 0 0 auto;
+  }
+
   .ai-lesson-reader-toolbar {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 10px;
     padding-inline: 12px;
+  }
+
+  .ai-lesson-reader.is-toolbar-hidden {
+    grid-template-rows: 0 minmax(0, 1fr);
+  }
+
+  .ai-lesson-reader.is-toolbar-hidden .ai-lesson-reader-toolbar {
+    min-height: 0;
+    overflow: hidden;
+    border-bottom-width: 0;
+    padding-block: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-100%);
   }
 
   .ai-lesson-reader-actions {
