@@ -3175,6 +3175,7 @@ p {
 
 .ai-diagram-svg--expanded {
   max-width: none;
+  transform-origin: top left;
 }
 
 .ai-diagram-svg marker path {

@@ -10,7 +10,17 @@ import { ArrowLeft, Maximize2, Workflow } from "lucide-react";
 
 import { createDiagramLayout } from "../lib/ai-diagram";
 import type { DiagramLayout } from "../lib/ai-diagram";
+import {
+  calculateAnchoredScroll,
+  calculatePinchZoom,
+  gestureDistance,
+  gestureMidpoint,
+  type GesturePoint,
+} from "../lib/pinch-zoom";
 import type { AiDiagram, AiDiagramNode, AiLessonQuestionContext } from "../types";
+
+const MINIMUM_DIAGRAM_ZOOM = 0.6;
+const MAXIMUM_DIAGRAM_ZOOM = 3;
 
 interface AiLessonDiagramProps {
   diagram: AiDiagram;
@@ -41,6 +51,7 @@ interface DiagramCanvasProps {
   layout: DiagramLayout;
   markerId: string;
   mode: "preview" | "expanded";
+  zoom?: number;
   selectedNodeId?: string;
   onNodeSelect?: (nodeId: string) => void;
 }
@@ -49,6 +60,7 @@ function DiagramCanvas({
   layout,
   markerId,
   mode,
+  zoom = 1,
   selectedNodeId,
   onNodeSelect,
 }: DiagramCanvasProps) {
@@ -60,7 +72,12 @@ function DiagramCanvas({
       preserveAspectRatio="xMidYMid meet"
       style={{
         aspectRatio: `${layout.width} / ${layout.height}`,
-        ...(isExpanded ? { minWidth: layout.width } : undefined),
+        ...(isExpanded
+          ? {
+              minWidth: layout.width * zoom,
+              width: `${zoom * 100}%`,
+            }
+          : undefined),
       }}
       viewBox={`0 0 ${layout.width} ${layout.height}`}
     >
@@ -162,7 +179,10 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
   const layout = createDiagramLayout(diagram);
   const isMobile = useMediaQuery("(max-width: 820px)");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
   const [selectedNodeId, setSelectedNodeId] = useState(diagram.nodes[0]?.id ?? "");
+  const pointersRef = useRef(new Map<number, GesturePoint>());
   const panRef = useRef<{
     pointerId: number;
     startX: number;
@@ -170,6 +190,13 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
     scrollLeft: number;
     scrollTop: number;
     moved: boolean;
+  } | null>(null);
+  const pinchRef = useRef<{
+    startDistance: number;
+    startZoom: number;
+    startMidpoint: GesturePoint;
+    startScrollLeft: number;
+    startScrollTop: number;
   } | null>(null);
   const suppressClickRef = useRef(false);
   const selectedNode =
@@ -181,8 +208,55 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
       excerpt: selectedNode.detail,
     });
   };
+  const resetGesture = () => {
+    pointersRef.current.clear();
+    panRef.current = null;
+    pinchRef.current = null;
+    suppressClickRef.current = false;
+    zoomRef.current = 1;
+    setZoom(1);
+  };
+  const openExpanded = () => {
+    resetGesture();
+    setIsExpanded(true);
+  };
+  const closeExpanded = () => {
+    setIsExpanded(false);
+    resetGesture();
+  };
+  const startPinch = (container: HTMLDivElement) => {
+    const points = [...pointersRef.current.values()];
+    if (points.length < 2) return false;
+    const first = points[0]!;
+    const second = points[1]!;
+    const midpoint = gestureMidpoint(first, second);
+    const bounds = container.getBoundingClientRect();
+    pinchRef.current = {
+      startDistance: gestureDistance(first, second),
+      startZoom: zoomRef.current,
+      startMidpoint: {
+        x: midpoint.x - bounds.left,
+        y: midpoint.y - bounds.top,
+      },
+      startScrollLeft: container.scrollLeft,
+      startScrollTop: container.scrollTop,
+    };
+    panRef.current = null;
+    return true;
+  };
   const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    pointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (pointersRef.current.size >= 2) {
+      startPinch(event.currentTarget);
+      suppressClickRef.current = true;
+      event.preventDefault();
+      return;
+    }
     panRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -192,9 +266,56 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
       moved: false,
     };
     suppressClickRef.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
   };
   const continuePan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+    const pinch = pinchRef.current;
+    if (pinch && pointersRef.current.size >= 2) {
+      const points = [...pointersRef.current.values()];
+      const first = points[0]!;
+      const second = points[1]!;
+      const midpoint = gestureMidpoint(first, second);
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const viewportMidpoint = {
+        x: midpoint.x - bounds.left,
+        y: midpoint.y - bounds.top,
+      };
+      const nextZoom = calculatePinchZoom(
+        pinch.startZoom,
+        pinch.startDistance,
+        gestureDistance(first, second),
+        MINIMUM_DIAGRAM_ZOOM,
+        MAXIMUM_DIAGRAM_ZOOM,
+      );
+      const nextScrollLeft = calculateAnchoredScroll(
+        pinch.startScrollLeft,
+        pinch.startMidpoint.x,
+        viewportMidpoint.x,
+        pinch.startZoom,
+        nextZoom,
+      );
+      const nextScrollTop = calculateAnchoredScroll(
+        pinch.startScrollTop,
+        pinch.startMidpoint.y,
+        viewportMidpoint.y,
+        pinch.startZoom,
+        nextZoom,
+      );
+      const container = event.currentTarget;
+      zoomRef.current = nextZoom;
+      setZoom(nextZoom);
+      suppressClickRef.current = true;
+      event.preventDefault();
+      window.requestAnimationFrame(() => {
+        container.scrollLeft = nextScrollLeft;
+        container.scrollTop = nextScrollTop;
+      });
+      return;
+    }
     const pan = panRef.current;
     if (!pan || pan.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - pan.startX;
@@ -206,6 +327,29 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
     event.currentTarget.scrollTop = pan.scrollTop - deltaY;
   };
   const stopPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    if (pinchRef.current) {
+      pinchRef.current = null;
+      suppressClickRef.current = true;
+      const remaining = [...pointersRef.current.entries()][0];
+      if (remaining) {
+        const [pointerId, point] = remaining;
+        panRef.current = {
+          pointerId,
+          startX: point.x,
+          startY: point.y,
+          scrollLeft: event.currentTarget.scrollLeft,
+          scrollTop: event.currentTarget.scrollTop,
+          moved: true,
+        };
+      } else {
+        panRef.current = null;
+      }
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      return;
+    }
     const pan = panRef.current;
     if (!pan || pan.pointerId !== event.pointerId) return;
     suppressClickRef.current = pan.moved;
@@ -235,7 +379,7 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
           aria-label={`Увеличить схему «${diagram.title}»`}
           className="ai-diagram-preview"
           type="button"
-          onClick={() => setIsExpanded(true)}
+          onClick={openExpanded}
         >
           <DiagramCanvas
             layout={layout}
@@ -272,7 +416,7 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
         size="min(1200px, calc(100vw - 32px))"
         title={diagram.title}
         zIndex={100}
-        onClose={() => setIsExpanded(false)}
+        onClose={closeExpanded}
       >
         <div
           className="ai-diagram-expanded-scroll"
@@ -291,6 +435,7 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
             layout={layout}
             markerId={`${markerId}-expanded`}
             mode="expanded"
+            zoom={zoom}
             selectedNodeId={selectedNode?.id}
             onNodeSelect={setSelectedNodeId}
           />
@@ -301,7 +446,7 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
             onAsk={
               onAsk
                 ? () => {
-                    setIsExpanded(false);
+                    closeExpanded();
                     askAboutSelectedNode();
                   }
                 : undefined
@@ -312,7 +457,7 @@ export function AiLessonDiagram({ diagram, onAsk }: AiLessonDiagramProps) {
           <button
             className="ai-diagram-mobile-close"
             type="button"
-            onClick={() => setIsExpanded(false)}
+            onClick={closeExpanded}
           >
             <ArrowLeft aria-hidden="true" size={18} />
             Вернуться к уроку
