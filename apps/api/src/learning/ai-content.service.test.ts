@@ -37,8 +37,116 @@ const lesson: GeneratedLesson = {
   summary: "Итог",
 };
 
-describe("AiContentService lesson review", () => {
+const openAiJsonResponse = (value: unknown) => new Response(JSON.stringify({
+  output: [{
+    type: "message",
+    content: [{
+      type: "output_text",
+      text: JSON.stringify(value),
+    }],
+  }],
+}), { status: 200, headers: { "Content-Type": "application/json" } });
+
+const getRequestPayload = (fetchSpy: ReturnType<typeof vi.spyOn>) => {
+  const requestBody = fetchSpy.mock.calls[0]?.[1]?.body;
+  expect(typeof requestBody).toBe("string");
+  return JSON.parse(requestBody as string) as {
+    instructions: string;
+    model: string;
+    text: {
+      format: {
+        type: string;
+        strict: boolean;
+        name: string;
+        schema: Record<string, unknown>;
+      };
+    };
+  };
+};
+
+const muteServiceWarnings = (service: AiContentService) => {
+  const logger = (service as unknown as {
+    logger: { warn: (value: unknown) => void };
+  }).logger;
+  vi.spyOn(logger, "warn").mockImplementation(() => undefined);
+};
+
+describe("AiContentService", () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it("adds the shared terminology policy to generated lessons", async () => {
+    const service = new AiContentService(new ConfigService({
+      OPENAI_API_KEY: "test-key",
+      OPENAI_MODEL: "gpt-5.6-sol",
+    }));
+    muteServiceWarnings(service);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(openAiJsonResponse({}));
+
+    await expect(service.generateLesson({
+      goal: "Подготовиться к frontend-собеседованию",
+      level: "middle",
+      deadline: "2026-12-01",
+      dailyMinutes: 120,
+      targetCompanies: ["Яндекс"],
+      weakTopics: ["Event loop"],
+    }, {
+      id: "event-loop",
+      title: "Event loop",
+      objective: "Понять очереди выполнения",
+      estimatedMinutes: 90,
+      resourceIds: [],
+    }, [])).rejects.toThrow("OpenAI вернул неполный урок");
+
+    const payload = getRequestPayload(fetchSpy);
+    expect(payload.instructions).toContain(
+      "читатель не должен быть обязан заранее знать специальные термины",
+    );
+    expect(payload.instructions).toContain("Формальный перевод не является объяснением");
+    expect(payload.instructions).toContain("Статья может стать немного длиннее ради понятности");
+    expect(payload.instructions).toContain("Не создавай отдельный словарь терминов");
+    expect(payload.text.format.type).toBe("json_schema");
+    expect(payload.text.format.strict).toBe(true);
+  });
+
+  it("uses the same clarity policy for static track lessons", async () => {
+    const service = new AiContentService(new ConfigService({
+      OPENAI_API_KEY: "test-key",
+      OPENAI_MODEL: "gpt-5.6-sol",
+    }));
+    muteServiceWarnings(service);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(openAiJsonResponse({}));
+    const prompt = {
+      name: "test_track_lesson",
+      role: "Роль тестового наставника",
+      program: "Программа тестового трека",
+      note: "Особое требование тестового трека",
+      targetCompany: "Тестовая компания",
+    };
+    const block = {
+      id: "event-loop-theory",
+      kind: "theory" as const,
+      title: "Event loop",
+      description: "Разобрать задачи и микрозадачи",
+      minutes: 40,
+      resourceIds: [],
+    };
+
+    await expect(service.generateTrackLesson(prompt, {
+      id: "day-1",
+      dayNumber: 1,
+      offset: 0,
+      title: "Асинхронность",
+      blocks: [block],
+    }, block, [])).rejects.toThrow("OpenAI вернул неполный разбор темы");
+
+    const payload = getRequestPayload(fetchSpy);
+    expect(payload.instructions).toContain(
+      "читатель не должен быть обязан заранее знать специальные термины",
+    );
+    expect(payload.instructions).toContain(prompt.role);
+    expect(payload.instructions).toContain(prompt.program);
+    expect(payload.instructions).toContain(prompt.note);
+  });
 
   it("sends the independent review through the configured Terra model", async () => {
     const service = new AiContentService(new ConfigService({
@@ -69,36 +177,34 @@ describe("AiContentService lesson review", () => {
       objective: "Повторить основы",
     }, lesson)).resolves.toMatchObject({ verdict: "approved", score: 97 });
 
-    const requestBody = fetchSpy.mock.calls[0]?.[1]?.body;
-    expect(typeof requestBody).toBe("string");
-    const payload = JSON.parse(requestBody as string) as {
-      model: string;
-      text: {
-        format: {
-          name: string;
-          schema: {
-            properties: {
-              correctedLesson: {
-                anyOf: Array<{
-                  properties?: {
-                    quiz: {
-                      items: {
-                        properties: { code: unknown };
-                        required: string[];
-                      };
-                    };
-                  };
-                }>;
+    const payload = getRequestPayload(fetchSpy);
+    expect(payload.model).toBe("gpt-5.6-terra-test");
+    expect(payload.text.format.name).toBe("frontend_interview_lesson_review");
+    expect(payload.instructions).toContain("# Rubric 0–100");
+    expect(payload.instructions).toContain("score >= 88");
+    expect(payload.instructions).toContain("terminology_onboarding");
+    expect(payload.instructions).toContain(
+      "Более длинное объяснение не считается более понятным",
+    );
+    expect(payload.instructions).toContain("Task — это задача");
+    expect(payload.instructions).toContain("не являются достаточными");
+    const reviewSchema = payload.text.format.schema as {
+      properties: {
+        correctedLesson: {
+          anyOf: Array<{
+            properties?: {
+              quiz: {
+                items: {
+                  properties: { code: unknown };
+                  required: string[];
+                };
               };
             };
-          };
+          }>;
         };
       };
     };
-    expect(payload.model).toBe("gpt-5.6-terra-test");
-    expect(payload.text.format.name).toBe("frontend_interview_lesson_review");
-    const correctedLessonSchema = payload.text.format.schema.properties.correctedLesson.anyOf[0]
-      ?.properties;
+    const correctedLessonSchema = reviewSchema.properties.correctedLesson.anyOf[0]?.properties;
     expect(correctedLessonSchema?.quiz.items.required).toContain("code");
     expect(correctedLessonSchema?.quiz.items.properties.code).toEqual({
       anyOf: [{ type: "string" }, { type: "null" }],
