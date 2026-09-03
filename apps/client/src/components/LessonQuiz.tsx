@@ -154,7 +154,7 @@ export function LessonQuiz({ lesson, progress, onSubmit }: LessonQuizProps) {
     <section className="lesson-quiz lesson-quiz-question">
       <div className="lesson-quiz-progress">
         <span>{tier === "deep" ? "Deep" : "Core"} · вопрос {index + 1} из {questions.length}</span>
-        <Progress color="mint" value={((index + 1) / questions.length) * 100} />
+        <Progress color="brand" value={((index + 1) / questions.length) * 100} />
       </div>
       <span className="lesson-quiz-topic">{question.topic} · {question.capability}</span>
       <h2>{question.prompt}</h2>

@@ -183,7 +183,7 @@ export function MockInterviewView({
         <Button className="secondary-button" leftSection={<ArrowLeft size={17} />} type="button" variant="default" onClick={onBack}>Выйти</Button>
         <span><Clock3 size={17} /> {formatRemaining(remaining)}</span>
       </header>
-      <Progress value={(answeredCount / interview.questions.length) * 100} color="mint" />
+      <Progress value={(answeredCount / interview.questions.length) * 100} color="brand" />
       <article className="mock-question-card">
         <div><span>{question.category}</span><small>Вопрос {index + 1} из {interview.questions.length}</small></div>
         <h1>{question.prompt}</h1>

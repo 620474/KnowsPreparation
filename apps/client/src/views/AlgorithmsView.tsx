@@ -70,7 +70,7 @@ export function AlgorithmsView({
         </div>
       </header>
 
-      <Progress className="goal-track" value={progress} color="mint" radius="xl" size="sm" />
+      <Progress className="goal-track" value={progress} color="brand" radius="xl" size="sm" />
 
       <section className="algorithm-practice-section">
         <div className="section-heading compact algorithm-practice-heading">

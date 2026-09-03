@@ -91,7 +91,7 @@ export function ResearchProjectList({
               </span>
               <strong>{project.title}</strong>
               <p>{project.primaryQuestion || project.decisionStatement || "Добавь главный исследовательский вопрос."}</p>
-              <Progress color={blocked ? "red" : "mint"} value={progress} size="sm" />
+              <Progress color={blocked ? "red" : "brand"} value={progress} size="sm" />
               <span className="research-project-card-bottom">
                 <small>{complete} из {project.stages.length} этапов</small>
                 <small>{blocked ? `${blocked} блокера` : project.nextAction || "Нет следующего действия"}</small>

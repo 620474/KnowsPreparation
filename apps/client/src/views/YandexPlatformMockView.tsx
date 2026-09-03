@@ -157,7 +157,7 @@ export function YandexPlatformMockView({
   };
 
   if (attemptQuery.isPending && !currentAttempt) {
-    return <div className="view-loader"><Loader color="mint" /> Загружаю мок…</div>;
+    return <div className="view-loader"><Loader color="brand" /> Загружаю мок…</div>;
   }
 
   if (!currentAttempt || currentAttempt.status === "completed") {
@@ -237,7 +237,7 @@ export function YandexPlatformMockView({
         <span><Clock3 size={17} /> {formatRemaining(remaining)}</span>
       </header>
       <Progress
-        color="mint"
+        color="brand"
         value={(gradedCount / currentAttempt.questions.length) * 100}
       />
 
@@ -281,7 +281,7 @@ export function YandexPlatformMockView({
                 Была ошибка
               </Button>
               <Button
-                color="mint"
+                color="brand"
                 leftSection={<Check size={17} />}
                 loading={busy === "grade"}
                 onClick={() => void grade("correct")}

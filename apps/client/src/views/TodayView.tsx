@@ -232,7 +232,7 @@ export function TodayView({
               <h2>Что даст максимум сегодня</h2>
               <p>Приоритеты собраны из повторений, тестов, практики, моков и ближайших интервью.</p>
             </div>
-            {adaptive.isPending && !adaptive.plan ? <Loader color="mint" size="sm" /> : null}
+            {adaptive.isPending && !adaptive.plan ? <Loader color="brand" size="sm" /> : null}
           </div>
           <details className="adaptive-check-in">
             <summary>Настроить время, энергию и фокус</summary>
@@ -379,7 +379,7 @@ export function TodayView({
             );
           })}
         </div>
-        <Progress color="mint" radius="xl" size="sm" value={dayProgress} />
+        <Progress color="brand" radius="xl" size="sm" value={dayProgress} />
       </section>
 
       <section className="today-training-grid">

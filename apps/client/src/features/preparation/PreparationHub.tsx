@@ -83,7 +83,7 @@ export function PreparationHub({
           <p className="eyebrow">21-дневный спринт</p>
           <h2>Яндекс</h2>
           <p>Платформа, алгоритмы, моки и AI-секция в порядке прохождения.</p>
-          <Progress color="mint" value={yandex.percent} size="sm" />
+          <Progress color="brand" value={yandex.percent} size="sm" />
           <div className="section-hub-progress">
             <span>{yandex.completed} из {yandex.total} блоков</span>
             <strong>{yandex.percent}%</strong>

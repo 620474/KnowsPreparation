@@ -314,7 +314,7 @@ export function InterviewSimulatorView() {
   );
 
   if (currentQuery.isPending && !session) {
-    return <div className="view-loader"><Loader color="mint" /> Восстанавливаю интервью…</div>;
+    return <div className="view-loader"><Loader color="brand" /> Восстанавливаю интервью…</div>;
   }
 
   if (!session) {
@@ -402,7 +402,7 @@ export function InterviewSimulatorView() {
               </span>
               <div>
                 <Button
-                  color="mint"
+                  color="brand"
                   loading={busy === "outcome"}
                   onClick={() => void recordOutcome(true)}
                 >
@@ -482,7 +482,7 @@ export function InterviewSimulatorView() {
               <span>{sectionLabels[key as keyof typeof sectionLabels]}</span>
               <strong>{section.assessed === false || section.score === null ? "—" : section.score}</strong>
               <Progress
-                color={section.assessed === false || section.score === null ? "gray" : "mint"}
+                color={section.assessed === false || section.score === null ? "gray" : "brand"}
                 value={section.assessed === false || section.score === null ? 0 : section.score}
               />
               <p>{section.feedback}</p>
@@ -554,7 +554,7 @@ export function InterviewSimulatorView() {
         </div>
         <span><Clock3 size={17} /> {formatRemaining(remaining)}</span>
       </header>
-      <Progress color="mint" value={Math.max(8, ((stageIndex + 1) / stages.length) * 100)} />
+      <Progress color="brand" value={Math.max(8, ((stageIndex + 1) / stages.length) * 100)} />
       {error ? <Alert color="red" icon={<AlertTriangle size={16} />}>{error}</Alert> : null}
 
       {session.currentStage === "platform" && activePlatformItem ? (
@@ -853,7 +853,7 @@ export function InterviewSimulatorView() {
           }}>{defenseIndex === session.defenseQuestions.length - 1 ? "Завершить и оценить" : "Сохранить и дальше"}</Button>
         </section>
       ) : session.currentStage === "defense" ? (
-        <section className="interview-stage-card interview-evaluating"><Loader color="mint" /><h2>Готовлю итоговый отчёт</h2><p>Сопоставляю ответы, тесты и работу с AI.</p><Button className="primary-button" loading={busy === "complete"} onClick={() => void run("complete", () => learningApi.completeInterviewSession(session.id))}>Получить оценку</Button></section>
+        <section className="interview-stage-card interview-evaluating"><Loader color="brand" /><h2>Готовлю итоговый отчёт</h2><p>Сопоставляю ответы, тесты и работу с AI.</p><Button className="primary-button" loading={busy === "complete"} onClick={() => void run("complete", () => learningApi.completeInterviewSession(session.id))}>Получить оценку</Button></section>
       ) : null}
     </div>
   );

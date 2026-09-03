@@ -55,7 +55,7 @@ export function LearningMissionView({ missionId, onBack, onOpenIntervention }: L
   }, [mission]);
 
   if (missionQuery.isPending) {
-    return <div className="view-loader"><Loader color="mint" size="sm" /> Загружаю миссию…</div>;
+    return <div className="view-loader"><Loader color="brand" size="sm" /> Загружаю миссию…</div>;
   }
   if (!mission || missionQuery.isError) {
     return (

@@ -224,7 +224,7 @@ export function AiChatWidget({
 
           <div className="ai-chat-messages" aria-live="polite">
             {chatQuery.isPending ? (
-              <div className="ai-chat-state"><Loader color="mint" size="sm" />Загружаю историю…</div>
+              <div className="ai-chat-state"><Loader color="brand" size="sm" />Загружаю историю…</div>
             ) : null}
             {chatQuery.isError ? (
               <Alert color="red" icon={<AlertTriangle size={16} />} variant="light">
@@ -243,7 +243,7 @@ export function AiChatWidget({
                 <div>{message.role === "user" ? "Ты" : "AI"}<span>{formatTime(message.createdAt)}</span></div>
                 <p>
                   {message.content || (sendMutation.isPending && message.id.startsWith("temporary-assistant-") ? (
-                    <span className="ai-chat-inline-loader"><Loader color="mint" size="xs" />Начинаю ответ…</span>
+                    <span className="ai-chat-inline-loader"><Loader color="brand" size="xs" />Начинаю ответ…</span>
                   ) : null)}
                 </p>
               </article>

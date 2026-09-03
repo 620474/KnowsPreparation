@@ -30,7 +30,7 @@
 
 .section-hub-card.priority-card {
   background:
-    radial-gradient(circle at 90% 5%, rgba(107, 245, 176, 0.17), transparent 18rem),
+    radial-gradient(circle at 90% 5%, rgba(124, 156, 255, 0.17), transparent 18rem),
     var(--card-bg);
 }
 
@@ -62,10 +62,10 @@
   height: 52px;
   margin-bottom: 24px;
   place-items: center;
-  border: 1px solid rgba(107, 245, 176, 0.25);
+  border: 1px solid rgba(124, 156, 255, 0.25);
   border-radius: 16px;
   color: var(--accent);
-  background: rgba(107, 245, 176, 0.08);
+  background: rgba(124, 156, 255, 0.08);
 }
 
 .section-hub-progress {
@@ -95,7 +95,7 @@
 
 .section-hub-link-card:hover,
 .knowledge-card-grid > button:hover {
-  border-color: rgba(107, 245, 176, 0.4);
+  border-color: rgba(124, 156, 255, 0.4);
   transform: translateY(-2px);
 }
 

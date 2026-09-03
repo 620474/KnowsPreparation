@@ -2,20 +2,20 @@ import { createTheme } from "@mantine/core";
 
 export const appTheme = createTheme({
   colors: {
-    mint: [
-      "#effff7",
-      "#d9ffeb",
-      "#b5fbd6",
-      "#8af0d1",
-      "#63e6be",
-      "#2dd4a3",
-      "#1eb58a",
-      "#15965f",
-      "#0d7048",
-      "#06462e",
+    brand: [
+      "#f1f4ff",
+      "#e2e8ff",
+      "#c8d3ff",
+      "#aabaff",
+      "#8ea4ff",
+      "#7c9cff",
+      "#647df0",
+      "#5268cf",
+      "#4052aa",
+      "#2e3b7f",
     ],
   },
-  primaryColor: "mint",
+  primaryColor: "brand",
   primaryShade: { light: 6, dark: 4 },
   defaultRadius: "md",
   fontFamily:

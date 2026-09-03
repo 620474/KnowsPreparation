@@ -10,7 +10,7 @@
         const scheme = savedScheme === "light" ? "light" : "dark";
         document.documentElement.setAttribute("data-mantine-color-scheme", scheme);
         document.querySelector('meta[name="theme-color"]').content =
-          scheme === "light" ? "#f4f8f5" : "#0b0f14";
+          scheme === "light" ? "#f5f7fb" : "#0b0f14";
       } catch {
         document.documentElement.setAttribute("data-mantine-color-scheme", "dark");
       }

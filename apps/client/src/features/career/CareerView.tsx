@@ -222,7 +222,7 @@ export function CareerView({ onOpenInterview }: CareerViewProps) {
   });
 
   if (workspace.isPending || !workspace.data) {
-    return <div className="view-loader"><Loader color="mint" size="sm" /> Загружаю поиск работы…</div>;
+    return <div className="view-loader"><Loader color="brand" size="sm" /> Загружаю поиск работы…</div>;
   }
 
   const data = workspace.data;
@@ -277,7 +277,7 @@ export function CareerView({ onOpenInterview }: CareerViewProps) {
                   return (
                     <article key={key}>
                       <div><strong>{goalLabels[key]}</strong><span>{actual} / {goal}</span></div>
-                      <Progress color={actual >= goal ? "green" : "mint"} value={goal ? Math.min(100, Math.round((actual / goal) * 100)) : 100} />
+                      <Progress color={actual >= goal ? "green" : "brand"} value={goal ? Math.min(100, Math.round((actual / goal) * 100)) : 100} />
                     </article>
                   );
                 })}

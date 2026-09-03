@@ -171,7 +171,7 @@ export function ReviewView({ data, onBack, onSubmitAttempt }: ReviewViewProps) {
           <h1>{index + 1} из {queue.length}</h1>
         </div>
       </header>
-      <Progress value={(index / queue.length) * 100} color="mint" size="sm" />
+      <Progress value={(index / queue.length) * 100} color="brand" size="sm" />
 
       <article className="review-question-card evidence-question-card">
         <div className="review-question-meta">

@@ -76,7 +76,7 @@ export function CodeEditor({
           borderRight: "1px solid var(--line)",
         },
         ".cm-activeLine, .cm-activeLineGutter": {
-          backgroundColor: "rgba(107, 245, 176, 0.07)",
+          backgroundColor: "rgba(124, 156, 255, 0.07)",
         },
         "&.cm-focused": {
           outline: "none",
@@ -182,7 +182,7 @@ export function CodeEditor({
         <Tooltip label={lineWrapping ? "Не переносить строки" : "Переносить длинные строки"}>
           <ActionIcon
             aria-label="Переключить перенос строк"
-            color={lineWrapping ? "mint" : undefined}
+            color={lineWrapping ? "brand" : undefined}
             variant={lineWrapping ? "light" : "subtle"}
             onClick={() => setLineWrapping((current) => !current)}
           >
@@ -214,7 +214,7 @@ export function CodeEditor({
         </Tooltip>
         {onRun ? (
           <Tooltip label="Запустить · Ctrl/Cmd+Enter">
-            <ActionIcon aria-label="Запустить код" color="mint" variant="light" onClick={onRun}>
+            <ActionIcon aria-label="Запустить код" color="brand" variant="light" onClick={onRun}>
               <Play size={17} />
             </ActionIcon>
           </Tooltip>

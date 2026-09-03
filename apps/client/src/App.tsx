@@ -137,7 +137,7 @@ export default function App() {
   if (bootstrapQuery.isPending && !bootstrapQuery.data) {
     return (
       <main className="state-page">
-        <Loader color="mint" size="lg" />
+        <Loader color="brand" size="lg" />
         <h1>Собираю твой план</h1>
         <p>Загружаю прогресс из общей базы…</p>
       </main>
@@ -225,7 +225,7 @@ export default function App() {
         </Alert>
       ) : null}
       <Suspense
-        fallback={<div className="view-loader"><Loader color="mint" size="sm" /> Загружаю экран…</div>}
+        fallback={<div className="view-loader"><Loader color="brand" size="sm" /> Загружаю экран…</div>}
       >
         <AppViewContent
           aiActions={aiActions}

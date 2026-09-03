@@ -80,7 +80,7 @@ export function PlanView({ data, onOpenDay }: PlanViewProps) {
                           {isCurrent ? <em>Сегодня</em> : null}
                         </span>
                         <small>{totalMinutes} минут · {completed} из {day.blocks.length} блоков</small>
-                        <Progress color="mint" radius="xl" size={5} value={dayProgress} />
+                        <Progress color="brand" radius="xl" size={5} value={dayProgress} />
                       </span>
                       <span className={dayProgress === 100 ? "plan-day-state complete" : "plan-day-state"}>
                         {dayProgress === 100 ? <Check size={18} /> : <span>{dayProgress}%</span>}

@@ -157,7 +157,7 @@ export function TrackDayView({
           <div className="curriculum-day-progress">
             <strong>{completedCount}/{day.blocks.length}</strong>
             <span>блоков завершено</span>
-            <Progress color="mint" radius="xl" size="sm" value={progress} />
+            <Progress color="brand" radius="xl" size="sm" value={progress} />
           </div>
         </div>
       </header>

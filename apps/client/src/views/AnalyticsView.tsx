@@ -94,7 +94,7 @@ export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: Analyt
                     </span>
                   </div>
                   <Progress
-                    color={dimension.score === null ? "gray" : "mint"}
+                    color={dimension.score === null ? "gray" : "brand"}
                     value={dimension.score ?? 0}
                     size="md"
                   />
@@ -125,7 +125,7 @@ export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: Analyt
           />
         </div>
         {learningAnalytics.isPending && !learningAnalytics.data ? (
-          <div className="analytics-loading"><Loader color="mint" size="sm" /> Считаю сигналы…</div>
+          <div className="analytics-loading"><Loader color="brand" size="sm" /> Считаю сигналы…</div>
         ) : learningAnalytics.isError && !learningAnalytics.data ? (
           <p>История пока недоступна. Локальная аналитика ниже продолжает работать.</p>
         ) : learningAnalytics.data ? (
@@ -159,7 +159,7 @@ export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: Analyt
               .map((skill) => (
                 <article key={skill.key}>
                   <div><strong>{skill.label}</strong><span>{formatPercent(skill.score)} · {skill.signalCount} сигналов</span></div>
-                  <Progress color="mint" value={skill.score ?? 0} size="md" />
+                  <Progress color="brand" value={skill.score ?? 0} size="md" />
                 </article>
               ))}
           </div>
@@ -176,7 +176,7 @@ export function AnalyticsView({ data, onBack, onOpenMock, onOpenReview }: Analyt
           {analytics.categories.map((category) => (
             <article key={category.name}>
               <div><strong>{category.name}</strong><span>{category.mastered} из {category.total}</span></div>
-              <Progress color="mint" value={category.masteryPercent} size="md" />
+              <Progress color="brand" value={category.masteryPercent} size="md" />
               <small>{category.due > 0 ? `Нужно повторить: ${category.due}` : "По расписанию всё закрыто"}</small>
             </article>
           ))}

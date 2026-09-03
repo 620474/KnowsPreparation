@@ -137,7 +137,7 @@ export function ResearchView({ projectId, onOpenProject }: ResearchViewProps) {
 
   if (projectId) {
     if (workspaceQuery.isPending || !workspaceQuery.data) {
-      return <div className="view-loader"><Loader color="mint" size="sm" /> Загружаю исследование…</div>;
+      return <div className="view-loader"><Loader color="brand" size="sm" /> Загружаю исследование…</div>;
     }
     return (
       <ResearchWorkspacePanel
@@ -300,7 +300,7 @@ function ResearchWorkspacePanel({
         <div className="research-progress-summary">
           <strong>{progress}%</strong>
           <span>{completedStages}/{project.stages.length} этапов</span>
-          <Progress color={blockedGates.length ? "red" : "mint"} value={progress} size="sm" />
+          <Progress color={blockedGates.length ? "red" : "brand"} value={progress} size="sm" />
         </div>
       </header>
 
@@ -327,7 +327,7 @@ function ResearchWorkspacePanel({
           <article key={label}>
             <span>{label}</span>
             <strong>{value}</strong>
-            <Progress value={Number(value)} color="mint" size="sm" />
+            <Progress value={Number(value)} color="brand" size="sm" />
             <small>{description}</small>
           </article>
         ))}
@@ -701,7 +701,7 @@ function ResearchAgentPanel({
             <span><Badge variant="light">{run.status}</Badge><b>{run.phase}</b></span>
             <strong>{run.progress}%</strong>
           </div>
-          <Progress value={run.progress} color="mint" size="md" animated={active} />
+          <Progress value={run.progress} color="brand" size="md" animated={active} />
           <small>
             {run.type} · {run.mode} · AI-вызовы {run.usage.modelCalls}/{run.budget.maximumModelCalls}
             {` · Sol ${run.usage.solCalls}/${run.budget.maximumSolCalls}`}

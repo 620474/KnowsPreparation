@@ -82,7 +82,7 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
   };
 
   if (skillId) {
-    if (detail.isPending) return <div className="page-loader"><Loader color="mint" /></div>;
+    if (detail.isPending) return <div className="page-loader"><Loader color="brand" /></div>;
     if (!detail.data) return <div className="page-stack"><p>Не удалось загрузить навык.</p></div>;
     const { definition, mastery, evidence } = detail.data;
     return (
@@ -116,7 +116,7 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
                 <span>{capability.independentFormCount} форм · {capability.independentContextCount} контекстов</span>
               </div>
               <Progress
-                color={capability.evidenceCount === 0 ? "gray" : "mint"}
+                color={capability.evidenceCount === 0 ? "gray" : "brand"}
                 value={capability.evidenceCount === 0 ? 0 : capability.posteriorMean}
               />
               <small>
@@ -181,7 +181,7 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
         allowDeselect={false}
       />
 
-      {overview.isPending ? <div className="page-loader"><Loader color="mint" /></div> : null}
+      {overview.isPending ? <div className="page-loader"><Loader color="brand" /></div> : null}
       {overview.data ? (
         <>
           <section className="target-readiness-card">
