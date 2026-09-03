@@ -400,39 +400,50 @@ export function TodayView({
         </article>
       </section>
 
-      {activeResearch ? (
-        <section className="today-focus-panel research-today-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Активное исследование</p>
-              <h2>{activeResearch.title}</h2>
-            </div>
-            <FlaskConical size={25} />
-          </div>
-          <p>{activeResearch.nextAction || "Определи следующее конкретное действие по проекту."}</p>
-          <Button className="secondary-button" type="button" variant="default" onClick={onOpenResearch}>
-            Открыть контрольный центр
-          </Button>
-        </section>
-      ) : null}
+      <details className="today-secondary-zone">
+        <summary>
+          <span>
+            <strong>Дополнительно</strong>
+            <small>Исследования и поиск работы</small>
+          </span>
+          <ArrowRight size={18} />
+        </summary>
+        <div className="today-secondary-grid">
+          {activeResearch ? (
+            <section className="today-focus-panel research-today-card">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Активное исследование</p>
+                  <h2>{activeResearch.title}</h2>
+                </div>
+                <FlaskConical size={25} />
+              </div>
+              <p>{activeResearch.nextAction || "Определи следующее конкретное действие по проекту."}</p>
+              <Button className="secondary-button" type="button" variant="default" onClick={onOpenResearch}>
+                Открыть контрольный центр
+              </Button>
+            </section>
+          ) : null}
 
-      <section className="today-focus-panel research-today-card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Поиск работы</p>
-            <h2>{dueCareerActions.length ? `${dueCareerActions.length} действий требуют внимания` : "Карьерная воронка"}</h2>
-          </div>
-          <BriefcaseBusiness size={25} />
+          <section className="today-focus-panel research-today-card">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Поиск работы</p>
+                <h2>{dueCareerActions.length ? `${dueCareerActions.length} действий требуют внимания` : "Карьерная воронка"}</h2>
+              </div>
+              <BriefcaseBusiness size={25} />
+            </div>
+            <p>
+              {upcomingCareerInterviews.length
+                ? `Ближайших интервью: ${upcomingCareerInterviews.length}. Проверь подготовку и договорённости.`
+                : "Фиксируй отклики, follow-up и результаты собеседований, чтобы видеть реальную конверсию."}
+            </p>
+            <Button className="secondary-button" type="button" variant="default" onClick={onOpenCareer}>
+              Открыть поиск работы
+            </Button>
+          </section>
         </div>
-        <p>
-          {upcomingCareerInterviews.length
-            ? `Ближайших интервью: ${upcomingCareerInterviews.length}. Проверь подготовку и договорённости.`
-            : "Фиксируй отклики, follow-up и результаты собеседований, чтобы видеть реальную конверсию."}
-        </p>
-        <Button className="secondary-button" type="button" variant="default" onClick={onOpenCareer}>
-          Открыть поиск работы
-        </Button>
-      </section>
+      </details>
 
     </div>
   );

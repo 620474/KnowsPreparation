@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Button, Loader, Progress, Select } from "@mantine/core";
+import { useMemo, useState } from "react";
+import { Button, Loader, Progress, Select, TextInput } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BrainCircuit, Clock3, ShieldCheck, Target } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Clock3, Search, ShieldCheck, Target } from "lucide-react";
 
 import { learningApi } from "../api";
 
@@ -35,6 +35,9 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
   const [target, setTargetState] = useState(
     () => new URLSearchParams(window.location.search).get("target") ?? "general",
   );
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
+  const [readiness, setReadiness] = useState("all");
   const targets = useQuery({
     queryKey: ["target-profiles-v2"],
     queryFn: learningApi.listTargetProfilesV2,
@@ -48,6 +51,26 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
     queryFn: () => learningApi.getSkillDetailV3(skillId!, target),
     enabled: Boolean(skillId),
   });
+  const categories = useMemo(
+    () => [...new Set((overview.data?.skills ?? []).map((skill) => skill.category))].sort(),
+    [overview.data?.skills],
+  );
+  const visibleSkills = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase("ru-RU");
+    const priority = new Set(["javascript.oop", "architecture.design-principles"]);
+    return [...(overview.data?.skills ?? [])]
+      .filter((skill) => category === "all" || skill.category === category)
+      .filter((skill) => readiness === "all"
+        || (readiness === "gaps" && skill.unknownCapabilities.length > 0)
+        || (readiness === "verified" && skill.coverage >= 75))
+      .filter((skill) => !normalizedQuery
+        || `${skill.label} ${skill.category}`.toLocaleLowerCase("ru-RU").includes(normalizedQuery))
+      .sort((left, right) => {
+        const priorityDifference = Number(priority.has(right.skillId)) - Number(priority.has(left.skillId));
+        return priorityDifference || right.unknownCapabilities.length - left.unknownCapabilities.length
+          || left.label.localeCompare(right.label, "ru");
+      });
+  }, [category, overview.data?.skills, query, readiness]);
 
   const setTarget = (value: string | null) => {
     if (!value) return;
@@ -177,8 +200,45 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
               </p>
             </div>
           </section>
+          <section className="knowledge-catalog-toolbar">
+            <div>
+              <p className="eyebrow">Каталог знаний</p>
+              <h2>Найди тему и продолжи проверку</h2>
+              <p>{visibleSkills.length} из {overview.data.skills.length} навыков · ООП и принципы проектирования закреплены в начале списка.</p>
+            </div>
+            <div className="knowledge-catalog-controls">
+              <TextInput
+                aria-label="Поиск по навыкам"
+                leftSection={<Search size={16} />}
+                placeholder="Например: SOLID, ООП, React…"
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+              />
+              <Select
+                aria-label="Категория навыков"
+                data={[
+                  { value: "all", label: "Все категории" },
+                  ...categories.map((item) => ({ value: item, label: item })),
+                ]}
+                value={category}
+                onChange={(value) => setCategory(value ?? "all")}
+                allowDeselect={false}
+              />
+              <Select
+                aria-label="Статус навыков"
+                data={[
+                  { value: "all", label: "Любой статус" },
+                  { value: "gaps", label: "Есть пробелы" },
+                  { value: "verified", label: "Покрытие от 75%" },
+                ]}
+                value={readiness}
+                onChange={(value) => setReadiness(value ?? "all")}
+                allowDeselect={false}
+              />
+            </div>
+          </section>
           <section className="skill-overview-grid">
-            {overview.data.skills.map((skill) => (
+            {visibleSkills.map((skill) => (
               <button key={skill.skillId} type="button" onClick={() => onOpenSkill(skill.skillId)}>
                 <div>
                   <span>{skill.category}</span>
@@ -192,6 +252,15 @@ export function SkillsView({ skillId, onBack, onOpenKnowledge, onOpenSkill }: Sk
               </button>
             ))}
           </section>
+          {visibleSkills.length === 0 ? (
+            <section className="empty-state-card">
+              <h2>Темы не найдены</h2>
+              <p>Сбрось поиск или выбери другую категорию.</p>
+              <Button type="button" variant="default" onClick={() => { setQuery(""); setCategory("all"); setReadiness("all"); }}>
+                Сбросить фильтры
+              </Button>
+            </section>
+          ) : null}
         </>
       ) : null}
     </div>

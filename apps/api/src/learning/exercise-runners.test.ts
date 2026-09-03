@@ -29,11 +29,11 @@ const createLesson = (
 });
 
 describe("static exercise runners", () => {
-  it("keeps all 35 runners in the validation registry", () => {
+  it("keeps all 39 runners in the validation registry", () => {
     const runners = getStaticRunnerValidationCases();
-    expect(STATIC_EXERCISE_RUNNER_COUNT).toBe(35);
-    expect(runners).toHaveLength(35);
-    expect(new Set(runners.map((runner) => runner.id)).size).toBe(35);
+    expect(STATIC_EXERCISE_RUNNER_COUNT).toBe(39);
+    expect(runners).toHaveLength(39);
+    expect(new Set(runners.map((runner) => runner.id)).size).toBe(39);
     expect(runners.every((runner) => runner.referenceSolution.trim())).toBe(true);
   });
 

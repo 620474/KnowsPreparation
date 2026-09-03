@@ -286,6 +286,70 @@ function binarySearch(numbers, target) {
       { title: "Применяет управляемый jitter", expression: "[getReconnectDelay(0, 500, 30000, -1), getReconnectDelay(0, 500, 30000, 1)]", expected: [400, 600] },
     ],
   ),
+  "w09-d01-practice": runner(
+    `class EventEmitter {
+  constructor() {
+    // Создай закрытое хранилище обработчиков
+  }
+
+  on(event, handler) {
+    // Подпиши handler и верни идемпотентную функцию отписки
+  }
+
+  emit(event, ...args) {
+    // Вызови снимок текущих обработчиков
+  }
+}`,
+    [
+      { title: "Инкапсулирует события", expression: "(() => { const emitter = new EventEmitter(); const values = []; emitter.on('data', value => values.push(value)); emitter.emit('data', 3); emitter.emit('other', 4); return values; })()", expected: [3] },
+      { title: "Отписка идемпотентна", expression: "(() => { const emitter = new EventEmitter(); let calls = 0; const off = emitter.on('data', () => calls += 1); off(); off(); emitter.emit('data'); return calls; })()", expected: 0 },
+      { title: "Безопасен при изменении подписок", expression: "(() => { const emitter = new EventEmitter(); const calls = []; let offSecond = () => {}; emitter.on('data', () => { calls.push('first'); offSecond(); }); offSecond = emitter.on('data', () => calls.push('second')); emitter.emit('data'); emitter.emit('data'); return calls; })()", expected: ["first", "second", "first"] },
+    ],
+  ),
+  "w09-d02-practice": runner(
+    `function createNotifier(channels) {
+  // Верни объект с методом notify(channel, message)
+}`,
+    [
+      { title: "Делегирует зарегистрированному каналу", expression: "(() => { const notifier = createNotifier({ email: message => 'email:' + message }); return notifier.notify('email', 'hello'); })()", expected: "email:hello" },
+      { title: "Расширяется без изменения notifier", expression: "(() => { const notifier = createNotifier({ push: message => ({ kind: 'push', message }) }); return notifier.notify('push', 'update'); })()", expected: { kind: "push", message: "update" } },
+      { title: "Отклоняет неизвестный канал", expression: "createNotifier({}).notify('sms', 'hello')", expectedError: "Unknown channel: sms" },
+    ],
+  ),
+  "w09-d03-practice": runner(
+    `function formatValue(value, formatter) {
+  // Оставь минимальную абстракцию
+}`,
+    [
+      { title: "Использует полиморфный callback", expression: "formatValue(10, value => value + ' ₽')", expected: "10 ₽" },
+      { title: "Не изменяет объект", expression: "(() => { const source = { name: 'Ada' }; const result = formatValue(source, value => value.name.toUpperCase()); return [result, source.name]; })()", expected: ["ADA", "Ada"] },
+      { title: "Возвращает результат formatter", expression: "formatValue(3, value => ({ doubled: value * 2 }))", expected: { doubled: 6 } },
+    ],
+  ),
+  "w09-d04-practice": runner(
+    `class SocketClient {
+  constructor(transport, retryPolicy) {
+    // Сохрани зависимости и начальное состояние
+  }
+
+  connect() {
+    // Запусти соединение
+  }
+
+  handleOpen() {
+    // Зафиксируй успешное открытие
+  }
+
+  handleClose() {
+    // Запланируй reconnect и верни задержку
+  }
+}`,
+    [
+      { title: "Зависит от контрактов, а не WebSocket", expression: "(() => { const events = []; const transport = { connect: () => events.push('connect'), schedule(callback, delay) { events.push(delay); this.pending = callback; } }; const client = new SocketClient(transport, attempt => 100 * 2 ** attempt); client.connect(); client.handleOpen(); const delay = client.handleClose(); transport.pending(); return { delay, events }; })()", expected: { delay: 100, events: ["connect", 100, "connect"] } },
+      { title: "Увеличивает попытки", expression: "(() => { const transport = { connect() {}, schedule() {} }; const client = new SocketClient(transport, attempt => attempt + 1); return [client.handleClose(), client.handleClose(), client.handleClose()]; })()", expected: [1, 2, 3] },
+      { title: "Сбрасывает попытку после open", expression: "(() => { const transport = { connect() {}, schedule() {} }; const client = new SocketClient(transport, attempt => attempt); client.handleClose(); client.handleClose(); client.handleOpen(); return client.handleClose(); })()", expected: 0 },
+    ],
+  ),
   "ozon-d01-practice": runner(
     `function reverseInteger(value) {
   // Верни развёрнутое 32-битное число
@@ -713,6 +777,62 @@ function binarySearch(numbers, target) {
   const cappedDelay = Math.min(exponentialDelay, maxDelay);
   const jitterMultiplier = 1 + Math.max(-1, Math.min(1, jitter)) * 0.2;
   return Math.min(maxDelay, Math.round(cappedDelay * jitterMultiplier));
+}`,
+  "w09-d01-practice": `class EventEmitter {
+  constructor() {
+    this.handlers = new Map();
+  }
+
+  on(event, handler) {
+    const handlers = this.handlers.get(event) ?? new Set();
+    handlers.add(handler);
+    this.handlers.set(event, handlers);
+    let active = true;
+    return () => {
+      if (!active) return;
+      active = false;
+      handlers.delete(handler);
+      if (handlers.size === 0) this.handlers.delete(event);
+    };
+  }
+
+  emit(event, ...args) {
+    for (const handler of [...(this.handlers.get(event) ?? [])]) handler(...args);
+  }
+}`,
+  "w09-d02-practice": `function createNotifier(channels) {
+  return {
+    notify(channel, message) {
+      const handler = channels[channel];
+      if (!handler) throw new Error("Unknown channel: " + channel);
+      return handler(message);
+    },
+  };
+}`,
+  "w09-d03-practice": `function formatValue(value, formatter) {
+  return formatter(value);
+}`,
+  "w09-d04-practice": `class SocketClient {
+  constructor(transport, retryPolicy) {
+    this.transport = transport;
+    this.retryPolicy = retryPolicy;
+    this.attempt = 0;
+  }
+
+  connect() {
+    this.transport.connect();
+  }
+
+  handleOpen() {
+    this.attempt = 0;
+  }
+
+  handleClose() {
+    const delay = this.retryPolicy(this.attempt);
+    this.attempt += 1;
+    this.transport.schedule(() => this.connect(), delay);
+    return delay;
+  }
 }`,
   "ozon-d01-practice": `function reverseInteger(value) {
   const reversed = Number(String(Math.abs(value)).split("").reverse().join("")) * Math.sign(value);

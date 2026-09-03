@@ -123,6 +123,83 @@
   gap: 14px;
 }
 
+.knowledge-catalog-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 1.2fr);
+  align-items: end;
+  gap: 24px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 22px;
+  background: var(--panel);
+}
+
+.knowledge-catalog-toolbar h2,
+.knowledge-catalog-toolbar p {
+  margin: 0;
+}
+
+.knowledge-catalog-toolbar > div:first-child {
+  display: grid;
+  gap: 7px;
+}
+
+.knowledge-catalog-toolbar > div:first-child p:last-child {
+  color: var(--muted);
+}
+
+.knowledge-catalog-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.today-secondary-zone {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.today-secondary-zone > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.today-secondary-zone > summary::-webkit-details-marker {
+  display: none;
+}
+
+.today-secondary-zone > summary span {
+  display: grid;
+  gap: 3px;
+}
+
+.today-secondary-zone > summary small {
+  color: var(--muted);
+}
+
+.today-secondary-zone[open] > summary svg {
+  transform: rotate(90deg);
+}
+
+.today-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding: 14px;
+}
+
+.today-secondary-grid > section {
+  margin: 0;
+}
+
 .skill-overview-grid > button {
   display: flex;
   align-items: center;
@@ -205,7 +282,10 @@
 
 @media (max-width: 760px) {
   .skill-overview-grid,
-  .skill-capability-grid {
+  .skill-capability-grid,
+  .knowledge-catalog-toolbar,
+  .knowledge-catalog-controls,
+  .today-secondary-grid {
     grid-template-columns: 1fr;
   }
 

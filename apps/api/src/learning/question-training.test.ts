@@ -6,8 +6,8 @@ import { QUESTION_TRAINING } from "./question-training";
 
 describe("evidence question training", () => {
   it("provides thirty concrete interview exercises without exposing evaluators", () => {
-    expect(Object.keys(QUESTION_TRAINING)).toHaveLength(30);
-    expect(QUESTION_BANK.filter((question) => question.exercise)).toHaveLength(30);
+    expect(Object.keys(QUESTION_TRAINING)).toHaveLength(62);
+    expect(QUESTION_BANK.filter((question) => question.exercise)).toHaveLength(62);
     expect(QUESTION_BANK.slice(0, 30).every((question) => question.exercise)).toBe(true);
     expect(QUESTION_BANK.some((question) => "evaluator" in question)).toBe(false);
   });

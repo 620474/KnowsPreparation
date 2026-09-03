@@ -21,7 +21,7 @@ export { TRACK_KEYS, type TrackKey } from "@prep/contracts";
 export type StaticTrackKey = Exclude<TrackKey, "course">;
 
 export const CURRICULUM_AI_KEY = "curriculum";
-export const CURRICULUM_AI_VERSION = 1;
+export const CURRICULUM_AI_VERSION = 2;
 
 export const CURRICULUM_DAYS: StudyDay[] = CURRICULUM.flatMap((week) => week.days);
 
