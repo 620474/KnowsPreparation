@@ -150,6 +150,11 @@ export class CreateCheckpointV9Dto {
 }
 
 export class SubmitCheckpointAttemptV9Dto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  leaseId!: string;
+
   @IsString() @MinLength(1) @MaxLength(80) operationId!: string;
   @IsString() @MinLength(1) @MaxLength(50_000) answer!: string;
   @IsOptional() @IsString() @MaxLength(8_000) explanation?: string;
@@ -167,8 +172,12 @@ export class SubmitCheckpointAttemptV9Dto {
 export class RecordInterviewOutcomeV3Dto {
   @IsString() @MinLength(1) @MaxLength(80) operationId!: string;
   @IsString() @MinLength(1) @MaxLength(80) snapshotId!: string;
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(12) sections!: Array<Record<string, unknown>>;
-  @IsOptional() @IsString() @MaxLength(4_000) notes?: string;
+  @IsOptional() @IsString() @MaxLength(200) company?: string;
+  @IsOptional() @IsString() @MaxLength(200) role?: string;
+  @IsIn(["screening", "technical", "live_coding", "system_design", "final"]) stage!: "screening" | "technical" | "live_coding" | "system_design" | "final";
+  @IsIn(["passed", "failed", "pending", "withdrawn"]) result!: "passed" | "failed" | "pending" | "withdrawn";
+  @IsArray() @ArrayMaxSize(30) questions!: Array<Record<string, unknown>>;
+  @IsOptional() @IsString() @MaxLength(4_000) feedback?: string;
   @IsDateString({ strict: true }) occurredAt!: string;
 }
 

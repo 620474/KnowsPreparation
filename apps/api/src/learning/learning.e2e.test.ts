@@ -25,6 +25,7 @@ import { EvidenceEventV2Entry } from "./schemas/evidence-event-v2.schema";
 import { MasterySnapshotV2Entry } from "./schemas/mastery-snapshot-v2.schema";
 import { getStaticTrack } from "./track-registry";
 import { YANDEX_SPRINT, YANDEX_SPRINT_AI_KEY, YANDEX_SPRINT_AI_VERSION } from "./yandex-sprint";
+import { VerificationV9Service } from "./verification-v9.service";
 
 const TEST_PASSWORD = "integration-test-password";
 const QUIZ_CAPABILITIES = [
@@ -287,13 +288,16 @@ describe("Learning API", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(201);
     expect(first.body.currentItem).toMatchObject({ itemId: "q-01" });
+    expect(first.body.currentItem.leaseId).toEqual(expect.any(String));
     expect(first.body.currentItem.expectedAnswer).toBeUndefined();
     expect(first.body.currentItem.exercise.runner).toBeUndefined();
+    expect(JSON.stringify(first.body.currentItem)).not.toMatch(/correctIndex|referenceSolution|testCases|referencePoints/);
 
     const attempt = await request(app.getHttpServer())
       .post(`/api/v3/learning/checkpoints/${created.body.sessionId}/attempts`)
       .set("Authorization", `Bearer ${token}`)
       .send({
+        leaseId: first.body.currentItem.leaseId,
         operationId: "checkpoint-v9-attempt-1",
         answer: "A,G,C,F,D,E,B",
         explanation: "Сначала sync, затем очередь микрозадач и timer.",
@@ -309,14 +313,62 @@ describe("Learning API", () => {
       .get("/api/v3/learning/readiness?targetId=general")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
-    expect(readiness.body).toMatchObject({ version: "verified-transfer-v1", targetId: "general", status: "not_ready" });
+    expect(readiness.body).toMatchObject({ version: "verified-transfer-v2", targetId: "general", status: "not_ready" });
     expect(readiness.body.capabilities.some((item: { eligibleEvidenceCount: number }) => item.eligibleEvidenceCount > 0)).toBe(true);
+
+    const retry = await request(app.getHttpServer())
+      .post(`/api/v3/learning/checkpoints/${created.body.sessionId}/attempts`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        leaseId: first.body.currentItem.leaseId,
+        operationId: "checkpoint-v9-attempt-1",
+        answer: "A,G,C,F,D,E,B",
+        confidenceBefore: 80,
+        confidenceAfter: 90,
+        durationMs: 99_000,
+      })
+      .expect(201);
+    expect(retry.body).toEqual(attempt.body);
 
     const decision = await request(app.getHttpServer())
       .get("/api/v3/learning/decision/today?targetId=general&availableMinutes=60")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(decision.body.actions.length).toBeLessThanOrEqual(2);
+
+    const snapshot = await request(app.getHttpServer())
+      .post("/api/v3/learning/readiness/snapshots")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ targetId: "general" })
+      .expect(201);
+    const outcome = await request(app.getHttpServer())
+      .post("/api/v3/learning/interview-outcomes")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        operationId: "interview-outcome-v4-1", snapshotId: snapshot.body.snapshotId,
+        company: "Example", role: "Frontend Developer", stage: "technical", result: "failed",
+        questions: [{ topic: "Event loop", skillIds: ["async.event-loop.ordering"], summary: "Ошибся в порядке очередей", selfResult: "partial" }],
+        feedback: "Повторить микрозадачи", occurredAt: "2026-09-03T08:00:00.000Z",
+      })
+      .expect(201);
+    expect(outcome.body).toMatchObject({ targetId: "general", stage: "technical", result: "failed" });
+    const outcomes = await request(app.getHttpServer())
+      .get("/api/v3/learning/interview-outcomes?targetId=general")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(outcomes.body.some((item: { operationId: string }) => item.operationId === "interview-outcome-v4-1")).toBe(true);
+  });
+
+  it("leases exactly one item under concurrent checkpoint requests", async () => {
+    const created = await request(app.getHttpServer())
+      .post("/api/v3/learning/checkpoints")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ targetId: "general", availableMinutes: 6 })
+      .expect(201);
+    const verification = app.get(VerificationV9Service);
+    const responses = await Promise.all(Array.from({ length: 20 }, () => verification.nextItem(created.body.sessionId)));
+    expect(new Set(responses.map((response) => response.currentItem?.leaseId)).size).toBe(1);
+    expect(new Set(responses.map((response) => response.currentItem?.itemId)).size).toBe(1);
   });
 
   it("stores only the Terra-reviewed lesson and its metadata", async () => {

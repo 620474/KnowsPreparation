@@ -11,6 +11,8 @@ describe("mutation outbox", () => {
   it("uses operation ids for append-only mutations", () => {
     expect(mutationOutboxId("quiz", { operationId: "operation-1" }))
       .toBe("quiz:operation-1");
+    expect(mutationOutboxId("checkpointAttempt", { operationId: "checkpoint-operation-1" }))
+      .toBe("checkpointAttempt:checkpoint-operation-1");
   });
 
   it("coalesces idempotent entity updates", () => {

@@ -106,9 +106,9 @@ Quiz, practice, interview и Transfer Lab создают native `AssessmentResul
 
 Evidence v3 дополнительно разделяет задание, его версию, семейство концепта, форму и контекст. Повтор одной формы не создаёт ложную уверенность; process telemetry фиксирует время, запуски, ошибки тестов и число правок. Mastery v3 воспроизводится из immutable-событий и хранит posterior, доверительный диапазон и покрытие отдельно по `recall/explain/apply/debug/code/design/defend/transfer/resilience`.
 
-Verified Transfer Readiness v9 добавляет отдельный слой контрольных evidence. Экран «Сегодня» запускает online-authoritative checkpoint и получает только одно текущее задание; будущие формы, эталоны и runner tests не отправляются клиенту. Ответ после проверки получает eligibility `eligible`, `exposed` или `repeated`, поэтому знакомая либо подсмотренная форма остаётся полезной для обучения, но не способна подтвердить готовность.
+Verified Transfer Readiness v9 добавляет отдельный слой контрольных evidence. Экран «Сегодня» получает серверный lease только на одно текущее задание; будущие формы, эталоны и runner tests не отправляются клиенту. Ответ можно закончить без сети: черновик и неизменный `operationId` переживают перезапуск, а outbox отправляет попытку после reconnect ровно один раз. Ответ получает eligibility `eligible`, `exposed`, `repeated` или `incomplete`, поэтому знакомая, просроченная либо подсмотренная форма остаётся полезной для обучения, но не способна подтвердить готовность.
 
-API `/api/v3` хранит append-only `AssessmentEventV4`, историю exposure, confidence-before-result и process telemetry. Capability становится `verified` только после двух независимых форм без AI и подсказок. Learning Mastery, Verified Transfer Readiness и экспериментальный Interview Forecast отображаются как разные показатели. Decision Loop v9 возвращает максимум два действия и может честно сообщить, что на сегодня достаточно.
+API `/api/v3` хранит append-only `AssessmentEventV4`, curated concept/form/context metadata, server timing, confidence до и после решения и process telemetry. Capability становится `verified` только при достаточной нижней границе оценки, свежести и двух независимых формах; design/defend/transfer дополнительно требуют разные контексты. Learning Mastery, Verified Transfer Readiness и экспериментальный Interview Forecast отображаются как разные показатели. Decision Loop v9 учитывает дату интервью, возвращает максимум два действия и может честно сообщить, что на сегодня достаточно.
 
 Цель можно выбрать готовую — общий Frontend, Яндекс или Ozon — либо создать из текста вакансии. Decision Loop v8 ранжирует пробелы по нижней границе mastery и предлагает максимум три действия: диагностику, интервенцию, параллельную перепроверку, перенос в новый контекст или контрольный экзамен.
 
@@ -156,6 +156,7 @@ npm run dev
 - клиент — `http://localhost:5173`;
 - основной API — `http://localhost:3001/api/v1`;
 - Evidence/Mastery/Decision API — `http://localhost:3001/api/v2`;
+- Verified Checkpoint/Readiness API — `http://localhost:3001/api/v3`;
 - health check — `http://localhost:3001/api/health`.
 
 ## Учебные треки

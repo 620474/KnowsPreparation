@@ -21,6 +21,7 @@ export class AssessmentEventV4Entry {
   @Prop({ type: MongooseSchema.Types.Mixed, required: true }) integrity!: AssessmentEventV4["integrity"];
   @Prop({ type: MongooseSchema.Types.Mixed, required: true }) evaluator!: AssessmentEventV4["evaluator"];
   @Prop({ type: MongooseSchema.Types.Mixed, required: true }) provenance!: AssessmentEventV4["provenance"];
+  @Prop({ type: MongooseSchema.Types.Mixed, default: null }) result!: Record<string, unknown> | null;
   @Prop({ type: Date, required: true, index: true }) occurredAt!: Date;
   createdAt!: Date;
   updatedAt!: Date;

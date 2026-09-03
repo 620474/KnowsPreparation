@@ -3,7 +3,14 @@ import { z } from "zod";
 import { skillCapabilityV3Schema } from "./evidence-v3";
 
 export const ASSESSMENT_EVENT_V4_VERSION = "4" as const;
-export const READINESS_V9_VERSION = "verified-transfer-v1" as const;
+export const READINESS_V9_VERSION = "verified-transfer-v2" as const;
+
+export const assessmentKindSchema = z.enum([
+  "recall", "comprehension", "predict_output", "debugging", "live_coding",
+  "refactoring", "system_design", "architecture_defense", "transfer",
+]);
+
+export const assessmentNoveltySchema = z.enum(["known_context", "near_transfer", "far_transfer"]);
 
 export const verificationEligibilitySchema = z.enum([
   "eligible", "assisted", "exposed", "repeated", "legacy", "integrity_failed", "incomplete",
@@ -20,10 +27,14 @@ export const assessmentEventV4Schema = z.object({
   itemRef: z.object({
     itemId: z.string().min(1),
     familyId: z.string().min(1),
+    conceptFamilyId: z.string().min(1).default("legacy"),
+    formFamilyId: z.string().min(1).default("legacy"),
     formId: z.string().min(1),
     contextFamilyId: z.string().min(1),
     contentHash: z.string().min(1),
+    contentRevision: z.number().int().positive().default(1),
     difficultyBand: z.number().int().min(1).max(5),
+    novelty: assessmentNoveltySchema.default("known_context"),
   }),
   conditions: z.object({
     aiAllowed: z.boolean(),
@@ -32,6 +43,9 @@ export const assessmentEventV4Schema = z.object({
     timed: z.boolean(),
     timeLimitMs: z.number().int().positive(),
     deviceClass: z.enum(["mobile", "desktop", "unknown"]),
+    leasedAtServer: z.string().nullable().default(null),
+    deadlineAtServer: z.string().nullable().default(null),
+    receivedAtServer: z.string().nullable().default(null),
   }),
   process: z.object({
     durationMs: z.number().int().min(0),
@@ -44,10 +58,13 @@ export const assessmentEventV4Schema = z.object({
     confidenceAfter: z.number().int().min(0).max(100).nullable(),
   }),
   observations: z.array(z.object({
+    criterionId: z.string().min(1).default("legacy-score"),
     skillId: z.string().min(1),
     capability: skillCapabilityV3Schema,
     score: z.number().min(0).max(100),
     reliability: z.number().min(0).max(1),
+    difficulty: z.number().int().min(1).max(5).default(2),
+    rubricVersion: z.string().min(1).default("legacy-v1"),
   })).min(1),
   integrity: z.object({
     valid: z.boolean(),
@@ -68,8 +85,10 @@ export const assessmentEventV4Schema = z.object({
 
 export const checkpointPublicItemSchema = z.object({
   itemId: z.string(),
-  familyId: z.string(),
-  formId: z.string(),
+  leaseId: z.string().min(1),
+  leaseStartedAt: z.string(),
+  deadlineAt: z.string().nullable(),
+  assessmentKind: assessmentKindSchema,
   category: z.string(),
   prompt: z.string(),
   capabilities: z.array(skillCapabilityV3Schema),
@@ -88,7 +107,8 @@ export const checkpointPublicItemSchema = z.object({
 export const checkpointSessionV1Schema = z.object({
   sessionId: z.string(),
   targetId: z.string(),
-  status: z.enum(["active", "completed", "aborted"]),
+  status: z.enum(["active", "completed", "aborted", "expired", "recovery"]),
+  revision: z.number().int().min(0).default(0),
   availableMinutes: z.number().int().positive(),
   totalItems: z.number().int().min(0),
   completedItems: z.number().int().min(0),
@@ -113,11 +133,17 @@ export const checkpointAttemptResultSchema = z.object({
 export const verifiedCapabilitySchema = z.object({
   skillId: z.string(),
   capability: skillCapabilityV3Schema,
-  status: z.enum(["insufficient", "fragile", "verified"]),
+  status: z.enum(["unknown", "learning", "fragile", "verified", "stale", "blocked"]),
   score: z.number().min(0).max(100).nullable(),
+  lower: z.number().min(0).max(100).nullable(),
+  upper: z.number().min(0).max(100).nullable(),
   eligibleEvidenceCount: z.number().int().min(0),
+  effectiveEvidenceCount: z.number().min(0),
   independentFormCount: z.number().int().min(0),
+  independentContextCount: z.number().int().min(0),
   lastVerifiedAt: z.string().nullable(),
+  reverifyAfter: z.string().nullable(),
+  reasonCodes: z.array(z.string()),
 });
 
 export const readinessV9Schema = z.object({
@@ -147,7 +173,7 @@ export const decisionPlanV9Schema = z.object({
   sufficientForToday: z.boolean(),
   actions: z.array(z.object({
     actionId: z.string(),
-    kind: z.enum(["diagnostic", "checkpoint", "intervention", "parallel_retest", "transfer", "stress_exam"]),
+    kind: z.enum(["diagnostic", "learn", "review", "checkpoint", "intervention", "parallel_retest", "transfer", "mock", "stress_exam"]),
     title: z.string(),
     whyNow: z.string(),
     estimatedMinutes: z.number().int().positive(),
@@ -156,9 +182,35 @@ export const decisionPlanV9Schema = z.object({
   })).max(2),
 });
 
+export const interviewOutcomeQuestionV4Schema = z.object({
+  topic: z.string().min(1).max(200),
+  skillIds: z.array(z.string().min(1)).max(12),
+  summary: z.string().min(1).max(2_000),
+  selfResult: z.enum(["strong", "partial", "failed", "unknown"]),
+});
+
+export const interviewOutcomeV4InputSchema = z.object({
+  operationId: z.string().min(1).max(80),
+  snapshotId: z.string().min(1).max(80),
+  company: z.string().max(200).nullable(),
+  role: z.string().max(200).nullable(),
+  stage: z.enum(["screening", "technical", "live_coding", "system_design", "final"]),
+  result: z.enum(["passed", "failed", "pending", "withdrawn"]),
+  questions: z.array(interviewOutcomeQuestionV4Schema).max(30),
+  feedback: z.string().max(4_000).nullable(),
+  occurredAt: z.string(),
+});
+
+export const interviewOutcomeV4Schema = interviewOutcomeV4InputSchema.extend({
+  outcomeId: z.string(),
+  targetId: z.string(),
+});
+
 export type AssessmentEventV4 = z.infer<typeof assessmentEventV4Schema>;
 export type CheckpointPublicItem = z.infer<typeof checkpointPublicItemSchema>;
 export type CheckpointSessionV1 = z.infer<typeof checkpointSessionV1Schema>;
 export type CheckpointAttemptResult = z.infer<typeof checkpointAttemptResultSchema>;
 export type ReadinessV9 = z.infer<typeof readinessV9Schema>;
 export type DecisionPlanV9 = z.infer<typeof decisionPlanV9Schema>;
+export type InterviewOutcomeV4Input = z.infer<typeof interviewOutcomeV4InputSchema>;
+export type InterviewOutcomeV4 = z.infer<typeof interviewOutcomeV4Schema>;

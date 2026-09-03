@@ -21,6 +21,7 @@ import type {
   TaskMutationVariables,
   TransferAssessmentMutationVariables,
   InterviewTurnMutationVariables,
+  CheckpointAttemptMutationVariables,
 } from "./offline-mutation-keys";
 
 const OFFLINE_WRITE_SCOPE = { id: "offline-write-queue" } as const;
@@ -94,6 +95,10 @@ const executeOutboxEntry = (entry: MutationOutboxEntry) => {
       const { interviewId, answer, operationId } = entry.variables as InterviewTurnMutationVariables;
       return learningApi.submitInterviewTurn(interviewId, answer, operationId);
     }
+    case "checkpointAttempt": {
+      const { sessionId, ...input } = entry.variables as CheckpointAttemptMutationVariables;
+      return learningApi.submitCheckpointAttemptV9(sessionId, input);
+    }
   }
 };
 
@@ -109,6 +114,8 @@ export function replayOfflineMutationOutbox(queryClient: QueryClient) {
           queryClient.invalidateQueries({ queryKey: ["adaptive-today"] }),
           queryClient.invalidateQueries({ queryKey: ["learning-analytics"] }),
           queryClient.invalidateQueries({ queryKey: ["learning-missions"] }),
+          queryClient.invalidateQueries({ queryKey: ["readiness-v9"] }),
+          queryClient.invalidateQueries({ queryKey: ["decision-v9"] }),
         ]);
       }
       return completed;

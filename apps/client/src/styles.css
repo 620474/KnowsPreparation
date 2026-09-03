@@ -4098,6 +4098,34 @@ p {
 .checkpoint-question,
 .checkpoint-complete { display: grid; gap: 18px; }
 
+.verified-decision-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.verified-decision-list > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.verified-decision-list small,
+.verified-reasons p {
+  color: var(--muted);
+}
+
+.verified-reasons {
+  margin-top: 12px;
+}
+
+.verified-reasons summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
 @media (max-width: 720px) {
   .verified-readiness-card { grid-template-columns: 1fr; }
   .verified-readiness-card > button { width: 100%; }

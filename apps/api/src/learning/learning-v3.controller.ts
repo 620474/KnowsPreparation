@@ -19,4 +19,5 @@ export class LearningV3Controller {
   @Get("decision/today") @Header("Cache-Control", "private, no-store") decision(@Query("targetId") targetId?: string, @Query("availableMinutes") minutes?: string) { return this.verification.decision(targetId, Math.min(360, Math.max(5, Number(minutes) || 60))); }
   @Post("readiness/snapshots") freeze(@Body("targetId") targetId = "general") { return this.verification.freezeReadiness(targetId); }
   @Post("interview-outcomes") outcome(@Body() dto: RecordInterviewOutcomeV3Dto) { return this.verification.recordOutcome(dto); }
+  @Get("interview-outcomes") outcomes(@Query("targetId") targetId?: string) { return this.verification.listOutcomes(targetId); }
 }

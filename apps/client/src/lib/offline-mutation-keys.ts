@@ -25,6 +25,7 @@ export const offlineMutationKeys = {
   missionAction: [...OFFLINE_MUTATION_ROOT, "mission-action"] as const,
   transferAssessment: [...OFFLINE_MUTATION_ROOT, "transfer-assessment"] as const,
   interviewTurn: [...OFFLINE_MUTATION_ROOT, "interview-turn"] as const,
+  checkpointAttempt: [...OFFLINE_MUTATION_ROOT, "checkpoint-attempt"] as const,
 };
 
 export type TaskMutationVariables = { taskId: string; progress: TaskProgressPatch };
@@ -89,6 +90,22 @@ export type InterviewTurnMutationVariables = {
   interviewId: string;
   answer: string;
   operationId: string;
+};
+export type CheckpointAttemptMutationVariables = {
+  sessionId: string;
+  leaseId: string;
+  operationId: string;
+  answer: string;
+  explanation?: string;
+  selectedOptionIndex?: number;
+  confidenceBefore: number;
+  confidenceAfter: number;
+  durationMs: number;
+  runCount?: number;
+  failedTestCount?: number;
+  revisionCount?: number;
+  networkInterrupted?: boolean;
+  deviceClass?: "mobile" | "desktop" | "unknown";
 };
 
 export const createOperationId = () =>

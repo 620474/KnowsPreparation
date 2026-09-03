@@ -22,9 +22,30 @@ import {
   knowledgeOverviewV2Schema,
   learningMissionSchema,
   questionAttemptResultSchema,
+  checkpointPublicItemSchema,
+  interviewOutcomeV4InputSchema,
 } from "./index";
 
 describe("shared API contracts", () => {
+  it("keeps checkpoint independence metadata private", () => {
+    const item = checkpointPublicItemSchema.parse({
+      itemId: "q-01", leaseId: "lease-1", leaseStartedAt: "2026-09-03T08:00:00.000Z",
+      deadlineAt: "2026-09-03T08:03:00.000Z", assessmentKind: "predict_output", category: "JS",
+      prompt: "Что выведет код?", capabilities: ["apply"], difficultyBand: 3, timeLimitMs: 180_000,
+      exercise: { type: "predict_output", instructions: "Назови порядок", code: "console.log(1)", starterCode: null, choices: [], requiresExplanation: true },
+    });
+    expect(item).not.toHaveProperty("formId");
+    expect(item).not.toHaveProperty("familyId");
+  });
+
+  it("validates structured real interview outcomes", () => {
+    expect(interviewOutcomeV4InputSchema.parse({
+      operationId: "outcome-1", snapshotId: "snapshot-1", company: "Example", role: "Frontend",
+      stage: "technical", result: "failed", feedback: null, occurredAt: "2026-09-03T08:00:00.000Z",
+      questions: [{ topic: "Event loop", skillIds: ["async.event-loop"], summary: "Перепутал очереди", selfResult: "partial" }],
+    }).questions).toHaveLength(1);
+  });
+
   it("keeps the submitted answer in question attempt results", () => {
     const result = questionAttemptResultSchema.parse({
       id: "attempt-1",

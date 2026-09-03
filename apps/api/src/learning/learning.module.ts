@@ -130,6 +130,7 @@ import { ReadinessOutcomeV2Entry, ReadinessOutcomeV2EntrySchema } from "./schema
 import { AiInvocationEntry, AiInvocationEntrySchema } from "./schemas/ai-invocation.schema";
 import { AiObservabilityService } from "./ai-observability.service";
 import { VerificationV9Service } from "./verification-v9.service";
+import { VerificationMigrationService } from "./verification-migration.service";
 import { AssessmentEventV4Entry, AssessmentEventV4EntrySchema } from "./schemas/assessment-event-v4.schema";
 import { CheckpointSessionEntry, CheckpointSessionEntrySchema } from "./schemas/checkpoint-session.schema";
 import { ItemExposureEntry, ItemExposureEntrySchema } from "./schemas/item-exposure.schema";
@@ -205,6 +206,7 @@ import { InterviewOutcomeV3Entry, InterviewOutcomeV3EntrySchema } from "./schema
     DecisionV8Service,
     AiObservabilityService,
     VerificationV9Service,
+    VerificationMigrationService,
     LearningSignalService,
     LearningMissionService,
     ReadinessCalibrationService,

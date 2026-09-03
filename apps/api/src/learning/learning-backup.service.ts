@@ -565,9 +565,9 @@ export class LearningBackupService {
       ),
       this.mergeRecords(this.assessmentEventV4Model, prepared.assessmentEventsV4, (record) => ({ operationId: record.operationId })),
       this.mergeRecords(this.checkpointSessionV1Model, prepared.checkpointSessionsV1, (record) => ({ sessionId: record.sessionId })),
-      this.mergeRecords(this.itemExposureV1Model, prepared.itemExposuresV1, (record) => ({ itemId: record.itemId })),
+      this.mergeRecords(this.itemExposureV1Model, prepared.itemExposuresV1, (record) => ({ targetId: record.targetId ?? "general", itemId: record.itemId })),
       this.mergeRecords(this.readinessSnapshotV3Model, prepared.readinessSnapshotsV3, (record) => ({ snapshotId: record.snapshotId })),
-      this.mergeRecords(this.interviewOutcomeV3Model, prepared.interviewOutcomesV3, (record) => ({ outcomeId: record.outcomeId })),
+      this.mergeRecords(this.interviewOutcomeV3Model, prepared.interviewOutcomesV3, (record) => ({ operationId: record.operationId })),
       this.mergeRecords(
         this.mockInterviewModel,
         prepared.mockInterviews,

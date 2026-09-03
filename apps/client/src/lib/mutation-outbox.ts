@@ -16,7 +16,8 @@ export type DurableMutationKind =
   | "skipRecommendation"
   | "missionAction"
   | "transferAssessment"
-  | "interviewTurn";
+  | "interviewTurn"
+  | "checkpointAttempt";
 
 export interface MutationOutboxEntry {
   id: string;

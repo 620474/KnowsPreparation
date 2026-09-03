@@ -422,8 +422,11 @@ export const learningApi = {
   nextCheckpointItemV9: (sessionId: string) =>
     requestV3<CheckpointSessionV1>(`/learning/checkpoints/${encodeURIComponent(sessionId)}/next`, { method: "POST" })
       .then((result) => checkpointSessionV1Schema.parse(result)),
+  getCheckpointV9: (sessionId: string) =>
+    requestV3<CheckpointSessionV1>(`/learning/checkpoints/${encodeURIComponent(sessionId)}`)
+      .then((result) => checkpointSessionV1Schema.parse(result)),
   submitCheckpointAttemptV9: (sessionId: string, input: {
-    operationId: string; answer: string; explanation?: string; selectedOptionIndex?: number;
+    leaseId: string; operationId: string; answer: string; explanation?: string; selectedOptionIndex?: number;
     confidenceBefore: number; confidenceAfter?: number; durationMs: number;
     runCount?: number; failedTestCount?: number; revisionCount?: number;
     networkInterrupted?: boolean; deviceClass?: "mobile" | "desktop" | "unknown";
