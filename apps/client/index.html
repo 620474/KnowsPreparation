@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#07110f" />
+    <meta name="theme-color" content="#0b0f14" />
     <script>
       try {
         const savedScheme = localStorage.getItem("mantine-color-scheme-value");
         const scheme = savedScheme === "light" ? "light" : "dark";
         document.documentElement.setAttribute("data-mantine-color-scheme", scheme);
         document.querySelector('meta[name="theme-color"]').content =
-          scheme === "light" ? "#f4f8f5" : "#07110f";
+          scheme === "light" ? "#f4f8f5" : "#0b0f14";
       } catch {
         document.documentElement.setAttribute("data-mantine-color-scheme", "dark");
       }

@@ -71,7 +71,7 @@ function ThemeToggle() {
     setColorScheme(nextColorScheme);
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", nextColorScheme === "light" ? "#f4f8f5" : "#07110f");
+      ?.setAttribute("content", nextColorScheme === "light" ? "#f4f8f5" : "#0b0f14");
   }
 
   return (
