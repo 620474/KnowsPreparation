@@ -8,6 +8,7 @@ import type { CheckpointAttemptResult, CheckpointSessionV1 } from "../types";
 import { createOperationId } from "../lib/offline-mutation-keys";
 import { runDurableMutation } from "../lib/mutation-outbox";
 import { CodeEditor } from "./CodeEditor";
+import { deleteCheckpointDraft, readCheckpointDraft, writeCheckpointDraft } from "../lib/session-drafts";
 
 interface Props { targetId: string; availableMinutes: number; }
 
@@ -31,10 +32,11 @@ export function VerifiedCheckpointCard({ targetId, availableMinutes }: Props) {
   useEffect(() => {
     const item = session?.currentItem;
     if (!item || result) return;
-    localStorage.setItem(`checkpoint-draft:${item.leaseId}`, JSON.stringify({
+    void writeCheckpointDraft({
       sessionId: session.sessionId, leaseId: item.leaseId, answer, explanation, selectedOption,
       confidenceBefore, confidenceAfter, answerLocked, operationId, startedAt: startedAt.current,
-    }));
+      updatedAt: new Date().toISOString(),
+    });
   }, [answer, answerLocked, confidenceAfter, confidenceBefore, explanation, operationId, result, selectedOption, session]);
 
   const loadNext = async (source: CheckpointSessionV1) => {
@@ -42,9 +44,7 @@ export function VerifiedCheckpointCard({ targetId, availableMinutes }: Props) {
     setSession(next);
     setResult(null);
     const item = next.currentItem;
-    const stored = item ? localStorage.getItem(`checkpoint-draft:${item.leaseId}`) : null;
-    let draft: Record<string, unknown> | null = null;
-    try { draft = stored ? JSON.parse(stored) as Record<string, unknown> : null; } catch { draft = null; }
+    const draft = item ? await readCheckpointDraft(item.leaseId) : undefined;
     setAnswer(typeof draft?.answer === "string" ? draft.answer : item?.exercise.starterCode ?? "");
     setExplanation(typeof draft?.explanation === "string" ? draft.explanation : "");
     setSelectedOption(typeof draft?.selectedOption === "number" ? draft.selectedOption : null);
@@ -90,7 +90,7 @@ export function VerifiedCheckpointCard({ targetId, availableMinutes }: Props) {
         const { sessionId, ...input } = variables;
         return learningApi.submitCheckpointAttemptV9(sessionId, input);
       });
-      localStorage.removeItem(`checkpoint-draft:${item.leaseId}`);
+      await deleteCheckpointDraft(item.leaseId);
       setResult(checked);
       setSession({ ...session, revision: session.revision + 1, currentItem: null, completedItems: session.completedItems + 1 });
       await Promise.all([

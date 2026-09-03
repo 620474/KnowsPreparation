@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import {
   BadGatewayException,
   Injectable,
@@ -34,6 +32,7 @@ import type { InterviewActionProposal } from "../learning/interview-director";
 import { createOpenAiAbortContext, isAbortError } from "../learning/openai-request";
 import { AiInvocationEntry } from "../learning/schemas/ai-invocation.schema";
 import { getEvaluatorDescriptor } from "./evaluator-registry";
+import { createAgentRunEnvelope } from "./agent-runtime";
 
 const OFFICIAL_SOURCE_DOMAINS = [
   "developer.mozilla.org",
@@ -1204,6 +1203,7 @@ export class AiAgentService {
     const abortContext = createOpenAiAbortContext(externalSignal);
     const startedAt = Date.now();
     const selectedModel = options.model ?? this.model;
+    const runtime = createAgentRunEnvelope(name, selectedModel, maxOutputTokens);
     let status: "success" | "error" | "timeout" = "error";
     let usage: Record<string, number> | null = null;
     try {
@@ -1217,7 +1217,7 @@ export class AiAgentService {
           model: selectedModel,
           instructions,
           input: JSON.stringify(input),
-          max_output_tokens: maxOutputTokens,
+          max_output_tokens: runtime.budget.maximumOutputTokens,
           store: false,
           text: { format: { type: "json_schema", name, strict: true, schema } },
           ...extras,
@@ -1257,11 +1257,16 @@ export class AiAgentService {
       abortContext.dispose();
       if (this.invocationModel) {
         void this.invocationModel.create({
-          invocationId: randomUUID(),
+          invocationId: runtime.runId,
           operation: name,
           model: selectedModel,
           promptVersion: name,
-          schemaVersion: null,
+          schemaVersion: "agent-run-envelope-v1",
+          role: runtime.role,
+          roleVersion: runtime.roleVersion,
+          permissions: runtime.permissions,
+          budget: runtime.budget,
+          humanApprovalRequired: runtime.humanApprovalRequired,
           durationMs: Date.now() - startedAt,
           usage,
           status,

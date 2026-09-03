@@ -13,6 +13,7 @@ import type { BootstrapData } from "../../types";
 interface KnowledgeHubProps {
   data: BootstrapData;
   onOpenAiCourse: () => void;
+  onOpenAiEngineering: () => void;
   onOpenAlgorithms: () => void;
   onOpenAnalytics: () => void;
   onOpenQuestions: () => void;
@@ -23,6 +24,7 @@ interface KnowledgeHubProps {
 export function KnowledgeHub({
   data,
   onOpenAiCourse,
+  onOpenAiEngineering,
   onOpenAlgorithms,
   onOpenAnalytics,
   onOpenQuestions,
@@ -57,6 +59,12 @@ export function KnowledgeHub({
       description: `${data.resources.length} точечных материалов и справочников.`,
       icon: LibraryBig,
       action: onOpenResources,
+    },
+    {
+      title: "AI Engineering",
+      description: "28 дней и 4 проекта: agent loop, runtime, streaming и evals.",
+      icon: BrainCircuit,
+      action: onOpenAiEngineering,
     },
     {
       title: "AI-курс",

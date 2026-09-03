@@ -53,6 +53,8 @@ import { CheckpointSessionEntry } from "./schemas/checkpoint-session.schema";
 import { ItemExposureEntry } from "./schemas/item-exposure.schema";
 import { ReadinessSnapshotV3Entry } from "./schemas/readiness-snapshot-v3.schema";
 import { InterviewOutcomeV3Entry } from "./schemas/interview-outcome-v3.schema";
+import { ExposureEventV2Entry } from "./schemas/exposure-event-v2.schema";
+import { InterviewTimelineEventEntry } from "./schemas/interview-timeline-event.schema";
 
 @Injectable()
 export class LearningBackupService {
@@ -100,6 +102,7 @@ export class LearningBackupService {
     @InjectModel(AssessmentEventV4Entry.name) private readonly assessmentEventV4Model: Model<AssessmentEventV4Entry>,
     @InjectModel(CheckpointSessionEntry.name) private readonly checkpointSessionV1Model: Model<CheckpointSessionEntry>,
     @InjectModel(ItemExposureEntry.name) private readonly itemExposureV1Model: Model<ItemExposureEntry>,
+    @InjectModel(ExposureEventV2Entry.name) private readonly exposureEventV2Model: Model<ExposureEventV2Entry>,
     @InjectModel(ReadinessSnapshotV3Entry.name) private readonly readinessSnapshotV3Model: Model<ReadinessSnapshotV3Entry>,
     @InjectModel(InterviewOutcomeV3Entry.name) private readonly interviewOutcomeV3Model: Model<InterviewOutcomeV3Entry>,
     @InjectModel(MockInterview.name)
@@ -108,6 +111,8 @@ export class LearningBackupService {
     private readonly interviewSessionModel: Model<InterviewSession>,
     @InjectModel(InterviewTurnEntry.name)
     private readonly interviewTurnModel: Model<InterviewTurnEntry>,
+    @InjectModel(InterviewTimelineEventEntry.name)
+    private readonly interviewTimelineEventV1Model: Model<InterviewTimelineEventEntry>,
     @InjectModel(ReadinessPredictionEntry.name)
     private readonly readinessPredictionModel: Model<ReadinessPredictionEntry>,
     @InjectModel(ReadinessOutcomeEntry.name)
@@ -166,12 +171,14 @@ export class LearningBackupService {
       assessmentEventsV4,
       checkpointSessionsV1,
       itemExposuresV1,
+      exposureEventsV2,
       readinessSnapshotsV3,
       interviewOutcomesV3,
       aiQuizProgresses,
       mockInterviews,
       interviewSessions,
       interviewTurns,
+      interviewTimelineEventsV1,
       readinessPredictions,
       readinessOutcomes,
       yandexPlatformMockAttempts,
@@ -212,12 +219,14 @@ export class LearningBackupService {
       this.assessmentEventV4Model.find().lean().exec(),
       this.checkpointSessionV1Model.find().lean().exec(),
       this.itemExposureV1Model.find().lean().exec(),
+      this.exposureEventV2Model.find().lean().exec(),
       this.readinessSnapshotV3Model.find().lean().exec(),
       this.interviewOutcomeV3Model.find().lean().exec(),
       this.aiQuizProgressModel.find().lean().exec(),
       this.mockInterviewModel.find().lean().exec(),
       this.interviewSessionModel.find().lean().exec(),
       this.interviewTurnModel.find().lean().exec(),
+      this.interviewTimelineEventV1Model.find().lean().exec(),
       this.readinessPredictionModel.find().lean().exec(),
       this.readinessOutcomeModel.find().lean().exec(),
       this.yandexPlatformMockAttemptModel.find().lean().exec(),
@@ -264,12 +273,14 @@ export class LearningBackupService {
         assessmentEventsV4,
         checkpointSessionsV1,
         itemExposuresV1,
+        exposureEventsV2,
         readinessSnapshotsV3,
         interviewOutcomesV3,
         aiQuizProgresses,
         mockInterviews,
         interviewSessions,
         interviewTurns,
+        interviewTimelineEventsV1,
         readinessPredictions,
         readinessOutcomes,
         yandexPlatformMockAttempts,
@@ -374,6 +385,7 @@ export class LearningBackupService {
       assessmentEventsV4: await this.validateRecords(this.assessmentEventV4Model, backup.data.assessmentEventsV4),
       checkpointSessionsV1: await this.validateRecords(this.checkpointSessionV1Model, backup.data.checkpointSessionsV1),
       itemExposuresV1: await this.validateRecords(this.itemExposureV1Model, backup.data.itemExposuresV1),
+      exposureEventsV2: await this.validateRecords(this.exposureEventV2Model, backup.data.exposureEventsV2),
       readinessSnapshotsV3: await this.validateRecords(this.readinessSnapshotV3Model, backup.data.readinessSnapshotsV3),
       interviewOutcomesV3: await this.validateRecords(this.interviewOutcomeV3Model, backup.data.interviewOutcomesV3),
       mockInterviews: await this.validateRecords(
@@ -387,6 +399,10 @@ export class LearningBackupService {
       interviewTurns: await this.validateRecords(
         this.interviewTurnModel,
         backup.data.interviewTurns,
+      ),
+      interviewTimelineEventsV1: await this.validateRecords(
+        this.interviewTimelineEventV1Model,
+        backup.data.interviewTimelineEventsV1,
       ),
       readinessPredictions: await this.validateRecords(
         this.readinessPredictionModel,
@@ -566,6 +582,7 @@ export class LearningBackupService {
       this.mergeRecords(this.assessmentEventV4Model, prepared.assessmentEventsV4, (record) => ({ operationId: record.operationId })),
       this.mergeRecords(this.checkpointSessionV1Model, prepared.checkpointSessionsV1, (record) => ({ sessionId: record.sessionId })),
       this.mergeRecords(this.itemExposureV1Model, prepared.itemExposuresV1, (record) => ({ targetId: record.targetId ?? "general", itemId: record.itemId })),
+      this.mergeRecords(this.exposureEventV2Model, prepared.exposureEventsV2, (record) => ({ eventId: record.eventId })),
       this.mergeRecords(this.readinessSnapshotV3Model, prepared.readinessSnapshotsV3, (record) => ({ snapshotId: record.snapshotId })),
       this.mergeRecords(this.interviewOutcomeV3Model, prepared.interviewOutcomesV3, (record) => ({ operationId: record.operationId })),
       this.mergeRecords(
@@ -582,6 +599,11 @@ export class LearningBackupService {
         this.interviewTurnModel,
         prepared.interviewTurns,
         (record) => ({ turnId: record.turnId }),
+      ),
+      this.mergeRecords(
+        this.interviewTimelineEventV1Model,
+        prepared.interviewTimelineEventsV1,
+        (record) => ({ eventId: record.eventId }),
       ),
       this.mergeRecords(
         this.readinessPredictionModel,

@@ -337,8 +337,8 @@ export const AI_SPRINT_DAYS = [
     resourceIds: ["ai-assisted-09", "ai-agent-javascript-kevin-yank"],
   },
   {
-    title: "Инструкции для разных AI-инструментов",
-    description: "Сравнить AGENTS.md и vendor-specific инструкции, не дублируя общий контекст.",
+    title: "Проект 1: минимальный TypeScript-агент",
+    description: "Собрать bounded agent loop с read-only tool, Zod-валидацией, maxSteps, AbortSignal и audit log.",
     resourceIds: ["ai-assisted-12"],
   },
   {
@@ -372,8 +372,8 @@ export const AI_SPRINT_DAYS = [
     resourceIds: ["ai-engineering-21"],
   },
   {
-    title: "Стоимость AI-функции",
-    description: "Посчитать примерный бюджет одной сессии и определить лимиты tokens, retries и regeneration.",
+    title: "Проект 2: production agent runtime",
+    description: "Объединить роли, permissions, бюджеты, timeout, retry и usage в версионированный run envelope.",
     resourceIds: ["ai-engineering-22"],
   },
   {
@@ -407,8 +407,8 @@ export const AI_SPRINT_DAYS = [
     resourceIds: ["ai-engineering-13"],
   },
   {
-    title: "Доступность streaming UI",
-    description: "Добавить план aria-live сообщений для старта, остановки, ошибки и завершения.",
+    title: "Проект 3: потоковый AI-интерфейс",
+    description: "Собрать POST-streaming с cancellation, восстановлением после разрыва и доступными статусами интерфейса.",
     resourceIds: ["ai-engineering-20"],
   },
   {
@@ -442,8 +442,8 @@ export const AI_SPRINT_DAYS = [
     resourceIds: ["ai-assisted-35"],
   },
   {
-    title: "Spec-driven итог и презентация",
-    description: "Подготовить десятиминутный рассказ: задача, архитектура, риски, evals и личный вклад.",
+    title: "Проект 4: проверяемый AI-сервис",
+    description: "Собрать golden dataset, eval harness и десятиминутную защиту: задача, архитектура, риски, метрики и личный вклад.",
     resourceIds: ["ai-assisted-29", "ai-assisted-30"],
   },
 ] as const;

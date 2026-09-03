@@ -20,6 +20,21 @@ export class AiInvocationEntry {
   @Prop({ type: String, default: null })
   schemaVersion!: string | null;
 
+  @Prop({ type: String, default: null, index: true })
+  role!: string | null;
+
+  @Prop({ type: String, default: null })
+  roleVersion!: string | null;
+
+  @Prop({ type: [String], default: [] })
+  permissions!: string[];
+
+  @Prop({ type: MongooseSchema.Types.Mixed, default: null })
+  budget!: { maximumSteps: number; maximumOutputTokens: number } | null;
+
+  @Prop({ type: Boolean, default: false })
+  humanApprovalRequired!: boolean;
+
   @Prop({ required: true })
   durationMs!: number;
 

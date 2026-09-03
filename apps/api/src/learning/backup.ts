@@ -28,12 +28,14 @@ export const LEARNING_BACKUP_COLLECTIONS = [
   "assessmentEventsV4",
   "checkpointSessionsV1",
   "itemExposuresV1",
+  "exposureEventsV2",
   "readinessSnapshotsV3",
   "interviewOutcomesV3",
   "aiQuizProgresses",
   "mockInterviews",
   "interviewSessions",
   "interviewTurns",
+  "interviewTimelineEventsV1",
   "readinessPredictions",
   "readinessOutcomes",
   "yandexPlatformMockAttempts",
@@ -108,10 +110,12 @@ export function parseLearningBackup(value: unknown): LearningBackupV1 {
       collection === "assessmentEventsV4" ||
       collection === "checkpointSessionsV1" ||
       collection === "itemExposuresV1" ||
+      collection === "exposureEventsV2" ||
       collection === "readinessSnapshotsV3" ||
       collection === "interviewOutcomesV3" ||
       collection === "interviewSessions" ||
       collection === "interviewTurns" ||
+      collection === "interviewTimelineEventsV1" ||
       collection === "readinessPredictions" ||
       collection === "readinessOutcomes" ||
       collection === "yandexPlatformMockAttempts" ||

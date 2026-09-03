@@ -28,6 +28,7 @@ import type {
 } from "../types";
 import { createOperationId } from "../lib/offline-mutation-keys";
 import { runDurableMutation } from "../lib/mutation-outbox";
+import { deleteInterviewDraft, readInterviewDraft, writeInterviewDraft } from "../lib/session-drafts";
 
 const CURRENT_QUERY_KEY = ["interview-sessions", "current"] as const;
 const HISTORY_QUERY_KEY = ["interview-sessions", "history"] as const;
@@ -148,6 +149,7 @@ export function InterviewSimulatorView() {
   const [defenseDrafts, setDefenseDrafts] = useState<Record<number, string>>({});
   const [directorDraft, setDirectorDraft] = useState("");
   const codingTelemetryRef = useRef({ sessionId: "", openedAt: 0, revisionCount: 0 });
+  const restoredDraftSessionId = useRef("");
 
   const session = selectedSession ?? currentQuery.data ?? null;
   const companyOptions = companyProfilesQuery.data?.map((profile) => ({ value: profile.companyId, label: profile.label })) ?? fallbackCompanyOptions;
@@ -163,6 +165,44 @@ export function InterviewSimulatorView() {
   const aiSolution = session && aiCodeDraft?.sessionId === session.id
     ? aiCodeDraft.value
     : session?.aiExercise.solution ?? "";
+
+  useEffect(() => {
+    if (!session?.id || session.status === "completed" || restoredDraftSessionId.current === session.id) return;
+    let active = true;
+    void readInterviewDraft(session.id).then((draft) => {
+      if (!active || !draft) return;
+      setPlatformDrafts(draft.platformDrafts);
+      setCodingDraft({ sessionId: session.id, value: draft.codingSolution });
+      setAiCodeDraft({ sessionId: session.id, value: draft.aiSolution });
+      setAiDraft(draft.aiMessage);
+      setDefenseDrafts(draft.defenseDrafts);
+      setDirectorDraft(draft.directorDraft);
+    }).finally(() => {
+      if (active) restoredDraftSessionId.current = session.id;
+    });
+    return () => { active = false; };
+  }, [session?.id, session?.status]);
+
+  useEffect(() => {
+    if (!session?.id || session.status === "completed" || restoredDraftSessionId.current !== session.id) return;
+    const timeout = window.setTimeout(() => {
+      void writeInterviewDraft({
+        interviewId: session.id,
+        platformDrafts,
+        codingSolution,
+        aiSolution,
+        aiMessage: aiDraft,
+        defenseDrafts,
+        directorDraft,
+        updatedAt: new Date().toISOString(),
+      });
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [aiDraft, aiSolution, codingSolution, defenseDrafts, directorDraft, platformDrafts, session?.id, session?.status]);
+
+  useEffect(() => {
+    if (session?.id && session.status === "completed") void deleteInterviewDraft(session.id);
+  }, [session?.id, session?.status]);
   const submitCodingAttempt = async () => {
     if (!session) throw new Error("Интервью не найдено");
     if (codingTelemetryRef.current.sessionId !== session.id) {

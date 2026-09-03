@@ -197,6 +197,7 @@ export function AppViewContent({
       <KnowledgeHub
         data={data}
         onOpenAiCourse={() => navigateToView("ai-course")}
+        onOpenAiEngineering={() => navigateToTrackDay("curriculum", "w01-d01")}
         onOpenAlgorithms={() => navigateToView("algorithms")}
         onOpenAnalytics={() => navigateToView("analytics")}
         onOpenQuestions={() => navigateToView("questions")}
