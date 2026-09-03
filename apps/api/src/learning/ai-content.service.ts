@@ -200,7 +200,9 @@ const lessonSchema = {
         additionalProperties: false,
         properties: {
           prompt: { type: "string" },
-          code: { type: "string" },
+          code: {
+            anyOf: [{ type: "string" }, { type: "null" }],
+          },
           options: {
             type: "array",
             minItems: 4,
@@ -226,6 +228,7 @@ const lessonSchema = {
         },
         required: [
           "prompt",
+          "code",
           "options",
           "correctOptionIndex",
           "explanation",
@@ -407,7 +410,13 @@ export class AiContentService {
       });
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok) {
-        this.logOpenAiHttpError("audio_transcription", response.status, false);
+        this.logOpenAiHttpError(
+          "audio_transcription",
+          response.status,
+          false,
+          body,
+          response.headers.get("x-request-id"),
+        );
         throw new BadGatewayException(
           `OpenAI не смог распознать запись (HTTP ${response.status}).`,
         );
@@ -829,7 +838,14 @@ export class AiContentService {
         signal: abortContext.signal,
       });
       if (!response.ok) {
-        this.logOpenAiHttpError(operation, response.status, true);
+        const errorBody = await this.readOpenAiErrorBody(response);
+        this.logOpenAiHttpError(
+          operation,
+          response.status,
+          true,
+          errorBody,
+          response.headers.get("x-request-id"),
+        );
         throw new BadGatewayException(
           `OpenAI не смог сгенерировать материал (HTTP ${response.status}).`,
         );
@@ -915,7 +931,13 @@ export class AiContentService {
 
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok) {
-        this.logOpenAiHttpError(operation, response.status, false);
+        this.logOpenAiHttpError(
+          operation,
+          response.status,
+          false,
+          body,
+          response.headers.get("x-request-id"),
+        );
         throw new BadGatewayException(
           `OpenAI не смог сгенерировать материал (HTTP ${response.status}).`,
         );
@@ -949,8 +971,54 @@ export class AiContentService {
     });
   }
 
-  private logOpenAiHttpError(operation: string, status: number, streaming: boolean) {
-    this.logger.warn({ event: "openai_http_error", operation, status, streaming });
+  private async readOpenAiErrorBody(response: Response) {
+    const text = await response.text().catch(() => "");
+    if (!text.trim()) return null;
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return text;
+    }
+  }
+
+  private logOpenAiHttpError(
+    operation: string,
+    status: number,
+    streaming: boolean,
+    body: unknown,
+    requestId: string | null,
+  ) {
+    const details = this.normalizeOpenAiErrorDetails(body);
+    this.logger.warn({
+      event: "openai_http_error",
+      operation,
+      status,
+      streaming,
+      ...(requestId ? { openAiRequestId: requestId.slice(0, 200) } : {}),
+      ...details,
+    });
+  }
+
+  private normalizeOpenAiErrorDetails(body: unknown) {
+    const source =
+      typeof body === "object" && body !== null && "error" in body
+        ? (body as { error?: unknown }).error
+        : body;
+    if (typeof source === "string") {
+      return { openAiMessage: source.trim().slice(0, 1_000) };
+    }
+    if (typeof source !== "object" || source === null) return {};
+    const error = source as Record<string, unknown>;
+    const field = (name: string, limit = 300) =>
+      typeof error[name] === "string" && error[name].trim()
+        ? error[name].trim().slice(0, limit)
+        : undefined;
+    return {
+      ...(field("message", 1_000) ? { openAiMessage: field("message", 1_000) } : {}),
+      ...(field("type") ? { openAiErrorType: field("type") } : {}),
+      ...(field("code") ? { openAiErrorCode: field("code") } : {}),
+      ...(field("param") ? { openAiErrorParam: field("param") } : {}),
+    };
   }
 
   private logOpenAiTimeout(operation: string, streaming: boolean) {
